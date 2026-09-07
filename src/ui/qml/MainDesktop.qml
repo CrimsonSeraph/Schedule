@@ -34,6 +34,7 @@ ApplicationWindow {
 
         Button {
             id: testButton
+            objectName: "testButton"
             text: qsTr("测试")
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 180

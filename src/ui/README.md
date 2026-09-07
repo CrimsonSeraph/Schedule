@@ -34,8 +34,8 @@ src/ui/
 由 app 入口根据平台加载对应 QML：
 
 ```cpp
-// 桌面：qrc:/qt/qml/MyApp/MainDesktop.qml
-// 移动：qrc:/qt/qml/MyApp/MainMobile.qml
+// 桌面：qrc:/qt/qml/MyApp/qml/MainDesktop.qml
+// 移动：qrc:/qt/qml/MyApp/qml/MainMobile.qml
 ```
 
 ## 构建

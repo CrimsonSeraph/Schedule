@@ -1,6 +1,7 @@
 # src/engine - 引擎/桥接层：向 QML 暴露 C++ 对象
 add_library(MyEngine STATIC
     src/AppBridge.cpp
+    include/engine/AppBridge.h   # 显式列出头文件，确保 AUTOMOC 为其生成 moc
 )
 
 target_include_directories(MyEngine PUBLIC
