@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import MyApp 1.0
+import Schedule 1.0
 
 ApplicationWindow {
     id: root

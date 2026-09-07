@@ -5,12 +5,12 @@
 
 #include "core/DataEngine.h"
 
-namespace myapp {
+namespace Schedule {
 
     /**
      * @brief C++ <-> QML 桥接对象。
      *
-     * 通过 qmlRegisterType 注册为 QML 类型（URI: MyApp，QML 名: AppBridge），
+     * 通过 qmlRegisterType 注册为 QML 类型（URI: Schedule，QML 名: AppBridge），
      * 供 QML 界面读取 version 属性并调用测试槽函数。
      */
     class AppBridge : public QObject {
@@ -42,4 +42,4 @@ namespace myapp {
         DataEngine m_dataEngine;
     };
 
-} // namespace myapp
+} // namespace Schedule

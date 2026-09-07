@@ -55,16 +55,16 @@ int main(int argc, char* argv[]) {
     app.setApplicationName(QStringLiteral("Schedule"));
     app.setApplicationVersion(QStringLiteral("1.0.0"));
 
-    // 注册 AppBridge 到 QML（模块 MyApp 1.0）
-    qmlRegisterType<myapp::AppBridge>("MyApp", 1, 0, "AppBridge");
+    // 注册 AppBridge 到 QML（模块 Schedule 1.0）
+    qmlRegisterType<Schedule::AppBridge>("Schedule", 1, 0, "AppBridge");
 
     QQmlApplicationEngine engine;
 
     // 平台分流：移动端加载手机布局，其余平台加载桌面布局
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-    const QUrl mainQml(QStringLiteral("qrc:/qt/qml/MyApp/qml/MainMobile.qml"));
+    const QUrl mainQml(QStringLiteral("qrc:/qt/qml/Schedule/qml/MainMobile.qml"));
 #else
-    const QUrl mainQml(QStringLiteral("qrc:/qt/qml/MyApp/qml/MainDesktop.qml"));
+    const QUrl mainQml(QStringLiteral("qrc:/qt/qml/Schedule/qml/MainDesktop.qml"));
 #endif
 
     QObject::connect(

@@ -2,7 +2,7 @@
 
 #include <QDebug>
 
-namespace myapp {
+namespace Schedule {
 
     AppBridge::AppBridge(QObject* parent)
         : QObject(parent) {
@@ -17,4 +17,4 @@ namespace myapp {
         emit testSignal(QStringLiteral("testButtonClicked"));
     }
 
-} // namespace myapp
+} // namespace Schedule

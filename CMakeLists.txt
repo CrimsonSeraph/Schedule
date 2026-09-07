@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(MyQtApp
+project(ScheduleApp
 	VERSION 1.0.0
-	DESCRIPTION "跨平台课表应用 Schedule (MyQtApp)"
+	DESCRIPTION "跨平台课表应用 Schedule"
 	LANGUAGES CXX
 )
 

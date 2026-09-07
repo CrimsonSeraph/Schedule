@@ -2,7 +2,7 @@
 
 #include <QString>
 
-namespace myapp {
+namespace Schedule {
 
     /**
      * @brief 核心数据引擎。
@@ -18,4 +18,4 @@ namespace myapp {
         QString getVersion() const;
     };
 
-} // namespace myapp
+} // namespace Schedule
