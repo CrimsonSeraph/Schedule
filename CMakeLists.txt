@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(MyQtApp
-    VERSION 1.0.0
-    DESCRIPTION "跨平台课表应用 Schedule (MyQtApp)"
-    LANGUAGES CXX
+	VERSION 1.0.0
+	DESCRIPTION "跨平台课表应用 Schedule (MyQtApp)"
+	LANGUAGES CXX
 )
 
 # ---- 全局编译选项 ----
@@ -12,8 +12,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo MinSizeRel)
+	set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+	set_property(
+		CACHE CMAKE_BUILD_TYPE
+		PROPERTY
+			STRINGS
+			Debug
+			Release
+			RelWithDebInfo
+			MinSizeRel
+	)
 endif()
 
 # ---- 通用选项 ----
