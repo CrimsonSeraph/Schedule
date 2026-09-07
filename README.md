@@ -82,3 +82,35 @@ clang-format -i src/core/src/*.cpp src/core/include/**/*.h \
 
 - C++ 源码遵循组织编码规范（.clang-format），每阶段提交前执行格式化。
 - 提交信息使用中文，格式：`feat(scope): 简要描述` + 变更列表。
+## 运行方法
+
+```bash
+# 1) 配置（首次）
+$env:QT_ROOT = "D:/Qt/6.9.3/msvc2022_64"   # Windows PowerShell；Linux/macOS 用 export
+cmake --preset windows-msvc
+
+# 2) 构建
+cmake --build --preset windows-msvc-debug
+
+# 3) 运行（桌面：加载 MainDesktop.qml）
+./build/windows-msvc/Debug/MyApp.exe
+```
+
+自动化自检（可选，需以 `-DBUILD_SELFTEST=ON` 配置）：
+
+```bash
+cmake --preset windows-msvc -DBUILD_SELFTEST=ON
+cmake --build --preset windows-msvc-debug
+./build/windows-msvc/Debug/MyApp.exe --selftest   # 输出 Test button clicked! 后退出
+```
+
+移动端（Android/iOS）在源码层通过 `Q_OS_ANDROID/Q_OS_IOS` 自动加载
+`MainMobile.qml`；本地打包部署需另行配置 Qt for Android/iOS 工具链，
+本仓库暂不包含 CI 配置。
+
+## 模块文档
+
+- [src/core/README.md](src/core/README.md) — 核心层：`MyCore` + `DataEngine`，纯 C++ 无 GUI
+- [src/engine/README.md](src/engine/README.md) — 引擎层：`MyEngine` + `AppBridge`，C++/QML 桥接
+- [src/ui/README.md](src/ui/README.md) — UI 层：`MyUI` QML 模块（MyApp），桌面/移动布局
+- [src/app/README.md](src/app/README.md) — 应用入口：`MyApp` 可执行程序与启动流程

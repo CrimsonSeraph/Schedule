@@ -40,3 +40,8 @@ src/ui/
 
 ## 构建
 本模块由根 `CMakeLists.txt` 通过 `add_subdirectory(src/ui)` 引入。
+## 相关文档
+- [根 README](../README.md) — 架构总览与构建指南
+- [engine](../engine/README.md) — 提供 AppBridge 的桥接层
+- [core](../core/README.md) — 底层核心逻辑
+- [app](../app/README.md) — 加载本模块 QML 的应用入口

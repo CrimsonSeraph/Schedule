@@ -42,3 +42,7 @@ Button {
 
 ## 构建
 本模块由根 `CMakeLists.txt` 通过 `add_subdirectory(src/engine)` 引入。
+## 相关文档
+- [根 README](../README.md) — 架构总览与构建指南
+- [core](../core/README.md) — 本层依赖的核心逻辑层
+- [ui](../ui/README.md) / [app](../app/README.md) — 使用 AppBridge 的上层

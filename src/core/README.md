@@ -20,3 +20,7 @@
 ## 构建
 本模块由根 `CMakeLists.txt` 通过 `add_subdirectory(src/core)` 引入，
 无需单独构建。
+## 相关文档
+- [根 README](../README.md) — 架构总览与构建指南
+- [engine](../engine/README.md) — 依赖本层的 QML 桥接层
+- [ui](../ui/README.md) / [app](../app/README.md) — 上层界面与应用入口
