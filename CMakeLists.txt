@@ -23,7 +23,7 @@ find_package(Qt6 6.9.3 REQUIRED COMPONENTS Core Qml)
 # 阶段 2: 核心层，纯 C++，仅依赖 Qt6::Core
 add_subdirectory(src/core)
 # 阶段 3: 引擎层，QML 绑定对象，依赖 core
-# add_subdirectory(src/engine)
+add_subdirectory(src/engine)
 # 阶段 4: UI 层，QML 模块，依赖 engine
 # add_subdirectory(src/ui)
 # 阶段 5: 应用入口，可执行程序
