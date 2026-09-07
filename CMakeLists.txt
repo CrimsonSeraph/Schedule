@@ -25,6 +25,6 @@ add_subdirectory(src/core)
 # 阶段 3: 引擎层，QML 绑定对象，依赖 core
 add_subdirectory(src/engine)
 # 阶段 4: UI 层，QML 模块，依赖 engine
-# add_subdirectory(src/ui)
+add_subdirectory(src/ui)
 # 阶段 5: 应用入口，可执行程序
 # add_subdirectory(src/app)

@@ -1,0 +1,6 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/assets">
+        <!-- 占位：后续在此添加图标 / 图片等静态资源 -->
+    </qresource>
+</RCC>
