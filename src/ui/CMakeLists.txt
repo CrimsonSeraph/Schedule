@@ -3,6 +3,8 @@ find_package(Qt6 6.9.3 REQUIRED COMPONENTS Quick Qml)
 
 # 采用 /qt/qml 作为 QML 模块默认资源前缀（qrc:/qt/qml/MyApp/...）
 qt_policy(SET QTP0001 NEW)
+# 为子目录中的 QML 文件自动生成 qmldir（工具链支持）
+qt_policy(SET QTP0004 NEW)
 
 add_library(MyUI STATIC)
 
@@ -18,6 +20,7 @@ qt6_add_qml_module(MyUI
     URI MyApp
     VERSION 1.0
     NO_PLUGIN
+    OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/MyApp"
     QML_FILES
         qml/MainDesktop.qml
         qml/MainMobile.qml

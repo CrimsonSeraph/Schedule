@@ -8,9 +8,9 @@
   "configurePresets": [
     {
       "name": "windows-msvc",
-      "displayName": "Windows Desktop (MSVC, Visual Studio 17 2022)",
-      "description": "使用 Visual Studio 2022 生成器构建 Windows 桌面版",
-      "generator": "Visual Studio 17 2022",
+      "displayName": "Windows Desktop (MSVC, Visual Studio 2026)",
+      "description": "使用 Visual Studio 2026 生成器构建 Windows 桌面版",
+      "generator": "Visual Studio 18 2026",
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build/windows-msvc",
       "cacheVariables": {

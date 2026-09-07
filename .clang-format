@@ -1,0 +1,56 @@
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: c++20
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+AlignAfterOpenBracket: DontAlign
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: false
+  AfterControlStatement: Never
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+AccessModifierOffset: -4
+NamespaceIndentation: All
+
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+SpaceAfterTemplateKeyword: false
+SpaceBeforeParens: ControlStatements
+
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerIndentWidth: 4
+
+# 列宽不限（保留现有长行，如 LOG 宏）
+ColumnLimit: 0
+
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: WithoutElse
+
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+
+IndentCaseLabels: false
+IndentPPDirectives: None
+
+MaxEmptyLinesToKeep: 2

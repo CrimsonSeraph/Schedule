@@ -1,0 +1,18 @@
+# 统一行尾：仓库存储 LF，检出 CRLF
+* text=auto eol=crlf
+
+# 显式声明文本文件编码（便于 diff）
+*.cpp text charset=utf-8
+*.h   text charset=utf-8
+*.hpp text charset=utf-8
+*.md  text charset=utf-8
+*.txt text charset=utf-8
+CMakeLists.txt text charset=utf-8
+*.cmake text charset=utf-8
+
+# 二进制文件（默认已处理，可显式声明）
+*.jpg binary
+*.png binary
+*.gif binary
+*.pdf binary
+*.docx binary

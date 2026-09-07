@@ -2,7 +2,7 @@
 
 基于 **Qt 6.9 / C++20 / CMake** 的跨平台（Windows · Linux · macOS · Android · iOS）课表应用。
 
-> 仓库工程名（CMake target 前缀）为 `MyQtApp`，应用展示名为 Schedule。当前处于分阶段搭建状态，各子模块按阶段逐步启用。
+> 仓库工程名（CMake target 前缀）为 `MyQtApp`，应用展示名为 Schedule。四层模块已全部启用并可本地构建运行。
 
 ## 架构总览
 
@@ -45,24 +45,38 @@ Schedule/
 ## 环境要求
 
 - CMake ≥ 3.20
-- 支持 C++20 的编译器（MSVC 2022 / GCC 11+ / Clang 14+）
+- 支持 C++20 的编译器（MSVC / Visual Studio 2026 / GCC 11+ / Clang 14+）
 - Qt 6.9.3（含 `Core`、`Qml` 组件；构建 UI 还需 `Quick`、`QuickControls2`）
 - Android 交叉编译：NDK + Ninja，并需在 `cmake/` 提供工具链文件（见下）
 
 ## 构建命令（CMakePresets）
 
 ```bash
-# Windows 桌面（MSVC, Visual Studio 17 2022）
-$env:QT_ROOT = "C:/Qt/6.9.3/msvc2022_64"     # 按实际安装路径设置
+# Windows 桌面（MSVC, Visual Studio 2026）
+$env:QT_ROOT = "D:/Qt/6.9.3/msvc2022_64"      # 按实际安装路径设置
 cmake --preset windows-msvc
-cmake --build build/windows-msvc --config Debug
+cmake --build --preset windows-msvc-debug
 
 # Android（占位预设：需先补全 cmake/android.toolchain.cmake）
 # cmake --preset android
 # cmake --build build/android
 ```
 
-> 当前各子模块尚未启用（`add_subdirectory` 处于注释状态），启用后将按阶段逐个加入。
+### 构建选项
+- `BUILD_TESTS`：构建单元测试（默认 `OFF`）。
+- `BUILD_SELFTEST`：桌面自动化 UI 自检（默认 `OFF`）；启用后
+  运行 `MyApp.exe --selftest` 会自动点击“测试”按钮并输出
+  `Test button clicked!`，用于验证 QML→C++ 调用链路。
+
+### 格式与规范
+项目根目录自带组织编码规范（`.clang-format`、`.editorconfig`、`.gitattributes`），
+C++ 源码提交前执行：
+
+```bash
+clang-format -i src/core/src/*.cpp src/core/include/**/*.h \
+    src/engine/src/*.cpp src/engine/include/**/*.h \
+    src/app/*.cpp
+```
 
 ## 开发约定
 
