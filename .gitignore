@@ -68,3 +68,6 @@ compile_commands.json
 .DS_Store
 Thumbs.db
 out/
+
+# cmake
+CMakeUserPresets.json
