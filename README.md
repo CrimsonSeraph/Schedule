@@ -20,12 +20,12 @@
 └───────────────────────────────────────────┘
 ```
 
-| 层 | 目录 | 产物 | 依赖 |
-|----|------|------|------|
-| core | `src/core` | `MyCore`（静态库） | Qt6::Core |
+| 层     | 目录         | 产物                 | 依赖                  |
+| ------ | ------------ | -------------------- | --------------------- |
+| core   | `src/core`   | `MyCore`（静态库）   | Qt6::Core             |
 | engine | `src/engine` | `MyEngine`（静态库） | MyCore, Qt6::Core/Qml |
-| ui | `src/ui` | `MyUI`（QML 模块） | MyEngine |
-| app | `src/app` | `MyApp`（可执行） | MyUI, MyEngine |
+| ui     | `src/ui`     | `MyUI`（QML 模块）   | MyEngine              |
+| app    | `src/app`    | `MyApp`（可执行）    | MyUI, MyEngine        |
 
 ## 目录结构
 
@@ -63,14 +63,13 @@ cmake --build --preset windows-msvc-debug
 ```
 
 ### 构建选项
+
 - `BUILD_TESTS`：构建单元测试（默认 `OFF`）。
-- `BUILD_SELFTEST`：桌面自动化 UI 自检（默认 `OFF`）；启用后
-  运行 `MyApp.exe --selftest` 会自动点击“测试”按钮并输出
-  `Test button clicked!`，用于验证 QML→C++ 调用链路。
+- `BUILD_SELFTEST`：桌面自动化 UI 自检（默认 `OFF`）；启用后运行 `MyApp.exe --selftest` 会自动点击“测试”按钮并输出 `Test button clicked!`，用于验证 QML→C++ 调用链路。
 
 ### 格式与规范
-项目根目录自带组织编码规范（`.clang-format`、`.editorconfig`、`.gitattributes`），
-C++ 源码提交前执行：
+
+项目根目录自带组织编码规范（`.clang-format`、`.editorconfig`、`.gitattributes`），C++ 源码提交前执行：
 
 ```bash
 clang-format -i src/core/src/*.cpp src/core/include/**/*.h \
@@ -82,6 +81,7 @@ clang-format -i src/core/src/*.cpp src/core/include/**/*.h \
 
 - C++ 源码遵循组织编码规范（.clang-format），每阶段提交前执行格式化。
 - 提交信息使用中文，格式：`feat(scope): 简要描述` + 变更列表。
+
 ## 运行方法
 
 ```bash
@@ -104,9 +104,7 @@ cmake --build --preset windows-msvc-debug
 ./build/windows-msvc/Debug/MyApp.exe --selftest   # 输出 Test button clicked! 后退出
 ```
 
-移动端（Android/iOS）在源码层通过 `Q_OS_ANDROID/Q_OS_IOS` 自动加载
-`MainMobile.qml`；本地打包部署需另行配置 Qt for Android/iOS 工具链，
-本仓库暂不包含 CI 配置。
+移动端（Android/iOS）在源码层通过 `Q_OS_ANDROID/Q_OS_IOS` 自动加载 `MainMobile.qml`；本地打包部署需另行配置 Qt for Android/iOS 工具链，本仓库暂不包含 CI 配置。
 
 ## 模块文档
 
