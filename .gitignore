@@ -61,7 +61,8 @@ compile_commands.json
 *.user
 *.user.*
 .idea/
-.vscode/
+.vscode/*
+!vscode/setting.json
 .vs/
 *.VC.db
 *.VC.opendb

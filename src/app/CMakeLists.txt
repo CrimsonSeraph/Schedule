@@ -27,7 +27,7 @@ if(BUILD_SELFTEST)
 	target_link_libraries(Schedule PRIVATE Qt6::Test)
 	target_compile_definitions(Schedule PRIVATE Schedule_SELFTEST=1)
 endif()
-# ---- Windows 桌面：构建后把 Qt 运行库部署到 Schedule.exe 同级目录，可直接双击运行 ----
+# Windows 桌面：构建后把 Qt 运行库部署到 Schedule.exe 同级目录，可直接双击运行
 # add_custom_command(TARGET ...) 必须与目标同目录，故写在这里而非根 CMakeLists.txt。
 # Qt6_DIR（find_package 已由根 CMakeLists 执行）形如 <Qt安装根>/lib/cmake/Qt6，向上三级即套件根目录。
 if(WIN32 AND NOT CMAKE_CROSSCOMPILING)

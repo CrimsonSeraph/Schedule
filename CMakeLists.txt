@@ -6,7 +6,7 @@ project(ScheduleApp
 	LANGUAGES CXX
 )
 
-# ---- 全局编译选项 ----
+# 全局编译选项
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -24,16 +24,16 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 	)
 endif()
 
-# ---- 通用选项 ----
+# 通用选项
 option(BUILD_TESTS "构建单元测试" OFF)
 
-# ---- Qt 依赖（后续模块按需补充组件）----
+# Qt 依赖（后续模块按需补充组件）
 find_package(Qt6 6.9.3 REQUIRED COMPONENTS Core Qml)
 
 # Qt 推荐的项目级初始化（启用 AUTOMOC/AUTOUIC/AUTORCC，采纳 Qt 策略默认值）
 qt_standard_project_setup()
 
-# ---- 子模块（按阶段逐步启用）----
+# 子模块（按阶段逐步启用）
 # 阶段 2: 核心层，纯 C++，仅依赖 Qt6::Core
 add_subdirectory(src/core)
 # 阶段 3: 引擎层，QML 绑定对象，依赖 core
