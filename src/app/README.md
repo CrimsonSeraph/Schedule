@@ -44,15 +44,25 @@ src/app/
 ## 启动流程
 
 1. 创建 `QGuiApplication`，设置组织名 / 应用名 / 版本；
-2. 在 C++ 侧实例化 `Schedule::AppBridge`，并注入为 QML 上下文属性 `bridge`；
-3. 创建 `QQmlApplicationEngine`；
-4. 按平台宏选择主 QML 并加载：
+2. 组装数据层：`SqliteScheduleRepository`（`AppDataLocation/schedule.db`）→
+   `AppSettings` → `ScheduleService`；数据库打开失败时自动降级为 `:memory:` 内存库；
+3. 在 C++ 侧实例化桥接对象：
+   - `Schedule::AppBridge` → 上下文属性 `bridge`；
+   - `Schedule::ScheduleBridge`（持有课程模型与导入导出桥接）→ 上下文属性 `schedule`；
+4. 调用 `schedule_bridge.initialize()` 从数据库载入当前学期，**先有数据再加载 QML**；
+5. 创建 `QQmlApplicationEngine`；
+6. 按平台宏选择主 QML 并加载：
     - `Q_OS_ANDROID` / `Q_OS_IOS` → `qrc:/qt/qml/Schedule/qml/MainMobile.qml`
     - 其他平台（Windows / Linux / macOS）→ `qrc:/qt/qml/Schedule/qml/MainDesktop.qml`
-5. 加载成功后在 C++ 侧显式建立信号连接（QML 不隐式连接）：
+7. 加载成功后在 C++ 侧显式建立信号连接（QML 不隐式连接）：
     - “测试”按钮 `clicked` → `AppBridge::test_button_clicked()`；
     - `AppBridge::test_signal(message)` → 应用日志输出；
-6. 加载失败（rootObjects 为空）返回 `-1`，否则进入事件循环。
+    - `ScheduleBridge::errorOccurred` / `infoMessage` → 应用日志；
+    - `ImportExportBridge::exportFinished` / `importFinished` → 应用日志
+      （导出日志包含**实际写入路径**，便于排查“文件写到哪里了”）；
+8. 加载失败（rootObjects 为空）返回 `-1`，否则进入事件循环。
+
+> 桥接对象必须声明在 `QQmlApplicationEngine` **之前**，保证引擎先析构。
 
 ## 构建与测试方式
 

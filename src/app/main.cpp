@@ -1,10 +1,16 @@
 #include "engine/AppBridge.h"
+#include "engine/ScheduleBridge.h"
+
+#include "data/AppSettings.h"
+#include "data/SqliteScheduleRepository.h"
 
 #include <QDebug>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QUrl>
+
+#include <memory>
 
 #if Schedule_SELFTEST
 #include <QQuickItem>
@@ -56,11 +62,31 @@ int main(int argc, char* argv[]) {
     app.setApplicationName(QStringLiteral("Schedule"));
     app.setApplicationVersion(QStringLiteral("1.0.0"));
 
-    // 桥接对象由 C++ 侧创建并持有，以上下文属性注入 QML（QML 不再自行实例化 AppBridge）
+    // ---------------------------------------------------------------- 数据层组装
+    // 数据库位于 AppDataLocation/schedule.db；若无法打开（只读介质、驱动缺失等），
+    // 自动降级为内存库，保证界面仍可启动，只是本次会话的数据不会留存。
+    auto repository = std::make_unique<Schedule::SqliteScheduleRepository>(Schedule::SqliteScheduleRepository::default_database_path());
+    QString repository_error;
+    if (!repository->open(&repository_error)) {
+        qWarning() << "[app] 打开数据库失败，降级为内存模式：" << repository_error;
+        repository = std::make_unique<Schedule::SqliteScheduleRepository>(QStringLiteral(":memory:"));
+        if (!repository->open(&repository_error)) {
+            qCritical() << "[app] 内存数据库同样不可用：" << repository_error;
+        }
+    }
+
+    Schedule::AppSettings app_settings(repository.get());
+    Schedule::ScheduleService schedule_service;
+
+    // ---------------------------------------------------------------- 桥接对象
+    // 桥接对象由 C++ 侧创建并持有，以上下文属性注入 QML（QML 不再自行实例化）
     Schedule::AppBridge app_bridge;
+    Schedule::ScheduleBridge schedule_bridge(&schedule_service, repository.get(), &app_settings);
+    schedule_bridge.initialize();
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("bridge"), &app_bridge);
+    engine.rootContext()->setContextProperty(QStringLiteral("schedule"), &schedule_bridge);
 
     // 平台分流：移动端加载手机布局，其余平台加载桌面布局
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -109,6 +135,49 @@ int main(int argc, char* argv[]) {
         &app,
         [](const QString& message) {
             qDebug() << "[app] test_signal received:" << message;
+        });
+
+    // 3) ScheduleBridge 的错误 / 提示 -> 应用日志
+    //    界面提示由 QML 通过属性绑定 lastError / lastInfo 呈现，这里只做日志留痕。
+    QObject::connect(
+        &schedule_bridge,
+        &Schedule::ScheduleBridge::errorOccurred,
+        &app,
+        [](const QString& message) {
+            qWarning() << "[app] schedule error:" << message;
+        });
+    QObject::connect(
+        &schedule_bridge,
+        &Schedule::ScheduleBridge::infoMessage,
+        &app,
+        [](const QString& message) {
+            qDebug() << "[app] schedule info:" << message;
+        });
+
+    // 4) 导入导出结果 -> 应用日志（含实际导出路径，便于排查“文件到底写到哪里了”）
+    QObject::connect(
+        schedule_bridge.import_export(),
+        &Schedule::ImportExportBridge::exportFinished,
+        &app,
+        [](bool success, const QString& summary, const QString& file_path) {
+            if (success) {
+                qInfo() << "[app] export finished:" << summary << "->" << file_path;
+            }
+            else {
+                qWarning() << "[app] export failed:" << summary;
+            }
+        });
+    QObject::connect(
+        schedule_bridge.import_export(),
+        &Schedule::ImportExportBridge::importFinished,
+        &app,
+        [](bool success, const QString& summary) {
+            if (success) {
+                qInfo() << "[app] import finished:" << summary;
+            }
+            else {
+                qWarning() << "[app] import failed:" << summary;
+            }
         });
 
 #if Schedule_SELFTEST

@@ -1,7 +1,15 @@
 # src/engine - 引擎/桥接层：向 QML 暴露 C++ 对象
 add_library(ScheduleEngine STATIC
 	src/AppBridge.cpp
+	src/CourseListModel.cpp
+	src/ImportExportBridge.cpp
+	src/ScheduleBridge.cpp
+	src/SessionListModel.cpp
 	include/engine/AppBridge.h
+	include/engine/CourseListModel.h
+	include/engine/ImportExportBridge.h
+	include/engine/ScheduleBridge.h
+	include/engine/SessionListModel.h
 )
 
 target_include_directories(ScheduleEngine
@@ -11,6 +19,7 @@ target_include_directories(ScheduleEngine
 target_link_libraries(ScheduleEngine
 	PUBLIC
 		ScheduleCore
+		ScheduleData
 		Qt6::Core
 		Qt6::Qml
 )

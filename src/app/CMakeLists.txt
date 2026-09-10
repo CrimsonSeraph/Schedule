@@ -7,6 +7,8 @@ target_link_libraries(Schedule
 	PRIVATE
 		ScheduleUI
 		ScheduleEngine
+		ScheduleData
+		ScheduleCore
 )
 
 set_target_properties(Schedule

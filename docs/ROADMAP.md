@@ -56,7 +56,7 @@ app  ──►  ui  ──►  engine  ──►  data  ──►  core
 - 默认目录 `QStandardPaths::DocumentsLocation + "/Schedule"`，可在设置中修改。
 - 导入支持预览、去重、冲突检测、合并 / 覆盖策略；导出后返回实际路径。
 
-### 阶段 4：engine 桥接与 QML 模型
+### 阶段 4：engine 桥接与 QML 模型 —— 已完成
 
 - 桥接对象：`ScheduleBridge`、`CourseListModel`、`ImportExportBridge`。
 - 暴露课程列表模型、当前周、导入进度 / 结果、导出结果、错误信息。
