@@ -17,17 +17,16 @@
 
 ## 依赖
 
-| 依赖 | 类型 | 说明 |
-| ---- | ---- | ---- |
-| `ScheduleCore` | 项目内 | 领域模型、`ConflictDetector`、`WeekCalculator` |
-| `data/ScheduleJson.h` | 项目内 | JSON 映射的唯一权威 |
-| `data/AppSettings.h` | 项目内 | `ensure_directory()` 用于创建导出目录 |
-| `Qt6::Core` | 外部 | `QFile` / `QSaveFile` / `QStringConverter` / 正则等 |
+| 依赖                  | 类型   | 说明                                                |
+| --------------------- | ------ | --------------------------------------------------- |
+| `ScheduleCore`        | 项目内 | 领域模型、`ConflictDetector`、`WeekCalculator`      |
+| `data/ScheduleJson.h` | 项目内 | JSON 映射的唯一权威                                 |
+| `data/AppSettings.h`  | 项目内 | `ensure_directory()` 用于创建导出目录               |
+| `Qt6::Core`           | 外部   | `QFile` / `QSaveFile` / `QStringConverter` / 正则等 |
 
 ## 产物
 
-本子系统不产生独立 CMake 目标，编译进 `ScheduleData` 静态库。
-公开头文件位于 `include/data/import_export/`。
+本子系统不产生独立 CMake 目标，编译进 `ScheduleData` 静态库。公开头文件位于 `include/data/import_export/`。
 
 ## 目录结构
 
@@ -48,7 +47,7 @@ src/data/
 ## 公开接口与关键类型
 
 | 类型 | 说明 |
-| ---- | ---- |
+| --- | --- |
 | `ScheduleFormat` | 格式枚举：`Json` / `Csv` / `Ics` / `Unknown`；配套 `format_to_string()`、`format_from_extension()`、`format_from_content()` |
 | `ImportStrategy` | `Merge`（同 id 更新，其余新增）/ `SkipDuplicates`（重复跳过）/ `Overwrite`（清空后写入） |
 | `ImportPreview` | 只读预览：格式、学期、作息表、课程、**新引入的冲突**、重复数、新增数、提示、错误 |
@@ -63,8 +62,7 @@ src/data/
 
 ### JSON（无损）
 
-直接复用 `ScheduleJson`：保留颜色、学分、备注、时间段级地点 / 教师覆盖与精确周次位图。
-文件扩展名 `.json`。
+直接复用 `ScheduleJson`：保留颜色、学分、备注、时间段级地点 / 教师覆盖与精确周次位图。文件扩展名 `.json`。
 
 ### CSV（Excel 友好）
 
@@ -77,33 +75,26 @@ src/data/
 
 - 必需列：课程名称、星期、开始节次、周次；
 - 导出为 **UTF-8 with BOM**（Excel 双击可正确识别中文）；
-- 导入时若非 UTF-8（如 GBK），会给出“请另存为 UTF-8”的明确提示——
-  Qt 6 默认不再内置 GBK 编解码器；
-- CSV 不含学期信息，导入时按内容合成一个不早于 20 周的学期，
-  由 `ImportManager` 在存在“当前学期”时替换为真实学期。
+- 导入时若非 UTF-8（如 GBK），会给出“请另存为 UTF-8”的明确提示—— Qt 6 默认不再内置 GBK 编解码器；
+- CSV 不含学期信息，导入时按内容合成一个不早于 20 周的学期，由 `ImportManager` 在存在“当前学期”时替换为真实学期。
 
 ### ICS（iCalendar）
 
 一门课的每个时间段对应一个 `VEVENT`：
 
-| 课表字段 | ICS 属性 |
-| -------- | -------- |
-| 上课起止时刻 | `DTSTART` / `DTEND`（本地浮动时间） |
-| 重复周次 | `RRULE`（等差周次）或 `RDATE`（非等差，如 `1-4,6,9-10`） |
-| 课程名称 / 地点 / 教师 | `SUMMARY` / `LOCATION` / `DESCRIPTION` |
-| 精确节次与周次 | `X-SCHEDULE-SLOT`、`X-SCHEDULE-SLOT-COUNT`、`X-SCHEDULE-DAY`、`X-SCHEDULE-WEEKS` |
+| 课表字段               | ICS 属性                                                                         |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| 上课起止时刻           | `DTSTART` / `DTEND`（本地浮动时间）                                              |
+| 重复周次               | `RRULE`（等差周次）或 `RDATE`（非等差，如 `1-4,6,9-10`）                         |
+| 课程名称 / 地点 / 教师 | `SUMMARY` / `LOCATION` / `DESCRIPTION`                                           |
+| 精确节次与周次         | `X-SCHEDULE-SLOT`、`X-SCHEDULE-SLOT-COUNT`、`X-SCHEDULE-DAY`、`X-SCHEDULE-WEEKS` |
 
-扩展属性让本应用导出的 ICS 能**无损往返**；来自其它日历应用的 ICS 则回退到
-“按 `DTSTART` 推导星期与节次、按 `RRULE` / `RDATE` 推导周次”，并用出现过的上课时间
-合成作息表。输出严格使用 `CRLF` 并按 RFC 5545 的 75 字节规则折行（不会切断多字节字符）。
+扩展属性让本应用导出的 ICS 能**无损往返**；来自其它日历应用的 ICS 则回退到“按 `DTSTART` 推导星期与节次、按 `RRULE` / `RDATE` 推导周次”，并用出现过的上课时间合成作息表。输出严格使用 `CRLF` 并按 RFC 5545 的 75 字节规则折行（不会切断多字节字符）。
 
 ## 指定目录约定（硬性要求）
 
-- 默认目录：`QStandardPaths::DocumentsLocation + "/Schedule"`
-  （见 `AppSettings::fallback_directory()`）；用户可在设置页修改，
-  修改后写入 `settings` 表的 `io/default_export_dir` / `io/default_import_dir`。
-- 导出文件名：`Schedule_<学期>_<yyyyMMdd_HHmmss>.<ext>`
-  （学期名为空时退化为 `Schedule_<时间戳>.<ext>`；学期名会经过 `sanitize_file_component()` 清洗）。
+- 默认目录：`QStandardPaths::DocumentsLocation + "/Schedule"` （见 `AppSettings::fallback_directory()`）；用户可在设置页修改，修改后写入 `settings` 表的 `io/default_export_dir` / `io/default_import_dir`。
+- 导出文件名：`Schedule_<学期>_<yyyyMMdd_HHmmss>.<ext>` （学期名为空时退化为 `Schedule_<时间戳>.<ext>`；学期名会经过 `sanitize_file_component()` 清洗）。
 - 导出目录不存在时由 `ExportManager` 自动创建（`QDir::mkpath`）。
 - 导出完成后，`ExportResult::file_path` 是**实际写入的绝对路径**，界面必须原样提示用户。
 - 导入时从指定目录选择文件：**文件对话框在 UI 层**，数据层只接收路径。
@@ -116,14 +107,12 @@ cmake --build --preset windows-msvc-debug
 ctest --preset windows-msvc -C Debug
 ```
 
-测试实现位于 [`../tests/tst_import_export.cpp`](../tests/tst_import_export.cpp)，
-覆盖格式识别、文件名规则、三种格式往返、预览与冲突、三种合并策略、错误路径与内存导入。
+测试实现位于 [`../tests/tst_import_export.cpp`](../tests/tst_import_export.cpp)，覆盖格式识别、文件名规则、三种格式往返、预览与冲突、三种合并策略、错误路径与内存导入。
 
 ## 与上下层交互方式
 
 - 向下：使用 `core` 的模型与 `ConflictDetector`、`data` 的 `ScheduleJson` / `AppSettings`。
-- 向上：被 `engine` 直接调用（阶段 4 起由 `ImportExportBridge` 暴露给 QML）。
-  典型调用链：
+- 向上：被 `engine` 直接调用（阶段 4 起由 `ImportExportBridge` 暴露给 QML）。典型调用链：
 
 ```cpp
 // 1) 预览（UI 层提供文件路径）
@@ -136,25 +125,17 @@ repository->save_snapshot(snapshot, &error);
 
 ## 信号连接约定
 
-本子系统不产生 QObject 信号（纯同步 API，便于单元测试）。
-进度 / 结果信号由 `engine` 层的 `ImportExportBridge` 包装后以
-全小写 + 下划线的命名暴露给 QML（如 `import_finished(bool, QString)`）。
+本子系统不产生 QObject 信号（纯同步 API，便于单元测试）。进度 / 结果信号由 `engine` 层的 `ImportExportBridge` 包装后以全小写 + 下划线的命名暴露给 QML（如 `import_finished(bool, QString)`）。
 
 ## 扩展点与注意事项
 
-- **新增格式**：实现 `IScheduleImporter` / `IScheduleExporter`，在
-  `ImportManager` / `ExportManager` 构造函数中 `register_*`，并在
-  `ImportExportTypes.cpp` 的 `FORMATS` 表补一行即可（扩展名、显示名、机器名）。
-- **非文件来源**（剪贴板、分享码、教务适配器）：实现 `IScheduleImporter` 并通过
-  `ImportManager::preview_data(data, "clipboard://", current)` 调用，无需新增抽象。
-- **预览的冲突语义**：预览报告的是**本次导入新引入的冲突**
-  （导入后冲突集合 − 导入前冲突集合），避免把历史问题重复报给用户。
+- **新增格式**：实现 `IScheduleImporter` / `IScheduleExporter`，在 `ImportManager` / `ExportManager` 构造函数中 `register_*`，并在 `ImportExportTypes.cpp` 的 `FORMATS` 表补一行即可（扩展名、显示名、机器名）。
+- **非文件来源**（剪贴板、分享码、教务适配器）：实现 `IScheduleImporter` 并通过 `ImportManager::preview_data(data, "clipboard://", current)` 调用，无需新增抽象。
+- **预览的冲突语义**：预览报告的是**本次导入新引入的冲突** （导入后冲突集合 − 导入前冲突集合），避免把历史问题重复报给用户。
 - **覆盖策略**：`Overwrite` 会清空当前课程后写入文件内容；作息表仅在文件提供时才被替换。
 - **重复判定**：有 id 时按 id；无 id（CSV / ICS）时按“课程名称 + 课程代码”。
-- **编码**：CSV 支持 UTF-8（含 BOM）；ICS 按 RFC 必须为 UTF-8；
-  非 UTF-8 输入会明确报错而不是静默产生乱码。
-- **安全**：所有写入都使用 `QSaveFile` 原子替换；文件名经过清洗，
-  不会突破用户选择的目录。
+- **编码**：CSV 支持 UTF-8（含 BOM）；ICS 按 RFC 必须为 UTF-8；非 UTF-8 输入会明确报错而不是静默产生乱码。
+- **安全**：所有写入都使用 `QSaveFile` 原子替换；文件名经过清洗，不会突破用户选择的目录。
 
 ## 相关文档
 

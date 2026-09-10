@@ -2,18 +2,17 @@
 
 ## 职责
 
-提供全部界面（QML）与静态资源，承载**文件 / 目录选择对话框**，按目标形态区分桌面与移动布局。
-界面只通过属性绑定读取 `engine` 层注入的桥接对象状态，所有交互由 `app` 层在 C++ 侧显式连接。
+提供全部界面（QML）与静态资源，承载**文件 / 目录选择对话框**，按目标形态区分桌面与移动布局。界面只通过属性绑定读取 `engine` 层注入的桥接对象状态，所有交互由 `app` 层在 C++ 侧显式连接。
 
 明确不负责：业务规则（`core`）、文件解析与落盘（`data`）、QML ↔ C++ 的连接建立（`app`）。
 
 ## 依赖
 
-| 依赖 | 类型 | 说明 |
-| ---- | ---- | ---- |
-| `ScheduleEngine` | 项目内 | 提供 `AppBridge` / `ScheduleBridge`（含 `importExport` 子对象） |
-| `Qt6::Quick` / `Qt6::Qml` | 外部 | Quick Controls 2 / Layouts |
-| `Qt6::QuickDialogs2` | 外部 | `FileDialog` / `FolderDialog`（`import QtQuick.Dialogs`） |
+| 依赖                      | 类型   | 说明                                                            |
+| ------------------------- | ------ | --------------------------------------------------------------- |
+| `ScheduleEngine`          | 项目内 | 提供 `AppBridge` / `ScheduleBridge`（含 `importExport` 子对象） |
+| `Qt6::Quick` / `Qt6::Qml` | 外部   | Quick Controls 2 / Layouts                                      |
+| `Qt6::QuickDialogs2`      | 外部   | `FileDialog` / `FolderDialog`（`import QtQuick.Dialogs`）       |
 
 - 允许依赖：`engine`
 - 禁止依赖：`data`（不得直接调用仓库或导入导出实现）、`core`、`app`
@@ -46,11 +45,10 @@ src/ui/
 
 ## 公开接口与关键类型
 
-本层不导出 C++ 类型，只导出 QML 类型（同模块内可直接互相引用，无需 `import`）。
-两个主界面都暴露相同的“契约 `objectName`”，因此 `app` 层的连接代码在桌面 / 移动端通用：
+本层不导出 C++ 类型，只导出 QML 类型（同模块内可直接互相引用，无需 `import`）。两个主界面都暴露相同的“契约 `objectName`”，因此 `app` 层的连接代码在桌面 / 移动端通用：
 
 | 区域 | objectName |
-| ---- | ---------- |
+| --- | --- |
 | 页面栈 | `pageStack` |
 | 导航 | `navWeekButton`、`navDayButton`、`navSemesterButton`、`navSettingsButton` |
 | 周次 | `prevWeekButton`、`nextWeekButton`、`currentWeekButton`、`weekSelector` |
@@ -68,7 +66,7 @@ src/ui/
 ## 界面与数据绑定
 
 | 界面位置 | 绑定的桥接属性 |
-| -------- | -------------- |
+| --- | --- |
 | 顶部回显 | `schedule.semesterName`、`schedule.totalWeeks`、`schedule.currentWeek`、`schedule.selectedWeekRange` |
 | 周次 / 星期下拉 | `schedule.weekOptions`、`schedule.dayOptions` |
 | 周视图网格 | `schedule.weekModel`（整周）、`schedule.timeSlots`（节次标题） |
@@ -90,15 +88,12 @@ cmake --build --preset windows-msvc-debug
 ```
 
 - 由根 `CMakeLists.txt` 通过 `add_subdirectory(src/ui)` 引入。
-- 界面自检通过 app 层 `-DBUILD_SELFTEST=ON` + `Schedule.exe --selftest` 完成（阶段 7 扩展为
-  导入 / 导出全流程校验），依赖上表中的稳定 `objectName`。
-- QML 文件在构建期由 `qt6_add_qml_module()` 编入资源；新增页面必须同步加入
-  `CMakeLists.txt` 的 `QML_FILES` 列表。
+- 界面自检通过 app 层 `-DBUILD_SELFTEST=ON` + `Schedule.exe --selftest` 完成（阶段 7 扩展为导入 / 导出全流程校验），依赖上表中的稳定 `objectName`。
+- QML 文件在构建期由 `qt6_add_qml_module()` 编入资源；新增页面必须同步加入 `CMakeLists.txt` 的 `QML_FILES` 列表。
 
 ## 与上下层交互方式
 
-- 向下：只读取 `app` 注入的上下文属性 `schedule`（`ScheduleBridge*`）与 `bridge`（`AppBridge*`），
-  不 `import` C++ 类型。
+- 向下：只读取 `app` 注入的上下文属性 `schedule`（`ScheduleBridge*`）与 `bridge`（`AppBridge*`），不 `import` C++ 类型。
 - 向上：由 `app` 按平台加载主 QML：
 
 ```cpp
@@ -106,38 +101,23 @@ cmake --build --preset windows-msvc-debug
 // 移动：qrc:/qt/qml/Schedule/qml/MainMobile.qml
 ```
 
-- 文件选择：`ImportWizard` 使用 `FileDialog`，`ExportDialog` 与 `SettingsPage` 使用 `FolderDialog`；
-  选中的 `QUrl` 由 C++ 侧读取后交给 `ImportExportBridge`，**数据层只接收路径**。
+- 文件选择：`ImportWizard` 使用 `FileDialog`，`ExportDialog` 与 `SettingsPage` 使用 `FolderDialog`；选中的 `QUrl` 由 C++ 侧读取后交给 `ImportExportBridge`，**数据层只接收路径**。
 
 ## 信号连接约定
 
-- QML **不写** `onClicked` / `Connections` / `onXxx` 等任何信号处理器；
-  所有交互（按钮点击、下拉切换、对话框确认、列表选中）由 `app/UiConnector` 在 C++ 侧
-  按 `objectName` 显式连接。
-- 因此每个交互控件都必须有**唯一且稳定**的 `objectName`；新增交互控件时须同步更新
-  `UiConnector` 与本文档的表格。
-- 列表选中统一使用 `ListView` 内建的 `currentIndex` 行为（鼠标按下即更新），
-  C++ 读取该属性，无需为每个 delegate 建立连接。
-- 周 / 日视图的课卡由 `Repeater` 动态生成，`UiConnector` 会在模型 `modelReset`
-  与周次 / 星期变化后延迟一拍重新扫描 `sessionCardClick` 并连接。
+- QML **不写** `onClicked` / `Connections` / `onXxx` 等任何信号处理器；所有交互（按钮点击、下拉切换、对话框确认、列表选中）由 `app/UiConnector` 在 C++ 侧按 `objectName` 显式连接。
+- 因此每个交互控件都必须有**唯一且稳定**的 `objectName`；新增交互控件时须同步更新 `UiConnector` 与本文档的表格。
+- 列表选中统一使用 `ListView` 内建的 `currentIndex` 行为（鼠标按下即更新），C++ 读取该属性，无需为每个 delegate 建立连接。
+- 周 / 日视图的课卡由 `Repeater` 动态生成，`UiConnector` 会在模型 `modelReset` 与周次 / 星期变化后延迟一拍重新扫描 `sessionCardClick` 并连接。
 
 ## 扩展点与注意事项
 
-- **新增页面**：在 `qml/` 下新增文件 → 注册到 `CMakeLists.txt` → 在 `MainDesktop` /
-  `MainMobile` 的 `pageStack` 中追加 → 在 `UiConnector::connect_navigation()` 中补充导航连接。
-- **命名约定**：QML 内部 id / 属性用 `camelCase`（符合 Qt 与 Prettier 惯例），
-  `objectName` 面向 C++ 连接，必须与 `UiConnector` 中的字符串常量保持一致。
-- **绑定循环**：`ScrollView` 中不要同时写 `contentWidth: availableWidth` 与依赖
-  `availableWidth` 的内容宽度，否则 Qt 会报 "Binding loop detected"；
-  本项目统一关闭横向滚动条并让内容宽度直接跟随 `ScrollView.width`。
-- **移动端**：触摸目标不小于 48dp；`MainMobile.qml` 不使用悬浮窗口类控件，
-  底部导航与桌面版共用同一批 `objectName`。
-- **应用内提醒横幅**：`notificationBanner` 在 `MainDesktop` / `MainMobile` 中各有一份；
-  C++ 侧收到 `NotificationService::notificationRequested` 后写入 `bannerTitle` /
-  `bannerMessage`，并在若干秒后清空（见 `UiConnector::show_banner()`）。
-  这是系统通知不可用时的兜底展示通路。
-- **主题色**：当前使用固定浅色配色（`#1F2A44` 主文字、`#4C8DFF` 主色、`#C0392B` 告警色），
-  深色主题留待后续在 `AppSettings::theme()` 基础上扩展。
+- **新增页面**：在 `qml/` 下新增文件 → 注册到 `CMakeLists.txt` → 在 `MainDesktop` / `MainMobile` 的 `pageStack` 中追加 → 在 `UiConnector::connect_navigation()` 中补充导航连接。
+- **命名约定**：QML 内部 id / 属性用 `camelCase`（符合 Qt 与 Prettier 惯例）， `objectName` 面向 C++ 连接，必须与 `UiConnector` 中的字符串常量保持一致。
+- **绑定循环**：`ScrollView` 中不要同时写 `contentWidth: availableWidth` 与依赖 `availableWidth` 的内容宽度，否则 Qt 会报 "Binding loop detected"；本项目统一关闭横向滚动条并让内容宽度直接跟随 `ScrollView.width`。
+- **移动端**：触摸目标不小于 48dp；`MainMobile.qml` 不使用悬浮窗口类控件，底部导航与桌面版共用同一批 `objectName`。
+- **应用内提醒横幅**：`notificationBanner` 在 `MainDesktop` / `MainMobile` 中各有一份；C++ 侧收到 `NotificationService::notificationRequested` 后写入 `bannerTitle` / `bannerMessage`，并在若干秒后清空（见 `UiConnector::show_banner()`）。这是系统通知不可用时的兜底展示通路。
+- **主题色**：当前使用固定浅色配色（`#1F2A44` 主文字、`#4C8DFF` 主色、`#C0392B` 告警色），深色主题留待后续在 `AppSettings::theme()` 基础上扩展。
 
 ## 相关文档
 
