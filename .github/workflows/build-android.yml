@@ -14,12 +14,15 @@
 #   ANDROID_KEY_PASSWORD      —— 别名口令
 #
 # 约定：
-#   1) CMakeUserPresets.json 被 .gitignore 忽略。CI 中动态生成 `android` 预设，
-#      继承仓库共享的隐藏预设 android-arm64-v8a（含 NDK 工具链与 CMAKE_FIND_ROOT_PATH），
-#      并按矩阵覆盖 ANDROID_ABI；Qt / NDK / SDK 路径通过环境变量注入。
-#   2) JDK 17 + NDK 30.0.16138531（与本地一致）+ Qt host=linux target=android。
-#   3) 未签名的 APK 无法上架/安装，apksigner 签名流程为先 zipalign 再签名。
-#   4) sign=true 表示“强制签名”：缺少 secrets 直接失败；sign=false 时只要 secrets
+#   1) 必须用 Qt 自带的 `$QT_ROOT_DIR/lib/cmake/Qt6/qt.toolchain.cmake` 配置：
+#      只有 Qt 的 Android 工具链会注册打包链路（apk / aab 目标 + androiddeployqt +
+#      deployment-settings.json）。只用 NDK 的 android.toolchain.cmake 只能交叉编译出
+#      .so，cmake --build 结束时既没有 APK 也没有 deployment-settings.json。
+#   2) 工程侧前置条件（已随本次改动补齐）：src/app 使用 qt_add_executable，
+#      且顶层 find_package 显式请求 Gui（否则报 No target Qt6::QAndroidIntegrationPlugin）。
+#   3) JDK 17 + NDK 30.0.16138531（与本地一致）+ Qt host=linux target=android。
+#   4) 未签名的 APK 无法上架/安装，apksigner 签名流程为先 zipalign 再签名。
+#   5) sign=true 表示“强制签名”：缺少 secrets 直接失败；sign=false 时只要 secrets
 #      齐全依然会签名，缺失则跳过并输出 warning。
 # =============================================================================
 name: build-android
@@ -206,38 +209,21 @@ jobs:
             echo "::warning title=未找到 androiddeployqt::host 套件 ${QT_HOST_PATH:-<未设置>} 下没有 androiddeployqt，构建阶段交由 Qt/CMake 自行定位"
           fi
 
-      - name: 动态生成 CI 用 CMakeUserPresets.json
+      - name: 配置 CMake（Qt Android 工具链 + Release，关闭测试与自检）
         shell: bash
         env:
           ABI: ${{ matrix.abi }}
         run: |
           set -euo pipefail
-          # 继承仓库共享的隐藏预设 android-arm64-v8a：
-          #   CMAKE_TOOLCHAIN_FILE = $env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake
-          #   CMAKE_FIND_ROOT_PATH = $env{QTDIR}，ANDROID_PLATFORM = android-24
-          # 这里只按矩阵覆盖 ABI，保持与 docs/PACKAGING.md 4.1 的本地流程一致。
-          cat > CMakeUserPresets.json <<JSON
-          {
-            "version": 3,
-            "configurePresets": [
-              {
-                "name": "android",
-                "displayName": "CI: Android (${ABI})",
-                "inherits": "android-arm64-v8a",
-                "cacheVariables": {
-                  "ANDROID_ABI": "${ABI}"
-                }
-              }
-            ]
-          }
-          JSON
-          cat CMakeUserPresets.json
-
-      - name: 配置 CMake（Release，关闭测试与自检）
-        shell: bash
-        run: |
-          set -euo pipefail
-          cmake --preset android \
+          # 关键：CMAKE_TOOLCHAIN_FILE 必须指向 Qt 自带的 qt.toolchain.cmake。
+          # 用 NDK 自带的 android.toolchain.cmake 也能编译，但 Qt 不会创建 apk/aab 目标，
+          # 也不会生成 *deployment-settings.json，最终打不出 APK。
+          cmake -S . -B build/android -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$QT_ROOT_DIR/lib/cmake/Qt6/qt.toolchain.cmake" \
+            -DQT_HOST_PATH="$QT_HOST_PATH" \
+            -DANDROID_ABI="$ABI" \
+            -DANDROID_PLATFORM=android-24 \
+            -DQT_ANDROID_BUILD_ALL_ABIS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTS=OFF \
             -DBUILD_SELFTEST=OFF
@@ -246,21 +232,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Android 是交叉编译，androiddeployqt 由 Qt 的 CMake 集成在构建尾声调用
-          cmake --build build/android --parallel "$(nproc)"
+          # Qt 的 Android 打包由 apk 目标驱动：编译 .so → androiddeployqt → Gradle
+          cmake --build build/android --target apk --parallel "$(nproc)"
 
-          APK="$(find build/android -name '*.apk' | head -1 || true)"
-          if [ -z "$APK" ]; then
-            echo "::warning title=未自动生成 APK::回退为显式调用 androiddeployqt"
-            SETTINGS="$(find build/android -maxdepth 1 -name '*deployment-settings.json' | head -1 || true)"
-            [ -n "$SETTINGS" ] || { echo "::error title=缺少 deployment settings::找不到 *deployment-settings.json"; exit 1; }
-            DEPLOYQT="${ANDROIDDEPLOYQT:-${QT_HOST_PATH:-$QTDIR}/bin/androiddeployqt}"
-            [ -x "$DEPLOYQT" ] || { echo "::error title=缺少 androiddeployqt::未找到可执行的 androiddeployqt（host Qt 套件 $QT_HOST_PATH）"; exit 1; }
-            "$DEPLOYQT" --input "$SETTINGS" \
-              --output build/android/android-build --release
-            APK="$(find build/android -name '*.apk' | head -1 || true)"
+          # Qt 把最终 APK 放在目标二进制目录的 android-build/ 下，命名为 <target>.apk；
+          # 兜底再去 Gradle 的中间输出目录找。
+          APK="build/android/src/app/android-build/Schedule.apk"
+          if [ ! -f "$APK" ]; then
+            echo "::warning title=未在预期路径找到 APK::改为全局查找"
+            APK="$(find build/android -name '*.apk' | sort | head -1 || true)"
           fi
-          [ -n "$APK" ] || { echo "::error title=未生成 APK::请检查 Android 打包配置"; exit 1; }
+          [ -n "$APK" ] && [ -f "$APK" ] || { echo "::error title=未生成 APK::apk 目标执行成功但没有产出 APK 文件"; exit 1; }
           echo "APK=$APK" >> "$GITHUB_ENV"
           ls -lh "$APK"
           # APK 里的 lib 目录应包含本矩阵目标的 ABI
@@ -344,30 +326,17 @@ jobs:
       - name: 生成 AAB（可选）
         if: ${{ inputs.build_aab }}
         shell: bash
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          GRADLE_DIR=build/android/android-build
-          test -x "$GRADLE_DIR/gradlew" || { echo "::error title=缺少 Gradle wrapper::androiddeployqt 未生成 $GRADLE_DIR/gradlew"; exit 1; }
-          cd "$GRADLE_DIR"
-          # AGP 的 bundleRelease 需要注入签名信息（有 keystore 时才注入）
-          GRADLE_ARGS="--no-daemon --stacktrace"
-          if [ -n "${ANDROID_KEYSTORE_FILE:-}" ]; then
-            GRADLE_ARGS="$GRADLE_ARGS -Pandroid.injected.signing.store.file=$ANDROID_KEYSTORE_FILE"
-            GRADLE_ARGS="$GRADLE_ARGS -Pandroid.injected.signing.store.password=$ANDROID_KEYSTORE_PASSWORD"
-            GRADLE_ARGS="$GRADLE_ARGS -Pandroid.injected.signing.key.alias=$ANDROID_KEY_ALIAS"
-            GRADLE_ARGS="$GRADLE_ARGS -Pandroid.injected.signing.key.password=$ANDROID_KEY_PASSWORD"
-          fi
-          # shellcheck disable=SC2086
-          ./gradlew $GRADLE_ARGS bundleRelease
-          AAB="$(find build/outputs/bundle -name '*.aab' | head -1 || true)"
-          [ -n "$AAB" ] || { echo "::error title=未生成 AAB::请检查 Gradle 日志"; exit 1; }
-          cd - > /dev/null
+          # Qt 的 aab 目标同样由 androiddeployqt 驱动（内部走 Gradle bundleRelease），
+          # 无需自己进 android-build 目录调 gradlew。
+          cmake --build build/android --target aab --parallel "$(nproc)"
+          AAB="$(find build/android -name '*.aab' | sort | head -1 || true)"
+          [ -n "$AAB" ] && [ -f "$AAB" ] || { echo "::error title=未生成 AAB::aab 目标执行成功但没有产出 .aab 文件"; exit 1; }
+          mkdir -p dist
           cp "$AAB" "dist/Schedule-android-${{ matrix.abi }}.aab"
-          ls -lh dist
+          ls -lh "$AAB" dist
+          # 说明：AAB 由 Google Play 在分发时重新签名，CI 侧不做 zipalign/apksigner。
 
       - name: 生成 SHA256 校验和
         shell: bash

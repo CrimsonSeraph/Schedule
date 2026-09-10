@@ -1,5 +1,10 @@
 # src/app - 应用入口：可执行程序 Schedule
-add_executable(Schedule
+# 使用 qt_add_executable 而非 add_executable：
+#   * 桌面平台（Windows/Linux/macOS）等价于 add_executable，行为不变；
+#   * Android 下会构建为可被 Java 壳加载的 MODULE 库，并创建 apk / aab 打包目标
+#     （androiddeployqt 由该目标驱动）。若用 add_executable，交叉编译只能得到 .so，
+#     cmake --build 结束时不生成 APK，也不生成 *deployment-settings.json。
+qt_add_executable(Schedule
 	main.cpp
 	UiConnector.cpp
 	UiConnector.h

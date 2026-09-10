@@ -288,7 +288,9 @@ jobs:
           $iss = @(
             '[Setup]'
             'AppName=Schedule'
-            'AppName[zh_CN]=课程表'
+            # 注意：Inno Setup 的 [Setup] 指令不支持 "AppName[zh_CN]" 这种语言后缀写法
+            # （会报 Unrecognized [Setup] section directive）；本地化需要额外的 .isl 语言文件，
+            # 这里保持英文产品名，中文只出现在下面 [Tasks] 的说明文字里。
             "AppVersion=$version"
             'AppPublisher=Schedule'
             'DefaultDirName={autopf}\Schedule'

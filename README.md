@@ -100,13 +100,16 @@ cmake --build build/macos --config Release
 
 # --------------------------------------------------------------------- Android
 $env:QTDIR = "D:/Qt/6.9.3/android_arm64_v8a"
-$env:ANDROID_NDK_HOME = "C:/Users/<用户>/AppData/Local/Android/Sdk/ndk/30.0.16138531"
+$env:QT_HOST_PATH = "D:/Qt/6.9.3/msvc2022_64"   # 同版本桌面套件，提供 androiddeployqt 等宿主工具
+$env:ANDROID_NDK_ROOT = "C:/Users/<用户>/AppData/Local/Android/Sdk/ndk/30.0.16138531"
+$env:ANDROID_NDK_HOME = $env:ANDROID_NDK_ROOT
 $env:ANDROID_SDK_ROOT = "C:/Users/<用户>/AppData/Local/Android/Sdk"
 cmake --preset android
-cmake --build build/android
+cmake --build build/android --target apk        # 打 APK（--target aab 出 Google Play 的 AAB）
 ```
 
-> `windows-msvc` / `android` 属于**本机预设**，定义在已被 `.gitignore` 忽略的 `CMakeUserPresets.json` 中；新克隆的仓库需自行创建该文件，继承 `CMakePresets.json` 里的基础预设并填入本机 Qt / NDK 路径。
+> `windows-msvc` / `android` 属于**本机预设**，定义在已被 `.gitignore` 忽略的 `CMakeUserPresets.json` 中；新克隆的仓库需自行创建该文件，继承 `CMakePresets.json` 里的基础预设并填入本机 Qt / NDK 路径（`android` 预设还需要 `QT_HOST_PATH`）。
+> Android 打包必须走 Qt 自带的 `qt.toolchain.cmake`（预设里已配置），只用 NDK 工具链只能编译出 `.so`，详见 [docs/PACKAGING.md](docs/PACKAGING.md) 第 4 节。
 
 ### 构建选项
 

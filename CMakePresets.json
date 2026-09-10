@@ -26,14 +26,14 @@
         {
             "name": "android-arm64-v8a",
             "hidden": true,
-            "description": "Android arm64-v8a base (Ninja); NDK from ANDROID_NDK_HOME, Qt kit from QTDIR, SDK from ANDROID_SDK_ROOT - all set by a machine preset",
+            "description": "Android arm64-v8a base (Ninja). machine preset must set: QTDIR=<Qt android kit>, QT_HOST_PATH=<Qt desktop kit of the same version>, ANDROID_SDK_ROOT, ANDROID_NDK_ROOT. 必须使用 Qt 自带的 qt.toolchain.cmake：只有它才会注册 Qt 的 Android 打包链路（apk/aab 目标 + androiddeployqt），只用 NDK 的 android.toolchain.cmake 只能交叉编译、打不出 APK。",
             "inherits": "Qt",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/android",
             "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
-                "CMAKE_FIND_ROOT_PATH": "$env{QTDIR}",
-                "CMAKE_FIND_ROOT_PATH_MODE_PACKAGE": "BOTH",
+                "CMAKE_TOOLCHAIN_FILE": "$env{QTDIR}/lib/cmake/Qt6/qt.toolchain.cmake",
+                "QT_HOST_PATH": "$env{QT_HOST_PATH}",
+                "QT_ANDROID_BUILD_ALL_ABIS": "OFF",
                 "ANDROID_PLATFORM": "android-24",
                 "ANDROID_ABI": "arm64-v8a"
             }

@@ -132,36 +132,62 @@ $HOME/Qt/6.9.3/macos/bin/macdeployqt \
 ### 4.1 环境
 
 ```bash
-export QTDIR=/opt/Qt/6.9.3/android_arm64_v8a
-export ANDROID_NDK_HOME=$HOME/Android/Sdk/ndk/30.0.16138531
+export QTDIR=/opt/Qt/6.9.3/android_arm64_v8a       # Qt 的 Android 套件
+export QT_HOST_PATH=/opt/Qt/6.9.3/gcc_64           # 同版本桌面套件，提供宿主工具（Windows: D:/Qt/6.9.3/msvc2022_64）
+export ANDROID_NDK_ROOT=$HOME/Android/Sdk/ndk/30.0.16138531
+export ANDROID_NDK_HOME=$ANDROID_NDK_ROOT
 export ANDROID_SDK_ROOT=$HOME/Android/Sdk
 
-cmake --preset android -DCMAKE_BUILD_TYPE=Release
-cmake --build build/android
+cmake --preset android -DCMAKE_BUILD_TYPE=Release   # 预设已指向 Qt 的 qt.toolchain.cmake
+cmake --build build/android --target apk            # 产出 APK
 ```
 
 `CMakePresets.json` 中的 `android-arm64-v8a` 预设已经设置好
-`CMAKE_TOOLCHAIN_FILE`（取自 NDK）、`ANDROID_ABI=arm64-v8a`、`ANDROID_PLATFORM=android-24`。
+`CMAKE_TOOLCHAIN_FILE`（**Qt 自带的 `lib/cmake/Qt6/qt.toolchain.cmake`**）、
+`QT_HOST_PATH`、`ANDROID_ABI=arm64-v8a`、`ANDROID_PLATFORM=android-24`。
+
+> **必须用 Qt 的工具链文件，而不是 NDK 自带的 `android.toolchain.cmake`。**
+> 后者虽然能交叉编译，但不会注册 Qt 的 Android 打包链路（`apk` / `aab` 目标、
+> `androiddeployqt`、`*-deployment-settings.json`），`cmake --build` 结束时只能得到一个
+> `.so`，打不出 APK。相应地，`src/app` 必须用 `qt_add_executable`，且顶层
+> `find_package(Qt6 ... COMPONENTS ...)` 要显式包含 `Gui`
+> （否则报 `No target Qt6::QAndroidIntegrationPlugin`）。
 
 ### 4.2 生成 APK
 
-Qt 的 `androiddeployqt` 会在 `qt_add_executable` + `ANDROID_PACKAGE_SOURCE_DIR` 配置下
-由 CMake 自动调用（`cmake --build` 结束时即可得到 APK，
-位于 `build/android/android-build/build/outputs/apk/`）。
+```bash
+cmake --build build/android --target apk     # APK
+cmake --build build/android --target aab     # 可选：AAB（Google Play 上传用）
+```
 
-需要准备的最小 `AndroidManifest.xml`（放在 `android/AndroidManifest.xml`，
-并通过 `QT_ANDROID_PACKAGE_SOURCE_DIR` 指向该目录）关键内容：
+产物位置：
+
+| 内容 | 路径 |
+| ---- | ---- |
+| 部署设置 | `build/android/src/app/android-Schedule-deployment-settings.json` |
+| 最终 APK | `build/android/src/app/android-build/Schedule.apk` |
+| Gradle 工程 | `build/android/src/app/android-build/` |
+
+`apk` 目标内部的顺序是：编译 `libSchedule_<abi>.so` → `androiddeployqt` → Gradle 打包。
+首次执行需要联网下载 Gradle 与 Android Gradle Plugin（CI 中缓存 `~/.gradle`）。
+
+未设置 `QT_ANDROID_PACKAGE_SOURCE_DIR` 时 Qt 使用自带默认模板
+（`$QTDIR/src/android/templates`），可以正常出包。若要声明 `POST_NOTIFICATIONS`
+等清单项，需要自建 `android/AndroidManifest.xml` 并通过
+`-DQT_ANDROID_PACKAGE_SOURCE_DIR=...` 指向该目录：
 
 ```xml
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 <application android:label="Schedule" ...>
 ```
 
-或者手工执行：
+也可以绕开 CMake 直接调用（部署设置文件仍需先由 `apk` 目标生成）：
 
 ```bash
-$QTDIR/bin/androiddeployqt --input build/android/android-Schedule-deployment-settings.json \
-    --output build/android/android-build --release
+$QT_HOST_PATH/bin/androiddeployqt \
+    --input build/android/src/app/android-Schedule-deployment-settings.json \
+    --output build/android/src/app/android-build \
+    --apk build/android/src/app/android-build/Schedule.apk --release
 ```
 
 ### 4.3 移动端注意事项
@@ -214,7 +240,7 @@ $QTDIR/bin/androiddeployqt --input build/android/android-Schedule-deployment-set
 | 平台 | 状态 | 说明 |
 | ---- | ---- | ---- |
 | Windows (MSVC, x64) | ✅ 已验证 | 完整构建 + `windeployqt` 自动部署 + 9 个单元测试 + `--selftest` 22 项断言全部通过 |
-| Android (arm64-v8a, NDK 30) | ✅ 编译已验证 | `cmake --preset android && cmake --build build/android` 全量构建通过（含 QML 编译与本地通知后端）；**APK 装机与通知投递需真机验证** |
+| Android (arm64-v8a, NDK 30) | ✅ 编译已验证 | `cmake --build build/android` 全量构建通过（含 QML 编译与本地通知后端）；APK 打包已改为 Qt 工具链 + `--target apk`（原先用 NDK 工具链只能编译，出的不是 APK）；**APK 装机与通知投递需真机验证** |
 | Linux | ⚠️ 未验证 | 构建脚本无平台专属逻辑；托盘通知依赖桌面环境，无托盘时回退应用内横幅 |
 | macOS | ⚠️ 未验证 | 同上；`macdeployqt` 步骤见第 3 节 |
 | iOS | ⚠️ 未实现通知后端 | 界面与逻辑复用移动布局；`INotificationBackend` 已预留，当前回退为应用内横幅 |

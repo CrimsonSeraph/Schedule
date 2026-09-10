@@ -33,7 +33,11 @@ if(BUILD_TESTS)
 endif()
 
 # Qt 依赖（后续模块按需补充组件）
-find_package(Qt6 6.9.3 REQUIRED COMPONENTS Core Qml Sql)
+# Gui 必须在这里显式请求：Android 打包链路要求 Qt6::Gui 的插件包
+# （如 Qt6::QAndroidIntegrationPlugin）在 qt_add_executable 定稿前完成注册；
+# 只在子目录里通过 Quick 间接依赖 Gui，会导致 androiddeployqt 生成部署设置时报
+# "No target Qt6::QAndroidIntegrationPlugin"。
+find_package(Qt6 6.9.3 REQUIRED COMPONENTS Core Gui Qml Sql)
 
 # Qt 推荐的项目级初始化（启用 AUTOMOC/AUTOUIC/AUTORCC，采纳 Qt 策略默认值）
 qt_standard_project_setup()
