@@ -1,0 +1,357 @@
+# =============================================================================
+# Schedule · Windows 桌面构建（x64 / MSVC）
+# -----------------------------------------------------------------------------
+# 触发方式：
+#   * workflow_dispatch —— 手动触发
+#   * workflow_call     —— 由 release-all.yml 统一调用
+#
+# 参考：README.md「快速开始 / 构建」章节、docs/PACKAGING.md 第 1 节。
+#
+# 可选 secrets（缺失不报错，仅跳过签名并输出 warning）：
+#   WINDOWS_PFX_BASE64   —— PFX/P12 证书的 base64 内容（含私钥）
+#   WINDOWS_PFX_PASSWORD —— PFX 口令
+#
+# 约定：
+#   1) CMakeUserPresets.json 被 .gitignore 忽略。CI 中按需动态生成，
+#      继承仓库共享的隐藏预设 windows-desktop-msvc（Qt 路径来自 QTDIR 环境变量）。
+#   2) 生成器按 runner 上实际安装的 Visual Studio 动态选择（VS2026 / VS2022），
+#      避免硬编码 "Visual Studio 18 2026" 在旧镜像上失败。
+#   3) windeployqt 已在 cmake/ScheduleQtDeploy.cmake 中以 POST_BUILD 方式内置，
+#      构建结束后 Qt 运行库/平台插件/QML 模块会自动出现在 Schedule.exe 同级目录。
+#   4) sign=true 表示“强制签名”：缺少 secrets 直接失败；sign=false 时只要 secrets
+#      齐全依然会签名，缺失则跳过并输出 warning。
+# =============================================================================
+name: build-windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      sign:
+        description: '强制代码签名（true：缺少 WINDOWS_PFX_* secrets 直接失败）'
+        type: boolean
+        default: false
+      build_installer:
+        description: '是否用 Inno Setup 生成安装包'
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      sign:
+        description: '强制代码签名'
+        type: boolean
+        default: false
+      build_installer:
+        description: '是否生成 Inno Setup 安装包'
+        type: boolean
+        default: true
+    secrets:
+      WINDOWS_PFX_BASE64:
+        required: false
+      WINDOWS_PFX_PASSWORD:
+        required: false
+
+# 本工作流不创建 Release，保持最小权限
+permissions:
+  contents: read
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION: '6.9.3'
+  # 时间戳服务器：签名带可信时间戳才不会因证书过期而失效
+  TIMESTAMP_URL: 'http://timestamp.digicert.com'
+
+jobs:
+  build:
+    name: Windows x64 (MSVC)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: 拉取源码
+        uses: actions/checkout@v4
+
+      - name: 检测可用的 Visual Studio 生成器
+        id: vs
+        shell: pwsh
+        run: |
+          # vswhere 随 VS Installer 一起安装，用它判断实际版本比硬编码生成器名更稳
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          if (-not (Test-Path $vswhere)) { throw "找不到 vswhere.exe，runner 上似乎没有 Visual Studio" }
+          $ver = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion | Select-Object -First 1)
+          Write-Host "Visual Studio 版本：$ver"
+          if ($ver -like '18.*') {
+            $gen = 'Visual Studio 18 2026'
+          } elseif ($ver -like '17.*') {
+            $gen = 'Visual Studio 17 2022'
+          } else {
+            throw "不支持的 Visual Studio 版本：$ver"
+          }
+          Write-Host "选用 CMake 生成器：$gen"
+          "generator=$gen" >> $env:GITHUB_OUTPUT
+
+      - name: 安装 Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          dir: ${{ github.workspace }}/Qt
+          # cache: true 内部即 actions/cache，按 os+版本+arch 缓存整个 Qt 安装目录
+          cache: true
+          cache-key-prefix: qt-windows-win64_msvc2022_64
+
+      - name: 动态生成 CI 用 CMakeUserPresets.json
+        shell: pwsh
+        env:
+          VS_GENERATOR: ${{ steps.vs.outputs.generator }}
+        run: |
+          # 该文件被 .gitignore 忽略，因此每个 job 都现场生成。
+          # 继承仓库共享的隐藏预设 windows-desktop-msvc（含 CMAKE_PREFIX_PATH=$env{QTDIR}），
+          # 只覆盖生成器与二进制目录，保证 CI 与本地 CMakePresets.json 语义一致。
+          $json = @(
+            '{'
+            '  "version": 3,'
+            '  "configurePresets": ['
+            '    {'
+            '      "name": "windows-msvc",'
+            '      "displayName": "CI: Windows Desktop (MSVC)",'
+            '      "inherits": "windows-desktop-msvc",'
+            ('      "generator": "' + $env:VS_GENERATOR + '",')
+            '      "binaryDir": "${sourceDir}/build/windows-msvc"'
+            '    }'
+            '  ],'
+            '  "buildPresets": ['
+            '    {'
+            '      "name": "windows-msvc-release",'
+            '      "configurePreset": "windows-msvc",'
+            '      "configuration": "Release"'
+            '    }'
+            '  ]'
+            '}'
+          ) -join "`n"
+          Set-Content -Path CMakeUserPresets.json -Value $json -Encoding utf8
+          Get-Content CMakeUserPresets.json
+
+      - name: 导出 Qt 环境变量
+        shell: pwsh
+        run: |
+          # 隐藏预设 Qt / windows-desktop-msvc 通过 $env{QTDIR} 取 Qt 路径
+          "QTDIR=$env:QT_ROOT_DIR" >> $env:GITHUB_ENV
+          Write-Host "Qt 套件目录：$env:QT_ROOT_DIR"
+          & "$env:QT_ROOT_DIR\bin\qmake.exe" -query QT_VERSION
+
+      - name: 配置 CMake（Release，关闭测试与自检）
+        shell: pwsh
+        run: |
+          # 多配置生成器（Visual Studio）忽略 CMAKE_BUILD_TYPE，配置阶段统一用 Release
+          cmake --preset windows-msvc `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DBUILD_TESTS=OFF `
+            -DBUILD_SELFTEST=OFF
+          if ($LASTEXITCODE -ne 0) { throw "CMake 配置失败" }
+
+      - name: 编译
+        shell: pwsh
+        run: |
+          cmake --build build/windows-msvc --config Release --parallel
+          if ($LASTEXITCODE -ne 0) { throw "编译失败" }
+
+      - name: 校验 windeployqt 部署结果
+        shell: pwsh
+        run: |
+          $rel = "build/windows-msvc/Release"
+          $required = @(
+            "$rel/Schedule.exe",
+            "$rel/platforms/qwindows.dll",
+            # 缺少 sqldrivers/qsqlite.dll 会导致课表无法保存（见 docs/PACKAGING.md 1.2）
+            "$rel/sqldrivers/qsqlite.dll"
+          )
+          $missing = $required | Where-Object { -not (Test-Path $_) }
+          if ($missing) {
+            Write-Host "::error title=Qt 运行库部署不完整::缺少：$($missing -join ', ')"
+            throw "windeployqt 未完成部署"
+          }
+          Get-ChildItem $rel | Select-Object -First 30 Name
+          Write-Host "部署目录大小：$([math]::Round((Get-ChildItem $rel -Recurse | Measure-Object Length -Sum).Sum / 1MB, 1)) MB"
+
+      - name: 检查签名 secrets
+        id: signcheck
+        shell: pwsh
+        env:
+          PFX_B64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+          PFX_PWD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+          FORCE_SIGN: ${{ inputs.sign }}
+        run: |
+          if ($env:PFX_B64 -and $env:PFX_PWD) {
+            "ready=true" >> $env:GITHUB_OUTPUT
+            Write-Host "检测到 WINDOWS_PFX_* secrets，将对 Schedule.exe（以及随后的安装包）签名。"
+          } else {
+            "ready=false" >> $env:GITHUB_OUTPUT
+            Write-Host "::warning title=跳过代码签名::未配置 WINDOWS_PFX_BASE64 / WINDOWS_PFX_PASSWORD，产物保持未签名。"
+            if ($env:FORCE_SIGN -eq 'true') {
+              Write-Host "::error title=缺少签名 secrets::inputs.sign=true 要求强制签名，但 WINDOWS_PFX_* 未配置。"
+              exit 1
+            }
+          }
+
+      - name: 导入证书并签名 Schedule.exe
+        if: ${{ steps.signcheck.outputs.ready == 'true' }}
+        shell: pwsh
+        env:
+          PFX_B64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+          PFX_PWD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+        run: |
+          # 证书只落在 runner 的临时目录与当前用户的证书存储中，job 结束前清理
+          $tmp = Join-Path $env:RUNNER_TEMP ("schedule-sign-" + [guid]::NewGuid().ToString())
+          New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+          "SIGN_TMP=$tmp" >> $env:GITHUB_ENV
+          $pfx = Join-Path $tmp 'schedule.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:PFX_B64))
+          $secure = ConvertTo-SecureString -String $env:PFX_PWD -AsPlainText -Force
+          $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $secure
+          "SIGN_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+          Write-Host "已导入证书，指纹：$($cert.Thumbprint)"
+
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/signtool.exe" |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) { throw "未找到 signtool.exe（需要 Windows SDK）" }
+          Write-Host "使用：$($signtool.FullName)"
+
+          # 先签 Schedule.exe：zip 与安装包都在这一步之后生成，
+          # 保证分发内容里放的是已签名的可执行文件。
+          $target = "build/windows-msvc/Release/Schedule.exe"
+          Write-Host "签名 $target"
+          # 用证书指纹而不是口令，避免明文口令出现在命令行里
+          & $signtool.FullName sign /sha1 $cert.Thumbprint /fd SHA256 `
+            /tr $env:TIMESTAMP_URL /td SHA256 /d "Schedule" $target
+          if ($LASTEXITCODE -ne 0) { throw "signtool 签名失败：$target" }
+          & $signtool.FullName verify /pa /v $target
+          if ($LASTEXITCODE -ne 0) { throw "signtool 校验失败：$target" }
+          # 供“签名安装包”步骤复用，避免重复查找 signtool
+          "SIGNTOOL=$($signtool.FullName)" >> $env:GITHUB_ENV
+
+      - name: 打包 zip
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path CMakeLists.txt -Pattern '^\s*VERSION\s+([0-9]+\.[0-9]+\.[0-9]+)' |
+                      Select-Object -First 1).Matches.Groups[1].Value
+          if (-not $version) { $version = '1.0.0' }
+          "SCHEDULE_VERSION=$version" >> $env:GITHUB_ENV
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path "build/windows-msvc/Release/*" `
+            -DestinationPath "dist/Schedule-$version-windows-x64.zip" -Force
+          Get-ChildItem dist
+
+      - name: 生成 Inno Setup 安装包
+        if: ${{ inputs.build_installer }}
+        shell: pwsh
+        run: |
+          # 优先使用镜像自带的 ISCC（windows-latest 已安装 Inno Setup 6.x）
+          $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) {
+            foreach ($p in @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+                             "$env:ProgramFiles\Inno Setup 6\ISCC.exe")) {
+              if (Test-Path $p) { $iscc = $p; break }
+            }
+          }
+          if (-not $iscc) {
+            Write-Host "::warning title=未找到 Inno Setup::尝试通过 Chocolatey 安装"
+            choco install innosetup -y --no-progress
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path $iscc)) {
+            Write-Host "::error title=缺少 Inno Setup::未找到 ISCC.exe，无法生成安装包"
+            throw "Inno Setup 不可用"
+          }
+
+          $version = $env:SCHEDULE_VERSION
+          $release = (Resolve-Path "build/windows-msvc/Release").Path
+          $out = (Resolve-Path "dist").Path
+          New-Item -ItemType Directory -Force -Path packaging | Out-Null
+          $iss = @(
+            '[Setup]'
+            'AppName=Schedule'
+            'AppName[zh_CN]=课程表'
+            "AppVersion=$version"
+            'AppPublisher=Schedule'
+            'DefaultDirName={autopf}\Schedule'
+            'DefaultGroupName=Schedule'
+            'DisableProgramGroupPage=yes'
+            'PrivilegesRequired=lowest'
+            'ArchitecturesAllowed=x64compatible'
+            'ArchitecturesInstallIn64BitMode=x64compatible'
+            'Compression=lzma2'
+            'SolidCompression=yes'
+            "OutputDir=$out"
+            "OutputBaseFilename=Schedule-$version-windows-x64-setup"
+            '[Files]'
+            ("Source: `"$release\*`"; DestDir: `"{app}`"; Flags: recursesubdirs createallsubdirs")
+            '[Icons]'
+            'Name: "{group}\Schedule"; Filename: "{app}\Schedule.exe"'
+            'Name: "{autodesktop}\Schedule"; Filename: "{app}\Schedule.exe"; Tasks: desktopicon'
+            '[Tasks]'
+            'Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务:"'
+            '[Run]'
+            'Filename: "{app}\Schedule.exe"; Description: "启动 Schedule"; Flags: nowait postinstall skipifsilent'
+          ) -join "`n"
+          Set-Content -Path packaging\schedule.iss -Value $iss -Encoding utf8
+          & $iscc packaging\schedule.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup 编译失败" }
+          Get-ChildItem dist
+          # 说明：安装包不包含卸载时清理 %APPDATA%\Schedule 的逻辑，
+          #      以免用户课表数据被误删（见 docs/PACKAGING.md 1.3）。
+
+      - name: 签名安装包（可选）
+        if: ${{ steps.signcheck.outputs.ready == 'true' && inputs.build_installer }}
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist -Filter '*setup.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $setup) {
+            Write-Host "::warning title=未找到安装包::dist 下没有 setup.exe，跳过安装包签名"
+            exit 0
+          }
+          $signtool = $env:SIGNTOOL
+          if (-not $signtool -or -not (Test-Path $signtool)) {
+            $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/signtool.exe" |
+              Sort-Object FullName -Descending | Select-Object -First 1).FullName
+          }
+          Write-Host "签名安装包：$($setup.FullName)"
+          & $signtool sign /sha1 $env:SIGN_THUMBPRINT /fd SHA256 `
+            /tr $env:TIMESTAMP_URL /td SHA256 /d "Schedule" $setup.FullName
+          if ($LASTEXITCODE -ne 0) { throw "signtool 签名安装包失败" }
+          & $signtool verify /pa /v $setup.FullName
+          if ($LASTEXITCODE -ne 0) { throw "signtool 校验安装包失败" }
+
+      - name: 生成 SHA256 校验和
+        shell: pwsh
+        run: |
+          $lines = Get-ChildItem dist -File | ForEach-Object {
+            $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$h  $($_.Name)"
+          }
+          Set-Content -Path "dist/SHA256SUMS-windows-x64.txt" -Value $lines -Encoding utf8
+          Get-Content "dist/SHA256SUMS-windows-x64.txt"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: Schedule-windows-x64
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: 清理证书与临时文件
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          if ($env:SIGN_THUMBPRINT) {
+            Remove-Item -Path "Cert:\CurrentUser\My\$env:SIGN_THUMBPRINT" -Force -ErrorAction SilentlyContinue
+            Write-Host "已从证书存储中移除签名证书。"
+          }
+          if ($env:SIGN_TMP -and (Test-Path $env:SIGN_TMP)) {
+            Remove-Item -Recurse -Force $env:SIGN_TMP -ErrorAction SilentlyContinue
+          }
+          Write-Host "清理完成。"

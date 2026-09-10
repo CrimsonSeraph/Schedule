@@ -1,0 +1,396 @@
+# =============================================================================
+# Schedule · Android 构建（arm64-v8a / 可选 armeabi-v7a）
+# -----------------------------------------------------------------------------
+# 触发方式：
+#   * workflow_dispatch —— 手动触发
+#   * workflow_call     —— 由 release-all.yml 统一调用
+#
+# 参考：docs/PACKAGING.md 第 4 节。
+#
+# 可选 secrets（缺失不报错，仅跳过签名并输出 warning）：
+#   ANDROID_KEYSTORE_BASE64   —— release keystore（.jks/.keystore）base64
+#   ANDROID_KEYSTORE_PASSWORD —— keystore 口令
+#   ANDROID_KEY_ALIAS         —— 签名别名
+#   ANDROID_KEY_PASSWORD      —— 别名口令
+#
+# 约定：
+#   1) CMakeUserPresets.json 被 .gitignore 忽略。CI 中动态生成 `android` 预设，
+#      继承仓库共享的隐藏预设 android-arm64-v8a（含 NDK 工具链与 CMAKE_FIND_ROOT_PATH），
+#      并按矩阵覆盖 ANDROID_ABI；Qt / NDK / SDK 路径通过环境变量注入。
+#   2) JDK 17 + NDK 30.0.16138531（与本地一致）+ Qt host=linux target=android。
+#   3) 未签名的 APK 无法上架/安装，apksigner 签名流程为先 zipalign 再签名。
+#   4) sign=true 表示“强制签名”：缺少 secrets 直接失败；sign=false 时只要 secrets
+#      齐全依然会签名，缺失则跳过并输出 warning。
+# =============================================================================
+name: build-android
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_armv7:
+        description: '追加构建 armeabi-v7a（32 位）'
+        type: boolean
+        default: false
+      build_aab:
+        description: '额外生成 AAB（Google Play 上传用，需下载 Gradle wrapper）'
+        type: boolean
+        default: false
+      sign:
+        description: '强制 APK 签名（true：缺少 keystore secrets 直接失败）'
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      build_armv7:
+        description: '追加构建 armeabi-v7a'
+        type: boolean
+        default: false
+      build_aab:
+        description: '额外生成 AAB'
+        type: boolean
+        default: false
+      sign:
+        description: '强制 APK 签名'
+        type: boolean
+        default: false
+    secrets:
+      ANDROID_KEYSTORE_BASE64:
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
+      ANDROID_KEY_ALIAS:
+        required: false
+      ANDROID_KEY_PASSWORD:
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-android-${{ github.ref }}-${{ inputs.build_armv7 }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION: '6.9.3'
+  # 与 docs/PACKAGING.md 4.1 保持一致
+  NDK_VERSION: '30.0.16138531'
+  # ubuntu-24.04 托管 runner 预装 Android SDK 的位置（actions/runner-images 文档）
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 计划 job：job 级 if 读不到 matrix，因此用 needs + fromJSON 决定是否追加 32 位腿
+  # ---------------------------------------------------------------------------
+  plan:
+    name: 规划构建矩阵
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: 生成矩阵
+        id: matrix
+        shell: bash
+        env:
+          BUILD_ARMV7: ${{ inputs.build_armv7 }}
+        run: |
+          set -euo pipefail
+          a64='{"abi":"arm64-v8a","qt_arch":"android_arm64_v8a","artifact":"Schedule-android-arm64-v8a"}'
+          a32='{"abi":"armeabi-v7a","qt_arch":"android_armv7","artifact":"Schedule-android-armeabi-v7a"}'
+          if [ "$BUILD_ARMV7" = "true" ]; then
+            echo "matrix={\"include\":[${a64},${a32}]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "matrix={\"include\":[${a64}]}" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Android ${{ matrix.abi }}
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: 拉取源码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 缓存 Android NDK
+        uses: actions/cache@v4
+        with:
+          # NDK 体积很大（≈1GB+），命中缓存可显著缩短构建
+          path: ${{ env.ANDROID_SDK_ROOT }}/ndk/${{ env.NDK_VERSION }}
+          key: ndk-${{ runner.os }}-${{ env.NDK_VERSION }}
+
+      - name: 缓存 Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: 安装 Android SDK 组件与 NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 兜底：某些镜像通过 ANDROID_HOME 暴露 SDK 路径
+          if [ ! -d "$ANDROID_SDK_ROOT" ]; then
+            ANDROID_SDK_ROOT="${ANDROID_HOME:-$HOME/Android/Sdk}"
+            echo "::warning title=SDK 路径回退::使用 $ANDROID_SDK_ROOT"
+            echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          fi
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER="$(ls -1 "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1 || true)"
+          fi
+          [ -n "$SDKMANAGER" ] || { echo "::error title=缺少 sdkmanager::runner 上未找到 Android cmdline-tools"; exit 1; }
+          echo "sdkmanager：$SDKMANAGER"
+
+          # 首次使用需要接受许可
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          # 缓存命中时跳过 NDK 下载；android-24 对应预设里的 ANDROID_PLATFORM
+          TO_INSTALL=("platforms;android-24" "platforms;android-35" "build-tools;35.0.0")
+          if [ ! -d "$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" ]; then
+            TO_INSTALL+=("ndk;$NDK_VERSION")
+          else
+            echo "NDK $NDK_VERSION 已存在（缓存命中），跳过下载。"
+          fi
+          "$SDKMANAGER" --install "${TO_INSTALL[@]}"
+
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          ls -d "$ANDROID_SDK_ROOT/ndk/$NDK_VERSION"
+
+      - name: 安装 Qt ${{ env.QT_VERSION }}（Android 套件）
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: android
+          arch: ${{ matrix.qt_arch }}
+          dir: ${{ github.workspace }}/Qt
+          # cache: true 内部即 actions/cache，按 os+版本+arch 缓存整个 Qt 安装目录
+          cache: true
+          cache-key-prefix: qt-android-${{ matrix.qt_arch }}
+
+      - name: 导出 Qt 环境变量
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "QTDIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          echo "Qt Android 套件目录：$QT_ROOT_DIR"
+          test -f "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+          test -x "$QTDIR/bin/androiddeployqt"
+
+      - name: 动态生成 CI 用 CMakeUserPresets.json
+        shell: bash
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          # 继承仓库共享的隐藏预设 android-arm64-v8a：
+          #   CMAKE_TOOLCHAIN_FILE = $env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake
+          #   CMAKE_FIND_ROOT_PATH = $env{QTDIR}，ANDROID_PLATFORM = android-24
+          # 这里只按矩阵覆盖 ABI，保持与 docs/PACKAGING.md 4.1 的本地流程一致。
+          cat > CMakeUserPresets.json <<JSON
+          {
+            "version": 3,
+            "configurePresets": [
+              {
+                "name": "android",
+                "displayName": "CI: Android (${ABI})",
+                "inherits": "android-arm64-v8a",
+                "cacheVariables": {
+                  "ANDROID_ABI": "${ABI}"
+                }
+              }
+            ]
+          }
+          JSON
+          cat CMakeUserPresets.json
+
+      - name: 配置 CMake（Release，关闭测试与自检）
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake --preset android \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_SELFTEST=OFF
+
+      - name: 编译并生成 APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Android 是交叉编译，androiddeployqt 由 Qt 的 CMake 集成在构建尾声调用
+          cmake --build build/android --parallel "$(nproc)"
+
+          APK="$(find build/android -name '*.apk' | head -1 || true)"
+          if [ -z "$APK" ]; then
+            echo "::warning title=未自动生成 APK::回退为显式调用 androiddeployqt"
+            SETTINGS="$(find build/android -maxdepth 1 -name '*deployment-settings.json' | head -1 || true)"
+            [ -n "$SETTINGS" ] || { echo "::error title=缺少 deployment settings::找不到 *deployment-settings.json"; exit 1; }
+            "$QTDIR/bin/androiddeployqt" --input "$SETTINGS" \
+              --output build/android/android-build --release
+            APK="$(find build/android -name '*.apk' | head -1 || true)"
+          fi
+          [ -n "$APK" ] || { echo "::error title=未生成 APK::请检查 Android 打包配置"; exit 1; }
+          echo "APK=$APK" >> "$GITHUB_ENV"
+          ls -lh "$APK"
+          # APK 里的 lib 目录应包含本矩阵目标的 ABI
+          unzip -l "$APK" | grep -E 'lib/[^/]+/' | awk '{print $4}' | cut -d/ -f1-2 | sort -u || true
+
+      - name: 检查签名 secrets
+        id: signcheck
+        shell: bash
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PWD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PWD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          FORCE_SIGN: ${{ inputs.sign }}
+        run: |
+          set -euo pipefail
+          missing=""
+          [ -n "$KS_B64" ]   || missing="$missing ANDROID_KEYSTORE_BASE64"
+          [ -n "$KS_PWD" ]   || missing="$missing ANDROID_KEYSTORE_PASSWORD"
+          [ -n "$KEY_ALIAS" ]|| missing="$missing ANDROID_KEY_ALIAS"
+          [ -n "$KEY_PWD" ]  || missing="$missing ANDROID_KEY_PASSWORD"
+          if [ -z "$missing" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "检测到 Android keystore secrets，将对 APK 签名。"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=跳过 APK 签名::缺少 secrets：$missing —— 产出未签名 APK（无法直接安装）。"
+            if [ "$FORCE_SIGN" = "true" ]; then
+              echo "::error title=缺少签名 secrets::inputs.sign=true 要求强制签名，但 keystore secrets 不完整：$missing"
+              exit 1
+            fi
+          fi
+
+      - name: zipalign + apksigner 签名
+        if: ${{ steps.signcheck.outputs.ready == 'true' }}
+        shell: bash
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # keystore 只落在 runner 临时目录，job 结束前删除
+          KEYSTORE="$RUNNER_TEMP/schedule-release.keystore"
+          printf '%s' "$KS_B64" | base64 -d > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          echo "ANDROID_KEYSTORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
+
+          BUILD_TOOLS="$(ls -1d "$ANDROID_SDK_ROOT"/build-tools/* | sort -V | tail -1)"
+          echo "build-tools：$BUILD_TOOLS"
+          ZIPALIGN="$BUILD_TOOLS/zipalign"
+          APKSIGNER="$BUILD_TOOLS/apksigner"
+
+          mkdir -p dist
+          ALIGNED="$RUNNER_TEMP/aligned.apk"
+          OUT="dist/Schedule-android-${{ matrix.abi }}.apk"
+          # 先对齐（-p 兼容页对齐）再签名，顺序不能颠倒
+          "$ZIPALIGN" -p -f 4 "$APK" "$ALIGNED"
+          # 口令通过环境变量传入（env: 前缀），不出现在命令行参数里
+          "$APKSIGNER" sign \
+            --ks "$KEYSTORE" \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:ANDROID_KEY_PASSWORD \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --out "$OUT" "$ALIGNED"
+          "$APKSIGNER" verify --verbose --print-certs "$OUT"
+          ls -lh dist
+
+      - name: 无签名 secrets 时直接收集未签名 APK
+        if: ${{ steps.signcheck.outputs.ready != 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp "$APK" "dist/Schedule-android-${{ matrix.abi }}-unsigned.apk"
+          ls -lh dist
+
+      - name: 生成 AAB（可选）
+        if: ${{ inputs.build_aab }}
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          GRADLE_DIR=build/android/android-build
+          test -x "$GRADLE_DIR/gradlew" || { echo "::error title=缺少 Gradle wrapper::androiddeployqt 未生成 $GRADLE_DIR/gradlew"; exit 1; }
+          cd "$GRADLE_DIR"
+          # AGP 的 bundleRelease 需要注入签名信息（有 keystore 时才注入）
+          GRADLE_ARGS="--no-daemon --stacktrace"
+          if [ -n "${ANDROID_KEYSTORE_FILE:-}" ]; then
+            GRADLE_ARGS="$GRADLE_ARGS -Pandroid.injected.signing.store.file=$ANDROID_KEYSTORE_FILE"
+            GRADLE_ARGS="$GRADLE_ARGS -Pandroid.injected.signing.store.password=$ANDROID_KEYSTORE_PASSWORD"
+            GRADLE_ARGS="$GRADLE_ARGS -Pandroid.injected.signing.key.alias=$ANDROID_KEY_ALIAS"
+            GRADLE_ARGS="$GRADLE_ARGS -Pandroid.injected.signing.key.password=$ANDROID_KEY_PASSWORD"
+          fi
+          # shellcheck disable=SC2086
+          ./gradlew $GRADLE_ARGS bundleRelease
+          AAB="$(find build/outputs/bundle -name '*.aab' | head -1 || true)"
+          [ -n "$AAB" ] || { echo "::error title=未生成 AAB::请检查 Gradle 日志"; exit 1; }
+          cd - > /dev/null
+          cp "$AAB" "dist/Schedule-android-${{ matrix.abi }}.aab"
+          ls -lh dist
+
+      - name: 生成 SHA256 校验和
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 先在 dist 之外生成，避免把正在写入的校验和文件自己也统计进去
+          SUMS="$RUNNER_TEMP/SHA256SUMS-android-${{ matrix.abi }}.txt"
+          ( cd dist && sha256sum $(find . -maxdepth 1 -type f ! -name 'SHA256SUMS*' -exec basename {} \; | sort) ) > "$SUMS"
+          cp "$SUMS" "dist/SHA256SUMS-android-${{ matrix.abi }}.txt"
+          cat "dist/SHA256SUMS-android-${{ matrix.abi }}.txt"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: 清理 keystore 与临时文件
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          rm -f "${ANDROID_KEYSTORE_FILE:-}" "$RUNNER_TEMP/aligned.apk"
+          echo "清理完成。"
+
+      - name: 构建摘要
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            echo "### Android ${{ matrix.abi }} 构建结果"
+            echo ""
+            echo "- Qt 版本：${QT_VERSION}（target=android，arch=${{ matrix.qt_arch }}）"
+            echo "- NDK：${NDK_VERSION}"
+            echo "- 签名：${{ steps.signcheck.outputs.ready == 'true' && '已执行（zipalign + apksigner）' || '已跳过（未配置 keystore secrets）' }}"
+            echo "- 产物 artifact：\`${{ matrix.artifact }}\`"
+            echo ""
+            echo "> 移动端提醒：Android 13+ 需要 POST_NOTIFICATIONS 运行时权限；"
+            echo "> 数据库位于应用私有目录，卸载即删除，请引导用户使用“导出”功能备份课表。"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,377 @@
+# =============================================================================
+# Schedule · Linux 桌面构建（x64 / 可选 arm64）
+# -----------------------------------------------------------------------------
+# 触发方式：
+#   * workflow_dispatch —— 手动触发（可勾选是否追加 arm64、是否强制 GPG 签名）
+#   * workflow_call     —— 由 release-all.yml 统一调用
+#
+# 参考：README.md「快速开始 / 构建」章节、docs/PACKAGING.md 第 2 节。
+#
+# 可选 secrets（缺失不报错，仅跳过对应步骤并输出 warning）：
+#   LINUX_GPG_PRIVATE_KEY —— ASCII-armored 私钥内容，用于对校验和/产物做 GPG 分离签名
+#   LINUX_GPG_PASSPHRASE  —— 私钥口令；口令为空时也必须显式提供为空字符串（或直接不配置）
+#
+# 约定：
+#   1) CMakeUserPresets.json 被 .gitignore 忽略，CI 不依赖它，直接用命令行参数传
+#      -DCMAKE_PREFIX_PATH（= 安装 Qt 后由 install-qt-action 导出的 QT_ROOT_DIR）。
+#   2) 发布正式包必须关闭测试与自检：-DBUILD_TESTS=OFF -DBUILD_SELFTEST=OFF。
+#   3) sign=true 表示“强制签名”：缺少 secrets 时直接失败；
+#      sign=false 时只要 secrets 齐全依然会签名，缺失则跳过并输出 warning。
+# =============================================================================
+name: build-linux
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_arm64:
+        description: '追加构建 Linux arm64（使用 ubuntu-24.04-arm 托管 runner）'
+        type: boolean
+        default: false
+      sign:
+        description: '强制 GPG 签名（true：缺少 GPG secrets 直接失败）'
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      build_arm64:
+        description: '追加构建 Linux arm64'
+        type: boolean
+        default: false
+      sign:
+        description: '强制 GPG 签名'
+        type: boolean
+        default: false
+    secrets:
+      LINUX_GPG_PRIVATE_KEY:
+        required: false
+      LINUX_GPG_PASSPHRASE:
+        required: false
+
+# 本工作流不创建 Release，保持最小权限
+permissions:
+  contents: read
+
+# 同一分支的重复构建自动取消，避免占用 runner
+concurrency:
+  group: build-linux-${{ github.ref }}-${{ inputs.build_arm64 }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION: '6.9.3'
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 500M
+  # 构建期临时文件统一放在这里，便于 job 结束前清理
+  SCHEDULE_TMP: ${{ github.workspace }}/.ci-tmp
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 计划 job：按输入动态生成矩阵。
+  # 说明：job 级 if 无法读取 matrix 上下文，因此用 needs + fromJSON 的方式
+  #       决定是否把 arm64 腿加入矩阵。
+  # ---------------------------------------------------------------------------
+  plan:
+    name: 规划构建矩阵
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: 生成矩阵
+        id: matrix
+        shell: bash
+        env:
+          BUILD_ARM64: ${{ inputs.build_arm64 }}
+        run: |
+          set -euo pipefail
+          # Qt 6.9.3 官方同时提供 linux_gcc_64 与 linux_gcc_arm64 两套桌面预编译包
+          x64='{"arch":"x64","runner":"ubuntu-latest","qt_arch":"linux_gcc_64","deb_arch":"amd64","artifact":"Schedule-linux-x64"}'
+          arm64='{"arch":"arm64","runner":"ubuntu-24.04-arm","qt_arch":"linux_gcc_arm64","deb_arch":"arm64","artifact":"Schedule-linux-arm64"}'
+          if [ "$BUILD_ARM64" = "true" ]; then
+            echo "matrix={\"include\":[${x64},${arm64}]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "matrix={\"include\":[${x64}]}" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # 构建 job：每个架构一条腿（x64 / arm64）
+  # ---------------------------------------------------------------------------
+  build:
+    name: Linux ${{ matrix.arch }}
+    needs: plan
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: 拉取源码
+        uses: actions/checkout@v4
+
+      - name: 安装系统依赖
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          # libfuse2 是运行 linuxdeploy / AppImage 所必需的；libxcb-* / libgl1 保证
+          # Qt 平台插件与 QML 模块在打包机（无显示环境）里可被解析。
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build ccache patchelf file \
+            libgl1 libglx-mesa0 libegl1 libopengl0 \
+            libxkbcommon0 libxkbcommon-x11-0 \
+            libxcb1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1 \
+            libdbus-1-3 libfontconfig1 libfreetype6 libsqlite3-0 zlib1g
+          # Ubuntu 24.04 起 libfuse2 改名为 libfuse2t64，这里做兼容处理
+          sudo apt-get install -y --no-install-recommends libfuse2t64 \
+            || sudo apt-get install -y --no-install-recommends libfuse2 \
+            || echo "::warning title=缺少 libfuse2::未找到 libfuse2/libfuse2t64，AppImage 将通过 --appimage-extract-and-run 方式执行"
+
+      - name: 安装 Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: ${{ matrix.qt_arch }}
+          # 显式指定安装目录，便于缓存与排错（默认即 $GITHUB_WORKSPACE/Qt）
+          dir: ${{ github.workspace }}/Qt
+          # cache: true 内部就是 actions/cache，按其 os+版本+arch 生成的键缓存整个 Qt 安装目录，
+          # 比自己手写 cache key 更贴合安装流程（避免缓存命中不完整导致重复下载）。
+          cache: true
+          cache-key-prefix: qt-linux-${{ matrix.qt_arch }}
+          install-deps: true
+
+      - name: 导出 Qt 环境变量
+        shell: bash
+        run: |
+          set -euo pipefail
+          # install-qt-action 会导出 QT_ROOT_DIR；这里再落到 GITHUB_ENV，
+          # 后续所有步骤（含 CMake）都能拿到套件根目录。
+          echo "QTDIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          echo "Qt 套件目录：$QT_ROOT_DIR"
+          "$QT_ROOT_DIR/bin/qmake" -query QT_VERSION
+
+      - name: 缓存 ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-linux-${{ matrix.arch }}-${{ github.sha }}
+          restore-keys: |
+            ccache-linux-${{ matrix.arch }}-
+            ccache-linux-
+
+      - name: 配置 CMake（Release，关闭测试与自检）
+        shell: bash
+        run: |
+          set -euo pipefail
+          ccache --zero-stats || true
+          cmake -S . -B build/linux -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$QTDIR" \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_SELFTEST=OFF
+
+      - name: 编译
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake --build build/linux --parallel "$(nproc)"
+          ccache --show-stats || true
+
+      - name: 校验产物可执行文件
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=build/linux/src/app/Schedule
+          test -x "$APP" || { echo "::error title=找不到可执行文件::$APP 不存在"; exit 1; }
+          file "$APP"
+          # 缺库会让 AppImage 在用户机器上直接崩，这里提前拦截
+          if ldd "$APP" | grep "not found"; then
+            echo "::error title=动态库缺失::存在未解析的动态库依赖，请检查依赖安装步骤"
+            exit 1
+          fi
+
+      - name: 准备 AppDir 元数据（desktop 文件与图标）
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 仓库暂无 packaging/ 资源，这里在 CI 中生成最小可用的 desktop 文件与图标
+          mkdir -p packaging
+          printf '%s\n' \
+            '[Desktop Entry]' \
+            'Type=Application' \
+            'Name=Schedule' \
+            'Name[zh_CN]=课程表' \
+            'Comment=Cross-platform schedule app' \
+            'Comment[zh_CN]=跨平台课表应用' \
+            'Exec=Schedule' \
+            'Icon=schedule' \
+            'Categories=Education;Office;' \
+            'Terminal=false' \
+            > packaging/schedule.desktop
+          # 128x128 的极简课表图标（内联 PNG，无需额外工具链）
+          echo 'iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAABCUlEQVR42u3bwQ1AERBAQf1oTTca0YSyBE2ILCPv7GAOfn5syqXpYskRAACgoAC1D+0AAAAAAAAAAAAAAAAAAMAvAPIvCIAAABCAPwHmgfXS/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJEA5HU0AAEwH+AS9hUEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAfIAAAADgF8wEuYQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgPsA8joagAAAEAAAAgBAAAAIAAABACAAIVpxHJA9d0G8tAAAAABJRU5ErkJggg==' \
+            | base64 -d > packaging/schedule.png
+
+      - name: 用 linuxdeploy 生成 AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$SCHEDULE_TMP" AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/128x128/apps
+          cp build/linux/src/app/Schedule AppDir/usr/bin/
+          cp packaging/schedule.desktop AppDir/usr/share/applications/
+          cp packaging/schedule.png AppDir/usr/share/icons/hicolor/128x128/apps/schedule.png
+          cp packaging/schedule.desktop AppDir/
+          cp packaging/schedule.png AppDir/schedule.png
+
+          # linuxdeploy 官方 continuous 通道，按架构选择二进制
+          case "${RUNNER_ARCH}" in
+            ARM64) LD_SUFFIX=aarch64 ;;
+            *)     LD_SUFFIX=x86_64 ;;
+          esac
+          curl -fsSL -o "$SCHEDULE_TMP/linuxdeploy" \
+            "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-${LD_SUFFIX}.AppImage"
+          curl -fsSL -o "$SCHEDULE_TMP/linuxdeploy-plugin-qt" \
+            "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-${LD_SUFFIX}.AppImage"
+          chmod +x "$SCHEDULE_TMP/linuxdeploy" "$SCHEDULE_TMP/linuxdeploy-plugin-qt"
+          export PATH="$SCHEDULE_TMP:$PATH"
+          # 无 FUSE 的容器/runner 上直接解包运行，避免依赖 libfuse
+          export APPIMAGE_EXTRACT_AND_RUN=1
+
+          "$SCHEDULE_TMP/linuxdeploy" --appdir AppDir \
+            --plugin qt \
+            --executable AppDir/usr/bin/Schedule \
+            --desktop-file AppDir/usr/share/applications/schedule.desktop \
+            --icon-file AppDir/usr/share/icons/hicolor/128x128/apps/schedule.png \
+            --output appimage
+
+      - name: 汇总产物（AppImage / tar.gz / deb / sha256）
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCH='${{ matrix.arch }}'
+          # 从 CMakeLists.txt 的 project(... VERSION x.y.z) 里取版本号
+          VERSION="$(awk '$1 == "VERSION" && $2 ~ /^[0-9]+\.[0-9]+\.[0-9]+$/ { print $2; exit }' CMakeLists.txt)"
+          VERSION="${VERSION:-1.0.0}"
+          echo "SCHEDULE_VERSION=$VERSION" >> "$GITHUB_ENV"
+          mkdir -p dist
+
+          # 1) AppImage —— linuxdeploy 以 desktop 文件里的 Name 命名，这里统一改名
+          APPIMAGE="$(ls -1 Schedule*.AppImage *.AppImage 2>/dev/null | head -1 || true)"
+          if [ -z "$APPIMAGE" ]; then
+            echo "::error title=AppImage 未生成::linuxdeploy 未产出 AppImage"; exit 1
+          fi
+          mv "$APPIMAGE" "dist/Schedule-${VERSION}-linux-${ARCH}.AppImage"
+
+          # 2) 便携 tar.gz —— 打包完整 AppDir（含 Qt 运行库、QML 模块与 AppRun）
+          mkdir -p "$SCHEDULE_TMP/pkg/Schedule"
+          cp -a AppDir/. "$SCHEDULE_TMP/pkg/Schedule/"
+          tar -czf "dist/Schedule-${VERSION}-linux-${ARCH}.tar.gz" -C "$SCHEDULE_TMP/pkg" Schedule
+
+          # 3) deb —— 手工构造包树（项目未配置 CPack），Qt 运行库随包分发到 /opt/Schedule
+          DEB_ROOT="$SCHEDULE_TMP/deb"
+          mkdir -p "$DEB_ROOT/DEBIAN" \
+                   "$DEB_ROOT/opt/Schedule" \
+                   "$DEB_ROOT/usr/bin" \
+                   "$DEB_ROOT/usr/share/applications" \
+                   "$DEB_ROOT/usr/share/icons/hicolor/128x128/apps"
+          cp -a AppDir/usr/. "$DEB_ROOT/opt/Schedule/"
+          ln -sf /opt/Schedule/bin/Schedule "$DEB_ROOT/usr/bin/Schedule"
+          cp packaging/schedule.desktop "$DEB_ROOT/usr/share/applications/"
+          cp packaging/schedule.png "$DEB_ROOT/usr/share/icons/hicolor/128x128/apps/"
+          INSTALLED_SIZE="$(du -sk "$DEB_ROOT/opt" | cut -f1)"
+          printf '%s\n' \
+            'Package: schedule' \
+            "Version: ${VERSION}-1" \
+            'Section: education' \
+            'Priority: optional' \
+            "Architecture: ${{ matrix.deb_arch }}" \
+            'Maintainer: Schedule Maintainers <noreply@example.com>' \
+            "Installed-Size: ${INSTALLED_SIZE}" \
+            'Depends: libc6 (>= 2.35), libstdc++6, libgl1, libxkbcommon0, libdbus-1-3' \
+            'Description: Cross-platform schedule app (Schedule)' \
+            ' 跨平台课表应用，离线可用，数据保存在用户目录。' \
+            > "$DEB_ROOT/DEBIAN/control"
+          dpkg-deb --build --root-owner-group "$DEB_ROOT" \
+            "dist/Schedule-${VERSION}-linux-${ARCH}.deb"
+
+          # 4) 校验和（先在 dist 之外生成，避免把正在写入的校验和文件自己也统计进去）
+          SUMS="$SCHEDULE_TMP/SHA256SUMS-linux-${ARCH}.txt"
+          ( cd dist && sha256sum $(find . -maxdepth 1 -type f ! -name 'SHA256SUMS*' -exec basename {} \; | sort) ) > "$SUMS"
+          cp "$SUMS" "dist/SHA256SUMS-linux-${ARCH}.txt"
+          ls -lh dist
+
+      - name: 检查 GPG secrets
+        id: gpg
+        shell: bash
+        env:
+          GPG_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
+          FORCE_SIGN: ${{ inputs.sign }}
+        run: |
+          set -euo pipefail
+          if [ -n "$GPG_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "检测到 LINUX_GPG_PRIVATE_KEY，将对产物生成 .asc 分离签名。"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=跳过 GPG 签名::未配置 secret LINUX_GPG_PRIVATE_KEY，本次仅提供 sha256 校验和。"
+            if [ "$FORCE_SIGN" = "true" ]; then
+              echo "::error title=缺少签名 secrets::inputs.sign=true 要求强制签名，但 LINUX_GPG_PRIVATE_KEY 未配置。"
+              exit 1
+            fi
+          fi
+
+      - name: GPG 分离签名（可选）
+        if: ${{ steps.gpg.outputs.ready == 'true' }}
+        shell: bash
+        env:
+          GPG_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          GNUPGHOME="$(mktemp -d "$SCHEDULE_TMP/gnupg.XXXXXX")"
+          chmod 700 "$GNUPGHOME"
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+          export GNUPGHOME
+          printf '%s' "$GPG_KEY" | gpg --batch --quiet --import
+          for f in dist/*; do
+            # 私钥口令通过环境变量传入，不打印、不出现在命令行历史里
+            gpg --batch --yes --armor --detach-sign \
+              --pinentry-mode loopback --passphrase "${GPG_PASSPHRASE:-}" "$f"
+          done
+          ls -1 dist
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: 清理临时文件与 GPG 密钥环
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          # 无论成功失败都清理导入的私钥与中间目录，避免污染缓存与日志
+          if [ -n "${GNUPGHOME:-}" ] && [ -d "${GNUPGHOME:-}" ]; then
+            gpgconf --kill all 2>/dev/null || true
+            rm -rf "$GNUPGHOME"
+          fi
+          rm -rf "$SCHEDULE_TMP"
+          echo "清理完成。"
+
+      - name: 构建摘要
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            echo "### Linux ${{ matrix.arch }} 构建结果"
+            echo ""
+            echo "- Qt 版本：${QT_VERSION}"
+            echo "- Qt 套件：${{ matrix.qt_arch }}"
+            echo "- 构建类型：Release（BUILD_TESTS=OFF / BUILD_SELFTEST=OFF）"
+            echo "- 产物 artifact：\`${{ matrix.artifact }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

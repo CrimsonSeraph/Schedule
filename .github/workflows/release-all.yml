@@ -1,0 +1,255 @@
+# =============================================================================
+# Schedule · 统一发布工作流（调用各平台构建 → 汇总产物 → 发布 GitHub Release）
+# -----------------------------------------------------------------------------
+# 触发方式：
+#   * workflow_dispatch —— 手动触发，可勾选要构建的平台、是否签名、是否发布 Release
+#   * push: tags v*     —— 打标签自动发布（等同于“全平台构建 + 发布”，iOS 保持默认关闭）
+#
+# 结构说明：
+#   * 每个平台 job 通过 jobs.<id>.uses 调用同仓库的可复用工作流（workflow_call），
+#     并用 secrets: inherit 把 secrets 透传下去；
+#   * 平台 job 的 if 只用 inputs.* 判断（job 级 if 不支持 matrix / secrets 上下文）；
+#   * 全部构建结束后，release job 下载所有 artifact 并按需创建 GitHub Release。
+#
+# 签名策略（各平台工作流内部一致）：
+#   sign=false（默认）→ 只要对应 secrets 齐全就签名，缺失则跳过并输出 warning；
+#   sign=true          → 强制签名与公证，缺少 secrets 直接失败。
+#
+# 所需 secrets（按平台可选，全部通过 secrets: inherit 透传）：
+#   Apple    ：APPLE_CERT_P12_BASE64 / APPLE_CERT_PASSWORD / APPLE_TEAM_ID /
+#              APPLE_API_KEY_ID / APPLE_API_ISSUER_ID / APPLE_API_KEY_BASE64 /
+#              APPLE_PROVISIONING_PROFILE_BASE64（iOS 用）
+#   Android  ：ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD /
+#              ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD
+#   Windows  ：WINDOWS_PFX_BASE64 / WINDOWS_PFX_PASSWORD
+#   Linux    ：LINUX_GPG_PRIVATE_KEY / LINUX_GPG_PASSPHRASE
+# =============================================================================
+name: release-all
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_linux:
+        description: '构建 Linux（x64）'
+        type: boolean
+        default: true
+      build_windows:
+        description: '构建 Windows（x64）'
+        type: boolean
+        default: true
+      build_macos:
+        description: '构建 macOS（arm64 + x64）'
+        type: boolean
+        default: true
+      build_ios:
+        description: '构建 iOS（arm64，分发门槛高，默认关闭）'
+        type: boolean
+        default: false
+      build_android:
+        description: '构建 Android（arm64-v8a）'
+        type: boolean
+        default: true
+      linux_arm64:
+        description: '额外构建 Linux arm64 与 Android armeabi-v7a'
+        type: boolean
+        default: false
+      sign:
+        description: '强制签名与公证（true：缺少对应 secrets 直接失败）'
+        type: boolean
+        default: false
+      publish_release:
+        description: '创建 GitHub Release 并上传产物'
+        type: boolean
+        default: false
+      release_tag:
+        description: 'Release 标签（如 v1.0.0）；留空且为 tag 触发时使用 tag 名'
+        type: string
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'v*'
+
+# 顶层保持只读，只有 release job 需要写权限
+permissions:
+  contents: read
+
+concurrency:
+  group: release-all-${{ github.ref }}
+  # 发布流程不自动取消，避免出现“部分平台已上传、Release 未创建”的中间状态
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 平台构建：全部通过可复用工作流完成
+  # ---------------------------------------------------------------------------
+  linux:
+    name: Linux
+    # tag 触发时默认构建；手动触发时按输入决定
+    if: ${{ github.event_name == 'push' || inputs.build_linux }}
+    uses: ./.github/workflows/build-linux.yml
+    with:
+      # 布尔输入加 `|| false`：tag 触发时 inputs 为空，避免向布尔入参传空值
+      build_arm64: ${{ inputs.linux_arm64 || false }}
+      sign: ${{ inputs.sign || false }}
+    secrets: inherit
+
+  windows:
+    name: Windows
+    if: ${{ github.event_name == 'push' || inputs.build_windows }}
+    uses: ./.github/workflows/build-windows.yml
+    with:
+      sign: ${{ inputs.sign || false }}
+      build_installer: true
+    secrets: inherit
+
+  macos:
+    name: macOS
+    if: ${{ github.event_name == 'push' || inputs.build_macos }}
+    uses: ./.github/workflows/build-macos.yml
+    with:
+      sign: ${{ inputs.sign || false }}
+      # 公证与签名联动：强制签名时同样强制公证
+      notarize: ${{ inputs.sign || false }}
+    secrets: inherit
+
+  ios:
+    name: iOS
+    # iOS 分发门槛高，仅手动勾选时构建（tag 触发也不会自动跑）
+    if: ${{ inputs.build_ios }}
+    uses: ./.github/workflows/build-ios.yml
+    with:
+      sign: ${{ inputs.sign || false }}
+      export_method: 'ad-hoc'
+    secrets: inherit
+
+  android:
+    name: Android
+    if: ${{ github.event_name == 'push' || inputs.build_android }}
+    uses: ./.github/workflows/build-android.yml
+    with:
+      build_armv7: ${{ inputs.linux_arm64 || false }}
+      sign: ${{ inputs.sign || false }}
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # 发布：下载全部 artifact，汇总校验和，按需创建 GitHub Release
+  # ---------------------------------------------------------------------------
+  release:
+    name: 汇总产物并发布 Release
+    needs:
+      - linux
+      - windows
+      - macos
+      - ios
+      - android
+    # always() 保证被跳过的平台不会卡住发布；任一平台失败/取消则不发布，避免半成品
+    if: >-
+      ${{ always()
+          && (github.event_name == 'push' || inputs.publish_release)
+          && !contains(needs.*.result, 'failure')
+          && !contains(needs.*.result, 'cancelled') }}
+
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # 创建 Release 与上传产物需要写权限
+      contents: write
+    steps:
+      - name: 下载全部构建产物
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          # 拉平目录结构，方便统一上传为 Release 资产
+          merge-multiple: true
+
+      - name: 列出产物
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$(ls -A dist 2>/dev/null)" ]; then
+            echo "::error title=没有可用产物::未下载到任何 artifact，请检查平台构建是否成功"
+            exit 1
+          fi
+          find dist -type f -exec ls -lh {} \; | awk '{print $5"\t"$9}' | sort -k2
+          echo "---- 汇总大小 ----"
+          du -sh dist
+
+      - name: 汇总 SHA256 校验和
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          # 各平台工作流已生成自己的 SHA256SUMS-*.txt，这里再产出一份全量清单
+          : > SHA256SUMS.txt
+          find . -maxdepth 1 -type f ! -name 'SHA256SUMS*' -exec basename {} \; | sort | while read -r f; do
+            sha256sum "$f" >> SHA256SUMS.txt
+          done
+          cat SHA256SUMS.txt
+
+      - name: 解析发布标签
+        id: tag
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.release_tag }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "push" ]; then
+            # tag 触发：直接用 tag 名（如 v1.0.0）
+            TAG="$REF_NAME"
+          else
+            TAG="$INPUT_TAG"
+          fi
+          if [ -z "$TAG" ]; then
+            echo "::error title=缺少 release_tag::手动触发时必须填写 release_tag（例如 v1.0.0）"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "将发布标签：$TAG"
+
+      - name: 创建 GitHub Release 并上传产物
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Schedule ${{ steps.tag.outputs.tag }}
+          body: |
+            Schedule 跨平台发布包（Qt 6.9.3 / C++20）。
+
+            - 桌面端：Linux（AppImage / deb / tar.gz）、Windows（zip / 安装包）、macOS（dmg / zip）
+            - 移动端：Android（APK）、iOS（.ipa 或未签名 .xcarchive）
+            - 每个产物目录内附 `SHA256SUMS*.txt`，根目录附 `SHA256SUMS.txt` 全量清单
+            - 发布包均由 CI 以 `-DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_SELFTEST=OFF` 构建
+
+            > 课表数据保存在用户本地目录，卸载/删除应用前请先使用应用内“导出”功能备份。
+          files: |
+            dist/**/*
+          generate_release_notes: true
+          draft: false
+          # 形如 v1.0.0-rc1 的预发布标签自动标记为 prerelease
+          prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
+          fail_on_unmatched_files: false
+
+      - name: 发布摘要
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            echo "### 统一发布结果"
+            echo ""
+            echo "- 触发方式：\`${{ github.event_name }}\`"
+            echo "- 发布标签：\`${{ steps.tag.outputs.tag }}\`"
+            echo "- 各平台结果："
+            echo "  - Linux：\`${{ needs.linux.result }}\`"
+            echo "  - Windows：\`${{ needs.windows.result }}\`"
+            echo "  - macOS：\`${{ needs.macos.result }}\`"
+            echo "  - iOS：\`${{ needs.ios.result }}\`"
+            echo "  - Android：\`${{ needs.android.result }}\`"
+            echo ""
+            echo "产物清单："
+            echo '```'
+            ( cd dist && find . -maxdepth 1 -type f -exec basename {} \; | sort ) || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
