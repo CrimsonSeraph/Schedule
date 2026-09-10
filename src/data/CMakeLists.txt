@@ -7,12 +7,26 @@ add_library(ScheduleData STATIC
 	src/ScheduleJson.cpp
 	src/SettingsKeys.cpp
 	src/SqliteScheduleRepository.cpp
+	src/import_export/CsvScheduleIo.cpp
+	src/import_export/ExportManager.cpp
+	src/import_export/IcsScheduleIo.cpp
+	src/import_export/ImportExportTypes.cpp
+	src/import_export/ImportManager.cpp
+	src/import_export/JsonScheduleIo.cpp
 	include/data/AppSettings.h
 	include/data/ImportSource.h
 	include/data/IScheduleRepository.h
 	include/data/ScheduleJson.h
 	include/data/SettingsKeys.h
 	include/data/SqliteScheduleRepository.h
+	include/data/import_export/CsvScheduleIo.h
+	include/data/import_export/ExportManager.h
+	include/data/import_export/IScheduleExporter.h
+	include/data/import_export/IScheduleImporter.h
+	include/data/import_export/IcsScheduleIo.h
+	include/data/import_export/ImportExportTypes.h
+	include/data/import_export/ImportManager.h
+	include/data/import_export/JsonScheduleIo.h
 )
 
 target_include_directories(ScheduleData

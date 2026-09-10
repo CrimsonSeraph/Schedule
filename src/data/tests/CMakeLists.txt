@@ -4,6 +4,7 @@ find_package(Qt6 6.9.3 REQUIRED COMPONENTS Test)
 include(${CMAKE_SOURCE_DIR}/cmake/ScheduleQtDeploy.cmake)
 
 set(SCHEDULE_DATA_TESTS
+	tst_import_export
 	tst_schedule_json
 	tst_sqlite_repository
 )

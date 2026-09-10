@@ -49,7 +49,7 @@ app  ──►  ui  ──►  engine  ──►  data  ──►  core
 - 表：`semesters`、`time_slots`、`courses`、`course_sessions`、`settings`、`import_sources`。
 - 支持数据库迁移、备份、恢复，以及 JSON 序列化 / 反序列化。
 
-### 阶段 3：课表获取、导入与导出子系统
+### 阶段 3：课表获取、导入与导出子系统 —— 已完成
 
 - 接口：`IScheduleImporter`、`IScheduleExporter`、`ImportManager`、`ExportManager`。
 - 导入：JSON / CSV / ICS；导出：JSON / CSV / ICS。

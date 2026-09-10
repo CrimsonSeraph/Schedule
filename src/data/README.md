@@ -5,7 +5,7 @@
 `data` 层是课表应用的**基础设施层**，负责把 `core` 层的纯业务模型落到真实介质上：
 
 - **持久化**：SQLite 数据库（建表、迁移、备份、恢复）与 JSON 序列化 / 反序列化；
-- **导入导出**（阶段 3 起）：JSON / CSV / ICS 三种格式的解析与生成，落盘到用户指定目录；
+- **导入导出**：JSON / CSV / ICS 三种格式的解析与生成，落盘到用户指定目录；
 - **设置存储**：默认导入 / 导出目录、提醒开关、主题等键值配置；
 - **可选教务适配器**（阶段 9，按需）：仅本地主动触发的课表抓取。
 
@@ -41,17 +41,29 @@
 src/data/
 ├── CMakeLists.txt
 ├── README.md
+├── import_export/
+│   └── README.md                     # 导入导出子系统详细说明
 ├── include/data/
 │   ├── AppSettings.h                 # 设置门面（类型安全访问器）
 │   ├── IScheduleRepository.h         # 仓库接口
 │   ├── ImportSource.h                # 导入来源记录
 │   ├── ScheduleJson.h                # 领域模型 <-> JSON 映射（唯一权威）
 │   ├── SettingsKeys.h                # 设置键名
-│   └── SqliteScheduleRepository.h    # SQLite 实现
+│   ├── SqliteScheduleRepository.h    # SQLite 实现
+│   └── import_export/
+│       ├── ImportExportTypes.h       # 格式枚举 / 导入策略 / 预览与结果结构
+│       ├── IScheduleImporter.h
+│       ├── IScheduleExporter.h
+│       ├── JsonScheduleIo.h
+│       ├── CsvScheduleIo.h
+│       ├── IcsScheduleIo.h
+│       ├── ImportManager.h
+│       └── ExportManager.h
 ├── src/                              # 与 include/ 同构的实现文件
 └── tests/                            # QTest 单元测试（BUILD_TESTS=ON 时构建）
     ├── CMakeLists.txt
     ├── README.md
+    ├── tst_import_export.cpp
     ├── tst_schedule_json.cpp
     └── tst_sqlite_repository.cpp
 ```
@@ -66,6 +78,10 @@ src/data/
 | `AppSettings` | `data/AppSettings.h` | 设置门面：默认 / 最近目录、提醒开关与分钟数、主题、当前学期 id；`fallback_directory()` / `ensure_directory()` |
 | `SettingsKeys` | `data/SettingsKeys.h` | 设置键名常量（`io/default_export_dir` 等），避免硬编码漂移 |
 | `ImportSource` | `data/ImportSource.h` | 导入来源留痕：文件路径、格式、时间、课程数、备注（**纯本地**） |
+| `IScheduleImporter` / `IScheduleExporter` | `data/import_export/` | 导入 / 导出契约，见 [import_export/README.md](import_export/README.md) |
+| `ImportManager` | `data/import_export/ImportManager.h` | 导入编排：格式识别 → 解析 → 预览 → 冲突检测 → 合并 / 覆盖 |
+| `ExportManager` | `data/import_export/ExportManager.h` | 导出编排：文件名规则 → 建目录 → 原子写入 → 回传实际路径 |
+| `ImportPreview` / `ImportResult` / `ExportResult` | `data/import_export/ImportExportTypes.h` | 预览与结果结构（含**新引入的冲突**、重复统计、实际导出路径） |
 
 ### 数据库表结构（`user_version = 1`）
 
@@ -156,9 +172,18 @@ ctest --preset windows-msvc -C Debug
 
 | 阶段 | 内容 |
 | ---- | ---- |
-| 阶段 3 | 新增 `import_export/` 子目录：`IScheduleImporter` / `IScheduleExporter` / `ImportManager` / `ExportManager` 与 JSON / CSV / ICS 实现 |
-| 阶段 7 | 补充数据库迁移与导入导出样本测试 |
+| 阶段 3 | ✅ 已完成：`import_export/` 子目录（JSON / CSV / ICS 导入导出、预览、冲突检测、合并策略、指定目录） |
+| 阶段 7 | 补充数据库迁移与导入导出样本文件测试 |
 | 阶段 9 | 可选教务适配器：接口在 `core`，实现在本层，注册在 `app` |
+
+## 导入导出（摘要）
+
+详见 [import_export/README.md](import_export/README.md)。核心约定：
+
+- 默认目录 `QStandardPaths::DocumentsLocation + "/Schedule"`，可在设置中修改；
+- 导出文件名 `Schedule_<学期>_<yyyyMMdd_HHmmss>.<ext>`，导出后必须提示**实际路径**；
+- 导入流程为“预览 → 冲突检测 → 合并 / 去重 / 覆盖”，预览阶段不修改任何数据；
+- 数据层只接收路径或 `QUrl`，文件选择对话框在 UI 层。
 
 ## 相关文档
 
