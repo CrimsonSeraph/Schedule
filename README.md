@@ -2,38 +2,25 @@
 
 基于 **Qt 6.9 / C++20 / CMake** 的跨平台（Windows · Linux · macOS · Android · iOS）课表应用。
 
-> 仓库工程名（CMake target 前缀）为 `MyQtApp`，应用展示名为 Schedule。四层模块已全部启用并可本地构建运行。
-
 ## 架构总览
 
 项目采用自底向上的四层架构（**core → engine → ui → app**），层间只能依赖下层：
 
-```text
-┌───────────────────────────────────────────┐
-│  app   可执行入口 main.cpp，平台分流加载 QML  │
-├───────────────────────────────────────────┤
-│  ui    QML 模块 MyUI（URI: MyApp），界面与资源 │
-├───────────────────────────────────────────┤
-│  engine C++/QML 桥接层（AppBridge），Qt6::Qml │
-├───────────────────────────────────────────┤
-│  core   纯 C++ 业务逻辑（DataEngine），无 GUI  │
-└───────────────────────────────────────────┘
-```
-
-| 层     | 目录         | 产物                 | 依赖                  |
-| ------ | ------------ | -------------------- | --------------------- |
-| core   | `src/core`   | `MyCore`（静态库）   | Qt6::Core             |
-| engine | `src/engine` | `MyEngine`（静态库） | MyCore, Qt6::Core/Qml |
-| ui     | `src/ui`     | `MyUI`（QML 模块）   | MyEngine              |
-| app    | `src/app`    | `MyApp`（可执行）    | MyUI, MyEngine        |
+| 层     | 目录         | 产物                       | 依赖                        |
+| ------ | ------------ | -------------------------- | --------------------------- |
+| core   | `src/core`   | `ScheduleCore`（静态库）   | Qt6::Core                   |
+| engine | `src/engine` | `ScheduleEngine`（静态库） | ScheduleCore, Qt6::Core/Qml |
+| ui     | `src/ui`     | `ScheduleUI`（QML 模块）   | ScheduleEngine              |
+| app    | `src/app`    | `Schedule`（可执行）       | ScheduleUI, ScheduleEngine  |
 
 ## 目录结构
 
 ```text
 Schedule/
 ├── CMakeLists.txt          # 根构建脚本
-├── CMakePresets.json       # CMake 预设（windows-msvc / android）
-├── cmake/                  # 工具链 / CMake 辅助文件（android 工具链占位）
+├── CMakePresets.json       # 共享预设（基础预设：Qt / windows-desktop-msvc / android-arm64-v8a）
+├── CMakeUserPresets.json   # 本机预设（windows-msvc / android，含 Qt 套件路径；已被 .gitignore 忽略）
+├── cmake/                  # CMake 辅助文件目录（当前仅占位 .gitkeep）
 ├── src/
 │   ├── core/               # 核心层
 │   ├── engine/             # 引擎/桥接层
@@ -47,25 +34,30 @@ Schedule/
 - CMake ≥ 3.20
 - 支持 C++20 的编译器（MSVC / Visual Studio 2026 / GCC 11+ / Clang 14+）
 - Qt 6.9.3（含 `Core`、`Qml` 组件；构建 UI 还需 `Quick`、`QuickControls2`）
-- Android 交叉编译：NDK + Ninja，并需在 `cmake/` 提供工具链文件（见下）
+- Android 交叉编译：NDK + Ninja；工具链文件直接取自 `$env:ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake`，无需在 `cmake/` 另行提供
 
 ## 构建命令（CMakePresets）
 
 ```bash
 # Windows 桌面（MSVC, Visual Studio 2026）
-$env:QT_ROOT = "D:/Qt/6.9.3/msvc2022_64"      # 按实际安装路径设置
+$env:QTDIR = "D:/Qt/6.9.3/msvc2022_64"       # 按实际安装路径设置，基础预设以此填充 CMAKE_PREFIX_PATH
 cmake --preset windows-msvc
 cmake --build --preset windows-msvc-debug
 
-# Android（占位预设：需先补全 cmake/android.toolchain.cmake）
-# cmake --preset android
-# cmake --build build/android
+# Android（arm64-v8a, Ninja）
+$env:QTDIR = "D:/Qt/6.9.3/android_arm64_v8a"
+$env:ANDROID_NDK_HOME = "C:/Users/<用户>/AppData/Local/Android/Sdk/ndk/30.0.16138531"
+$env:ANDROID_SDK_ROOT = "C:/Users/<用户>/AppData/Local/Android/Sdk"
+cmake --preset android
+cmake --build build/android
 ```
+
+> `windows-msvc` / `android` 属于**本机预设**，定义在已被 `.gitignore` 忽略的 `CMakeUserPresets.json` 中；新克隆的仓库需自行创建该文件，继承 `CMakePresets.json` 里的基础预设并填入本机 Qt / NDK 路径。
 
 ### 构建选项
 
 - `BUILD_TESTS`：构建单元测试（默认 `OFF`）。
-- `BUILD_SELFTEST`：桌面自动化 UI 自检（默认 `OFF`）；启用后运行 `MyApp.exe --selftest` 会自动点击“测试”按钮并输出 `Test button clicked!`，用于验证 C++ 侧显式建立的按钮信号连接链路。
+- `BUILD_SELFTEST`：桌面自动化 UI 自检（默认 `OFF`）；启用后运行 `Schedule.exe --selftest` 会自动点击“测试”按钮并输出 `Test button clicked!`，用于验证 C++ 侧显式建立的按钮信号连接链路。
 
 ### 格式与规范
 
@@ -86,14 +78,14 @@ clang-format -i src/core/src/*.cpp src/core/include/**/*.h \
 
 ```bash
 # 1) 配置（首次）
-$env:QT_ROOT = "D:/Qt/6.9.3/msvc2022_64"   # Windows PowerShell；Linux/macOS 用 export
+$env:QTDIR = "D:/Qt/6.9.3/msvc2022_64"   # Windows PowerShell；Linux/macOS 用 export
 cmake --preset windows-msvc
 
 # 2) 构建
 cmake --build --preset windows-msvc-debug
 
 # 3) 运行（桌面：加载 MainDesktop.qml）
-./build/windows-msvc/Debug/MyApp.exe
+./build/windows-msvc/Debug/Schedule.exe
 ```
 
 自动化自检（可选，需以 `-DBUILD_SELFTEST=ON` 配置）：
@@ -101,14 +93,14 @@ cmake --build --preset windows-msvc-debug
 ```bash
 cmake --preset windows-msvc -DBUILD_SELFTEST=ON
 cmake --build --preset windows-msvc-debug
-./build/windows-msvc/Debug/MyApp.exe --selftest   # 输出 Test button clicked! 后退出
+./build/windows-msvc/Debug/Schedule.exe --selftest   # 输出 Test button clicked! 后退出
 ```
 
 移动端（Android/iOS）在源码层通过 `Q_OS_ANDROID/Q_OS_IOS` 自动加载 `MainMobile.qml`；本地打包部署需另行配置 Qt for Android/iOS 工具链，本仓库暂不包含 CI 配置。
 
 ## 模块文档
 
-- [src/core/README.md](src/core/README.md) — 核心层：`MyCore` + `DataEngine`，纯 C++ 无 GUI
-- [src/engine/README.md](src/engine/README.md) — 引擎层：`MyEngine` + `AppBridge`，C++/QML 桥接
-- [src/ui/README.md](src/ui/README.md) — UI 层：`MyUI` QML 模块（MyApp），桌面/移动布局
-- [src/app/README.md](src/app/README.md) — 应用入口：`MyApp` 可执行程序与启动流程
+- [src/core/README.md](src/core/README.md) — 核心层：`ScheduleCore` + `DataEngine`，纯 C++ 无 GUI
+- [src/engine/README.md](src/engine/README.md) — 引擎层：`ScheduleEngine` + `AppBridge`，C++/QML 桥接
+- [src/ui/README.md](src/ui/README.md) — UI 层：`ScheduleUI` QML 模块（URI: `Schedule`），桌面/移动布局
+- [src/app/README.md](src/app/README.md) — 应用入口：`Schedule` 可执行程序与启动流程

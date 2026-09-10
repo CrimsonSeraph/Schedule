@@ -6,13 +6,13 @@
 
 ## 依赖
 
-- `MyEngine`（桥接层，提供 `AppBridge`）
+- `ScheduleEngine`（桥接层，提供 `AppBridge`）
 - Qt 6.9.3（组件：`Quick`、`Qml`；界面使用 Quick Controls 2 / Layouts）
 
 ## 产物
 
-- `MyUI`（静态库 + QML 模块，URI: `MyApp`，版本 1.0）
-- QML 文件以资源方式内嵌，运行时路径前缀为 `qrc:/qt/qml/MyApp/`
+- `ScheduleUI`（静态库 + QML 模块，URI: `Schedule`，版本 1.0）
+- QML 文件以资源方式内嵌，运行时路径前缀为 `qrc:/qt/qml/Schedule/`
 
 ## 组件结构
 
@@ -37,8 +37,8 @@ src/ui/
 由 app 入口根据平台加载对应 QML：
 
 ```cpp
-// 桌面：qrc:/qt/qml/MyApp/qml/MainDesktop.qml
-// 移动：qrc:/qt/qml/MyApp/qml/MainMobile.qml
+// 桌面：qrc:/qt/qml/Schedule/qml/MainDesktop.qml
+// 移动：qrc:/qt/qml/Schedule/qml/MainMobile.qml
 ```
 
 ## 构建

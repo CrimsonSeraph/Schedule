@@ -6,12 +6,12 @@
 
 ## 依赖
 
-- `MyCore`（核心层静态库）
+- `ScheduleCore`（核心层静态库）
 - Qt 6.9.3（组件：`Core`、`Qml`，需要 `AUTOMOC` 生成 Q_OBJECT 元数据）
 
 ## 产物
 
-- `MyEngine`（静态库，PUBLIC 链接 MyCore / Qt6::Core / Qt6::Qml）
+- `ScheduleEngine`（静态库，PUBLIC 链接 ScheduleCore / Qt6::Core / Qt6::Qml）
 - 公开头文件目录：`include/`（引用方式：`#include "engine/AppBridge.h"`）
 
 ## 当前内容
