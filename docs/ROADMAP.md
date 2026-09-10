@@ -62,7 +62,7 @@ app  ──►  ui  ──►  engine  ──►  data  ──►  core
 - 暴露课程列表模型、当前周、导入进度 / 结果、导出结果、错误信息。
 - C++ 侧显式建立信号连接，QML 不写隐式 `onClicked` / `Connections`。
 
-### 阶段 5：QML 界面
+### 阶段 5：QML 界面 —— 已完成
 
 - 页面：`WeekView`、`DayView`、`CourseCard`、`CourseEditor`、`ImportWizard`、
   `ExportDialog`、`SettingsPage`、`SemesterPage`。

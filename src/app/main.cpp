@@ -4,6 +4,8 @@
 #include "data/AppSettings.h"
 #include "data/SqliteScheduleRepository.h"
 
+#include "UiConnector.h"
+
 #include <QDebug>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -127,6 +129,11 @@ int main(int argc, char* argv[]) {
             qWarning() << "[app] failed to connect testButton.clicked to AppBridge::test_button_clicked";
         }
     }
+
+    // 2) 其余全部界面交互（导航、周次、课程编辑、导入导出向导、设置）统一由
+    //    UiConnector 在 C++ 侧按 objectName 显式连接；QML 中不含任何信号处理器。
+    Schedule::UiConnector ui_connector(engine.rootObjects().value(0), &schedule_bridge, &app_bridge, &app);
+    ui_connector.connect_all();
 
     // 2) AppBridge::test_signal(message) -> 应用日志（原 QML Connections 消费逻辑迁移到 C++）
     QObject::connect(

@@ -1,6 +1,8 @@
 # src/app - 应用入口：可执行程序 Schedule
 add_executable(Schedule
 	main.cpp
+	UiConnector.cpp
+	UiConnector.h
 )
 
 target_link_libraries(Schedule

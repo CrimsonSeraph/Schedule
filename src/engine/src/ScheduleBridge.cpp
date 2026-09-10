@@ -71,8 +71,12 @@ namespace Schedule {
         , m_settings(settings) {
         m_course_model = new CourseListModel(this);
         m_session_model = new SessionListModel(this);
+        m_week_model = new SessionListModel(this);
         // 排布模型需要数据源；注入后每次 set_week() 都会向服务重新拉取
         m_session_model->set_service(m_service);
+        m_week_model->set_service(m_service);
+        // 周视图始终展示整周，因此固定不过滤星期
+        m_week_model->set_day_filter(0);
 
         m_import_export = new ImportExportBridge(m_service, m_repository, m_settings, this);
 
@@ -131,6 +135,9 @@ namespace Schedule {
             m_session_model->set_week(m_selected_week);
             m_session_model->set_day_filter(m_selected_day);
         }
+        if (m_week_model) {
+            m_week_model->set_week(m_selected_week);
+        }
         emit selectedWeekChanged();
         emit selectedDayChanged();
         return loaded;
@@ -171,6 +178,10 @@ namespace Schedule {
 
     QAbstractItemModel* ScheduleBridge::session_model() const {
         return m_session_model;
+    }
+
+    QAbstractItemModel* ScheduleBridge::week_model() const {
+        return m_week_model;
     }
 
     ImportExportBridge* ScheduleBridge::import_export() const {
@@ -348,6 +359,14 @@ namespace Schedule {
         return WeekCalculator::day_name(day_of_week);
     }
 
+    QString ScheduleBridge::week_date_text(int week, int day_of_week) const {
+        if (!m_service || !m_service->has_semester()) {
+            return QString();
+        }
+        const QDate date = WeekCalculator::date_of(m_service->semester(), week, day_of_week);
+        return date.isValid() ? date.toString(QStringLiteral("MM-dd")) : QString();
+    }
+
     QString ScheduleBridge::format_time(int hour, int minute) const {
         return WeekCalculator::format_time(QTime(hour, minute));
     }
@@ -374,6 +393,9 @@ namespace Schedule {
         }
         if (m_session_model) {
             m_session_model->refresh();
+        }
+        if (m_week_model) {
+            m_week_model->refresh();
         }
     }
 
@@ -417,6 +439,9 @@ namespace Schedule {
         m_selected_week = current_week() > 0 ? current_week() : 1;
         if (m_session_model) {
             m_session_model->set_week(m_selected_week);
+        }
+        if (m_week_model) {
+            m_week_model->set_week(m_selected_week);
         }
         emit selectedWeekChanged();
         report_info(QStringLiteral("已从数据库重新加载"));
@@ -463,6 +488,9 @@ namespace Schedule {
         m_selected_week = 1;
         if (m_session_model) {
             m_session_model->set_week(m_selected_week);
+        }
+        if (m_week_model) {
+            m_week_model->set_week(m_selected_week);
         }
         emit selectedWeekChanged();
         report_info(QStringLiteral("已创建学期“%1”").arg(semester.name));
@@ -561,6 +589,12 @@ namespace Schedule {
         if (m_session_model) {
             m_session_model->set_week(m_selected_week);
         }
+        if (m_week_model) {
+            m_week_model->set_week(m_selected_week);
+        }
+        if (m_week_model) {
+            m_week_model->set_week(m_selected_week);
+        }
         emit selectedWeekChanged();
     }
 
@@ -593,10 +627,10 @@ namespace Schedule {
         emit selectedDayChanged();
     }
 
-    void ScheduleBridge::save_course(const QVariantMap& data) {
+    bool ScheduleBridge::save_course(const QVariantMap& data) {
         if (!m_service->has_semester()) {
             report_error(QStringLiteral("尚未设置学期，无法保存课程"));
-            return;
+            return false;
         }
 
         Course course;
@@ -615,7 +649,7 @@ namespace Schedule {
 
         if (course.name.isEmpty()) {
             report_error(QStringLiteral("课程名称不能为空"));
-            return;
+            return false;
         }
 
         const QVariantList sessions = data.value(QStringLiteral("sessions")).toList();
@@ -625,14 +659,14 @@ namespace Schedule {
             QString error;
             if (!session_from_map(entry.toMap(), semester, &error, &session)) {
                 report_error(QStringLiteral("课程“%1”的上课时间不合法：%2").arg(course.name, error));
-                return;
+                return false;
             }
             course.sessions.append(session);
         }
 
         if (course.sessions.isEmpty()) {
             report_error(QStringLiteral("请至少添加一个上课时间段"));
-            return;
+            return false;
         }
 
         const bool is_update = !course.id.isEmpty() && m_service->index_of_course(course.id) >= 0;
@@ -643,12 +677,13 @@ namespace Schedule {
             if (!error.isEmpty()) {
                 report_error(error);
             }
-            return;
+            return false;
         }
 
         save_to_repository();
         report_info(is_update ? QStringLiteral("课程“%1”已更新").arg(course.name)
                               : QStringLiteral("课程“%1”已添加").arg(course.name));
+        return true;
     }
 
     void ScheduleBridge::remove_course(const QString& course_id) {

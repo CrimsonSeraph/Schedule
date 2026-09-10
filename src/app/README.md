@@ -55,14 +55,46 @@ src/app/
     - `Q_OS_ANDROID` / `Q_OS_IOS` → `qrc:/qt/qml/Schedule/qml/MainMobile.qml`
     - 其他平台（Windows / Linux / macOS）→ `qrc:/qt/qml/Schedule/qml/MainDesktop.qml`
 7. 加载成功后在 C++ 侧显式建立信号连接（QML 不隐式连接）：
-    - “测试”按钮 `clicked` → `AppBridge::test_button_clicked()`；
+    - `UiConnector` 统一连接**全部界面交互**（导航、周次、课程编辑、导入导出向导、设置页），
+      以及动态生成的课卡热区 `sessionCardClick`；
+    - 设置页 `testButton` `clicked` → `AppBridge::test_button_clicked()`；
     - `AppBridge::test_signal(message)` → 应用日志输出；
     - `ScheduleBridge::errorOccurred` / `infoMessage` → 应用日志；
     - `ImportExportBridge::exportFinished` / `importFinished` → 应用日志
       （导出日志包含**实际写入路径**，便于排查“文件写到哪里了”）；
 8. 加载失败（rootObjects 为空）返回 `-1`，否则进入事件循环。
 
-> 桥接对象必须声明在 `QQmlApplicationEngine` **之前**，保证引擎先析构。
+> 桥接对象与 `UiConnector` 必须声明在 `QQmlApplicationEngine` **之前**，保证引擎先析构。
+
+## QML ↔ C++ 连接（`UiConnector`）
+
+`UiConnector` 是**唯一**建立 QML 交互连接的地方。之所以不在 QML 中写 `onClicked`，
+是因为项目规范要求“信号连接统一在 C++ 侧显式建立”。实现要点：
+
+- 每个交互控件通过 `objectName` 暴露；`UiConnector::find()` 负责定位。
+- QML 控件的信号在公开 C++ 头文件中不可见，`QObject::connect(sender, SIGNAL(...), context, lambda)`
+  这种重载并不存在，因此采用：
+
+    ```cpp
+    m_handlers.insert(object, handler);                       // 控件 → 处理函数
+    QObject::connect(object, "2clicked()", this, SLOT(dispatch()));  // 统一分发槽
+    ```
+
+  `dispatch()` 用 `sender()` 查表执行对应处理函数，连接仍然全部发生在 C++ 侧。
+- 动态生成的课卡（`Repeater`）在模型 `modelReset`、周次 / 星期变化后**延迟一拍**重新扫描，
+  并用 `destroyed` 信号清理映射，避免悬空指针。
+- 启动日志会输出已建立的连接数量，便于确认界面契约是否完整。
+
+## 目录结构（补充）
+
+```text
+src/app/
+├── CMakeLists.txt
+├── README.md
+├── UiConnector.h    # QML ↔ C++ 连接集中管理
+├── UiConnector.cpp
+└── main.cpp
+```
 
 ## 构建与测试方式
 

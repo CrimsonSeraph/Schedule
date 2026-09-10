@@ -1,5 +1,6 @@
 # src/ui - UI 层：QML 模块 ScheduleUI（URI: Schedule）
-find_package(Qt6 6.9.3 REQUIRED COMPONENTS Quick Qml)
+# QuickDialogs2 提供 FileDialog / FolderDialog（文件选择属于 UI 层职责）
+find_package(Qt6 6.9.3 REQUIRED COMPONENTS Quick Qml QuickDialogs2)
 
 # 采用 /qt/qml 作为 QML 模块默认资源前缀（qrc:/qt/qml/Schedule/...）
 qt_policy(SET QTP0001 NEW)
@@ -29,6 +30,14 @@ qt6_add_qml_module(
 	QML_FILES
 	qml/MainDesktop.qml
 	qml/MainMobile.qml
+	qml/WeekView.qml
+	qml/DayView.qml
+	qml/CourseCard.qml
+	qml/CourseEditor.qml
+	qml/ImportWizard.qml
+	qml/ExportDialog.qml
+	qml/SettingsPage.qml
+	qml/SemesterPage.qml
 	RESOURCES
 	resources/assets.qrc
 )
@@ -38,4 +47,5 @@ target_link_libraries(ScheduleUI
 		ScheduleEngine
 		Qt6::Quick
 		Qt6::Qml
+		Qt6::QuickDialogs2
 )

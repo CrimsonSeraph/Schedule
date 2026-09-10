@@ -39,6 +39,9 @@ namespace Schedule {
         /** 当前周的排布模型（可用 `selectedDay` 过滤为日视图）。 */
         Q_PROPERTY(QAbstractItemModel* sessionModel READ session_model CONSTANT)
 
+        /** 整周排布模型（**不**受 `selectedDay` 影响，供周视图使用）。 */
+        Q_PROPERTY(QAbstractItemModel* weekModel READ week_model CONSTANT)
+
         /** 导入导出桥接对象。 */
         Q_PROPERTY(ImportExportBridge* importExport READ import_export CONSTANT)
 
@@ -134,6 +137,7 @@ namespace Schedule {
 
         QAbstractItemModel* course_model() const;
         QAbstractItemModel* session_model() const;
+        QAbstractItemModel* week_model() const;
         ImportExportBridge* import_export() const;
         bool has_semester() const;
         QString semester_name() const;
@@ -160,6 +164,9 @@ namespace Schedule {
 
         /** @return 指定星期的中文名；越界返回空串。 */
         Q_INVOKABLE QString day_name(int day_of_week) const;
+
+        /** @return 第 week 周星期 day_of_week 对应的日期文本（`MM-dd`）；越界返回空串。 */
+        Q_INVOKABLE QString week_date_text(int week, int day_of_week) const;
 
         /** @return 指定小时 + 分钟的 `HH:mm` 文本。 */
         Q_INVOKABLE QString format_time(int hour, int minute) const;
@@ -222,8 +229,9 @@ namespace Schedule {
          *             `color`、`credits`、`notes`，以及 `sessions`（时间段 map 列表，
          *             每项含 `sessionId`、`dayOfWeek`、`startSlot`、`slotCount`、`weeks`、
          *             `location`、`teacher`）。
+         * @return 是否保存成功；失败时 `errorOccurred` 已携带中文原因
          */
-        void save_course(const QVariantMap& data);
+        bool save_course(const QVariantMap& data);
 
         /** 删除课程。 */
         void remove_course(const QString& course_id);
@@ -301,6 +309,9 @@ namespace Schedule {
 
         /** 当前周排布模型（子对象）。 */
         SessionListModel* m_session_model = nullptr;
+
+        /** 整周排布模型（子对象）。 */
+        SessionListModel* m_week_model = nullptr;
 
         /** 导入导出桥接（子对象）。 */
         ImportExportBridge* m_import_export = nullptr;
