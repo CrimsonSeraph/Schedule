@@ -1,4 +1,5 @@
 #include "engine/AppBridge.h"
+#include "engine/NotificationService.h"
 #include "engine/ScheduleBridge.h"
 
 #include "data/AppSettings.h"
@@ -6,8 +7,17 @@
 
 #include "UiConnector.h"
 
-#include <QDebug>
+#if Schedule_HAS_TRAY_NOTIFICATIONS
+#include "TrayNotificationBackend.h"
+
+// 系统托盘图标（QSystemTrayIcon）依赖 Qt Widgets，必须使用 QApplication；
+// 移动端没有托盘，继续使用更轻量的 QGuiApplication。
+#include <QApplication>
+#else
 #include <QGuiApplication>
+#endif
+
+#include <QDebug>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QUrl>
@@ -59,10 +69,15 @@ namespace {
 #endif
 
 int main(int argc, char* argv[]) {
+#if Schedule_HAS_TRAY_NOTIFICATIONS
+    QApplication app(argc, argv);
+#else
     QGuiApplication app(argc, argv);
-    app.setOrganizationName(QStringLiteral("Schedule"));
-    app.setApplicationName(QStringLiteral("Schedule"));
-    app.setApplicationVersion(QStringLiteral("1.0.0"));
+#endif
+    QGuiApplication& gui_app = app;
+    gui_app.setOrganizationName(QStringLiteral("Schedule"));
+    gui_app.setApplicationName(QStringLiteral("Schedule"));
+    gui_app.setApplicationVersion(QStringLiteral("1.0.0"));
 
     // ---------------------------------------------------------------- 数据层组装
     // 数据库位于 AppDataLocation/schedule.db；若无法打开（只读介质、驱动缺失等），
@@ -86,9 +101,23 @@ int main(int argc, char* argv[]) {
     Schedule::ScheduleBridge schedule_bridge(&schedule_service, repository.get(), &app_settings);
     schedule_bridge.initialize();
 
+    // ---------------------------------------------------------------- 本地提醒
+    // 提醒服务只负责“何时提醒”，系统通知由后端投递：
+    //  - 桌面：TrayNotificationBackend（系统托盘气泡，需 Qt Widgets，故放在 app 层组装）
+    //  - Android：AndroidNotificationBackend（engine 层，QJniObject 调用 NotificationManager）
+    //  - 其它平台：自动回退为应用内横幅
+    Schedule::NotificationService notification_service(&schedule_service, &app_settings);
+#if Schedule_HAS_TRAY_NOTIFICATIONS
+    Schedule::TrayNotificationBackend tray_notification_backend;
+    notification_service.set_backend(&tray_notification_backend);
+    notification_service.request_permission();
+#endif
+    notification_service.start();
+
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("bridge"), &app_bridge);
     engine.rootContext()->setContextProperty(QStringLiteral("schedule"), &schedule_bridge);
+    engine.rootContext()->setContextProperty(QStringLiteral("reminders"), &notification_service);
 
     // 平台分流：移动端加载手机布局，其余平台加载桌面布局
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
@@ -132,14 +161,15 @@ int main(int argc, char* argv[]) {
 
     // 2) 其余全部界面交互（导航、周次、课程编辑、导入导出向导、设置）统一由
     //    UiConnector 在 C++ 侧按 objectName 显式连接；QML 中不含任何信号处理器。
-    Schedule::UiConnector ui_connector(engine.rootObjects().value(0), &schedule_bridge, &app_bridge, &app);
+    Schedule::UiConnector ui_connector(
+        engine.rootObjects().value(0), &schedule_bridge, &app_bridge, &notification_service, &app);
     ui_connector.connect_all();
 
     // 2) AppBridge::test_signal(message) -> 应用日志（原 QML Connections 消费逻辑迁移到 C++）
     QObject::connect(
         &app_bridge,
         &Schedule::AppBridge::test_signal,
-        &app,
+        &gui_app,
         [](const QString& message) {
             qDebug() << "[app] test_signal received:" << message;
         });
@@ -149,14 +179,14 @@ int main(int argc, char* argv[]) {
     QObject::connect(
         &schedule_bridge,
         &Schedule::ScheduleBridge::errorOccurred,
-        &app,
+        &gui_app,
         [](const QString& message) {
             qWarning() << "[app] schedule error:" << message;
         });
     QObject::connect(
         &schedule_bridge,
         &Schedule::ScheduleBridge::infoMessage,
-        &app,
+        &gui_app,
         [](const QString& message) {
             qDebug() << "[app] schedule info:" << message;
         });
@@ -165,7 +195,7 @@ int main(int argc, char* argv[]) {
     QObject::connect(
         schedule_bridge.import_export(),
         &Schedule::ImportExportBridge::exportFinished,
-        &app,
+        &gui_app,
         [](bool success, const QString& summary, const QString& file_path) {
             if (success) {
                 qInfo() << "[app] export finished:" << summary << "->" << file_path;
@@ -177,7 +207,7 @@ int main(int argc, char* argv[]) {
     QObject::connect(
         schedule_bridge.import_export(),
         &Schedule::ImportExportBridge::importFinished,
-        &app,
+        &gui_app,
         [](bool success, const QString& summary) {
             if (success) {
                 qInfo() << "[app] import finished:" << summary;

@@ -187,6 +187,50 @@ ApplicationWindow {
         }
     }
 
+
+    // 应用内提醒横幅：C++ 侧（UiConnector）在收到 notificationRequested 后写入
+    // bannerTitle / bannerMessage，并在若干秒后清空。系统通知不可用时它是兜底展示。
+    Rectangle {
+        id: notificationBanner
+
+        objectName: "notificationBanner"
+        property string bannerTitle: ""
+        property string bannerMessage: ""
+
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 20
+        width: Math.min(parent.width - 48, 460)
+        height: notificationBanner.bannerTitle.length > 0 ? 76 : 0
+        visible: height > 0
+        radius: 10
+        color: "#1F2A44"
+        opacity: 0.97
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 4
+
+            Text {
+                width: parent.width
+                text: notificationBanner.bannerTitle
+                color: "white"
+                font.bold: true
+                font.pixelSize: 14
+                elide: Text.ElideRight
+            }
+
+            Text {
+                width: parent.width
+                text: notificationBanner.bannerMessage
+                color: "#C9D6EA"
+                font.pixelSize: 12
+                elide: Text.ElideRight
+            }
+        }
+    }
+
     CourseEditor {
         id: courseEditor
     }

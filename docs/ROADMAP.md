@@ -69,7 +69,7 @@ app  ──►  ui  ──►  engine  ──►  data  ──►  core
 - 布局：`MainDesktop.qml` / `MainMobile.qml`。
 - 关键控件添加 `objectName`，供 C++ 侧连接与 UI 自检定位。
 
-### 阶段 6：本地提醒与通知
+### 阶段 6：本地提醒与通知 —— 已完成
 
 - `ReminderScheduler`（计算）+ `NotificationService`（平台通知）。
 - 支持提前 5 / 10 / 15 分钟提醒；桌面系统托盘通知，移动端本地通知。

@@ -10,6 +10,7 @@ add_library(ScheduleCore STATIC
 	src/model/TimeSlot.cpp
 	src/model/WeekMask.cpp
 	src/service/ConflictDetector.cpp
+	src/service/ReminderScheduler.cpp
 	src/service/ScheduleService.cpp
 	src/service/WeekCalculator.cpp
 	include/core/model/Conflict.h
@@ -20,6 +21,7 @@ add_library(ScheduleCore STATIC
 	include/core/model/TimeSlot.h
 	include/core/model/WeekMask.h
 	include/core/service/ConflictDetector.h
+	include/core/service/ReminderScheduler.h
 	include/core/service/ScheduleService.h
 	include/core/service/WeekCalculator.h
 )

@@ -40,6 +40,7 @@ src/core/
 │   │   └── WeekMask.h
 │   └── service/                      # 核心服务
 │       ├── ConflictDetector.h
+│       ├── ReminderScheduler.h
 │       ├── ScheduleService.h
 │       └── WeekCalculator.h
 ├── src/                              # 与 include/ 同构的实现文件
@@ -47,6 +48,7 @@ src/core/
     ├── CMakeLists.txt
     ├── README.md
     ├── tst_conflict_detector.cpp
+    ├── tst_reminder_scheduler.cpp
     ├── tst_schedule_service.cpp
     ├── tst_week_calculator.cpp
     └── tst_week_mask.cpp
@@ -73,6 +75,7 @@ src/core/
 | `WeekCalculator` | `core/service/WeekCalculator.h` | 纯静态工具：日期 ↔ 周次 ↔ 星期换算、当前周、`HH:mm` 宽松时间解析、星期文本解析（中 / 英 / ICS 缩写） |
 | `ConflictDetector` | `core/service/ConflictDetector.h` | 纯静态检测器：`detect()` 全量、`detect_in_course()` 单课程自检、`detect_between()` 两课比较；`Options` 可放宽导入场景的校验；结果按“类型 → 星期 → 周次”排序并去重 |
 | `ScheduleService` | `core/service/ScheduleService.h` | `QObject` 服务：持有**当前学期**状态；学期 / 作息表设置；课程增删改查；当前周与课表查询（`sessions_at()` / `sessions_on_date()` / `sessions_in_week()`）；冲突检测；快照读写 |
+| `ReminderScheduler` | `core/service/ReminderScheduler.h` | 纯静态计算：把课表换算成“什么时候提醒哪门课”；支持 5/10/15 分钟提前量、时间窗口过滤与到点判定 |
 | `DataEngine` | `core/DataEngine.h` | 版本信息（早期占位，保留） |
 
 ### 统一口径（重要）
@@ -120,6 +123,19 @@ ctest --preset windows-msvc -C Debug
 - 命名遵循全小写 + 下划线；QML ↔ C++ 的连接**统一在 C++ 侧显式建立**，
   QML 中不写 `onClicked` / `Connections`。
 
+## 提醒计算（阶段 6）
+
+`ReminderScheduler` 只做**纯计算**，不接触定时器与通知 API：
+
+```cpp
+const QList<Reminder> due = ReminderScheduler::upcoming(snapshot, QDateTime::currentDateTime(), 10, 24);
+```
+
+- `Reminder` 携带课程、时间段、周次、上课时刻、提醒时刻与去重键；
+- `upcoming()` 只返回提醒时刻落在 `[now, now + horizon]` 的条目，**过去的提醒不补发**；
+- `is_due()` 的到点条件是 `remind_at <= now < start`（上课开始后不再提醒）；
+- 支持的提前分钟数只有 5 / 10 / 15，非法值回退为默认 10。
+
 ## 扩展点与注意事项
 
 - **新增业务规则**：优先以“纯函数 + 值类型”的形式加入本层（便于单元测试）；
@@ -139,7 +155,7 @@ ctest --preset windows-msvc -C Debug
 
 | 阶段 | 内容 |
 | ---- | ---- |
-| 阶段 6 | 在本层新增 `ReminderScheduler` 的**纯计算**部分（下一次提醒时刻）；平台通知放 `engine` |
+| 阶段 6 | ✅ 已完成：`ReminderScheduler` 与 `Reminder`（纯计算，无通知 API 依赖）；系统通知在 `engine` |
 | 阶段 9 | 定义可选教务适配器接口 `SchoolAdapter`（实现在 `data`） |
 
 ## 相关文档

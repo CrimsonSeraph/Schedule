@@ -2,6 +2,7 @@
 
 #include "core/service/WeekCalculator.h"
 #include "engine/CourseListModel.h"
+#include "engine/NotificationService.h"
 
 #include <QAbstractItemModel>
 #include <QDebug>
@@ -38,11 +39,16 @@ namespace Schedule {
 
     } // namespace
 
-    UiConnector::UiConnector(QObject* root, ScheduleBridge* bridge, AppBridge* app_bridge, QObject* parent)
+    UiConnector::UiConnector(QObject* root,
+        ScheduleBridge* bridge,
+        AppBridge* app_bridge,
+        NotificationService* notifications,
+        QObject* parent)
         : QObject(parent)
         , m_root(root)
         , m_bridge(bridge)
-        , m_app_bridge(app_bridge) {
+        , m_app_bridge(app_bridge)
+        , m_notifications(notifications) {
     }
 
     UiConnector::~UiConnector() = default;
@@ -157,6 +163,7 @@ namespace Schedule {
         connect_course_editor();
         connect_import_wizard();
         connect_export_dialog();
+        connect_reminders();
 
         prime_widgets();
 
@@ -633,6 +640,56 @@ namespace Schedule {
         if (m_bridge->save_course(data)) {
             invoke(m_course_editor, "close");
         }
+    }
+
+    // ------------------------------------------------------------------ 提醒
+
+    void UiConnector::connect_reminders() {
+        if (!m_notifications) {
+            return;
+        }
+        NotificationService* service = m_notifications;
+
+        // 启用 / 停用：CheckBox 的 checked 由 QML 绑定到 reminders.enabled，
+        // 用户点击后由 C++ 读回并写设置。
+        on_click("reminderEnabledCheck", [this, service]() {
+            QObject* check = find("reminderEnabledCheck");
+            if (check) {
+                service->set_enabled(check->property("checked").toBool());
+            }
+        });
+
+        on_signal("reminderMinutesSelector", "currentIndexChanged()", [this, service]() {
+            service->set_minutes_before(combo_value(find("reminderMinutesSelector")).toInt());
+        });
+
+        on_click("testNotificationButton", [service]() { service->show_test_notification(); });
+        on_click("requestPermissionButton", [service]() { service->request_permission(); });
+
+        // 系统通知不可用时，应用内横幅保证提醒不会丢失
+        connect(service, &NotificationService::notificationRequested, this, [this](const QString& title, const QString& message) {
+            show_banner(title, message);
+        });
+    }
+
+    void UiConnector::show_banner(const QString& title, const QString& message, int seconds) {
+        QObject* banner = find("notificationBanner");
+        if (!banner) {
+            return;
+        }
+        banner->setProperty("bannerTitle", title);
+        banner->setProperty("bannerMessage", message);
+
+        const int generation = ++m_banner_generation;
+        QTimer::singleShot(seconds * 1000, this, [this, generation]() {
+            if (generation != m_banner_generation) {
+                return; // 已被更新的横幅取代
+            }
+            if (QObject* current = find("notificationBanner")) {
+                current->setProperty("bannerTitle", QString());
+                current->setProperty("bannerMessage", QString());
+            }
+        });
     }
 
     // ---------------------------------------------------------------- 动态卡片

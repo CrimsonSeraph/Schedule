@@ -58,6 +58,7 @@ src/ui/
 | 课程 | `addCourseButton`、`pageNewCourseButton`、`editCourseButton`、`deleteCourseButton`、`courseList` |
 | 学期 | `semesterNameField`、`semesterStartField`、`semesterWeeksSpin`、`saveSemesterButton` |
 | 设置 | `importDirField`、`chooseImportDirButton`、`importDirDialog`、`exportDirField`、`chooseExportDirButton`、`exportDirDialog`、`saveDirsButton`、`resetDirsButton`、`slotSelector`、`slotLabelField`、`slotStartField`、`slotEndField`、`saveSlotButton`、`resetSlotsButton`、`reloadButton`、`saveNowButton`、`testButton` |
+| 提醒 | `reminderEnabledCheck`、`reminderMinutesSelector`、`testNotificationButton`、`requestPermissionButton`、`notificationBanner` |
 | 编辑器 | `courseEditor`、`editor*Field`、`sessionDraftModel`、`sessionList`、`session*`、`sessionAddButton`、`sessionUpdateButton`、`sessionRemoveButton`、`courseSaveButton`、`courseCancelButton` |
 | 导入 | `importWizard`、`importFileField`、`importChooseFileButton`、`importFileDialog`、`importStrategySelector`、`importApplyButton`、`importCancelButton` |
 | 导出 | `exportDialog`、`exportFormatSelector`、`exportDirField`、`exportChooseDirButton`、`exportResetDirButton`、`exportDirDialog`、`exportConfirmButton`、`exportCancelButton` |
@@ -76,6 +77,7 @@ src/ui/
 | 导入向导 | `schedule.importExport.previewSummary` / `previewWarnings` / `previewConflicts` / `lastImportSummary` / `progress` |
 | 导出对话框 | `schedule.importExport.defaultExportDir` / `lastExportSummary` / **`lastExportPath`** |
 | 状态栏 | `schedule.lastError` / `schedule.lastInfo` |
+| 提醒设置 | `reminders.enabled` / `minutesIndex` / `backendName` / `backendStatus` / `nextReminderText` / `todayReminders` / `lastNotificationText` |
 
 ## 构建与测试方式
 
@@ -128,6 +130,10 @@ cmake --build --preset windows-msvc-debug
   本项目统一关闭横向滚动条并让内容宽度直接跟随 `ScrollView.width`。
 - **移动端**：触摸目标不小于 48dp；`MainMobile.qml` 不使用悬浮窗口类控件，
   底部导航与桌面版共用同一批 `objectName`。
+- **应用内提醒横幅**：`notificationBanner` 在 `MainDesktop` / `MainMobile` 中各有一份；
+  C++ 侧收到 `NotificationService::notificationRequested` 后写入 `bannerTitle` /
+  `bannerMessage`，并在若干秒后清空（见 `UiConnector::show_banner()`）。
+  这是系统通知不可用时的兜底展示通路。
 - **主题色**：当前使用固定浅色配色（`#1F2A44` 主文字、`#4C8DFF` 主色、`#C0392B` 告警色），
   深色主题留待后续在 `AppSettings::theme()` 基础上扩展。
 

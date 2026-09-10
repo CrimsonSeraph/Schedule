@@ -15,13 +15,14 @@
 
 ## 产物
 
-`BUILD_TESTS=ON` 时生成 4 个测试可执行文件，并注册到 CTest：
+`BUILD_TESTS=ON` 时生成 5 个测试可执行文件，并注册到 CTest：
 
 | 测试目标 | 覆盖内容 |
 | -------- | -------- |
 | `tst_week_mask` | 周次表达式解析（区间 / 步长 / `A/S` / 关键字 / 中英文分隔符）、非法输入拒绝、规范化表达式往返、集合运算、`MAX_WEEKS` 边界 |
 | `tst_week_calculator` | 学期自检、日期 → 周次、周次 → 日期、当前周、非周一开学的自然周对齐、星期文本解析、时间解析与格式化、上课开始时刻 |
 | `tst_conflict_detector` | 时间重叠 / 不重叠（周次、星期、节次边界）、课程内部重叠、缺时间段、节次越界、周次越界、重复课程、结果排序与去重 |
+| `tst_reminder_scheduler` | 支持的提前分钟数、某天提醒列表与排序、单双周过滤、时间窗口过滤（过去的提醒不补发）、到点判定边界、下一次提醒、`title()` / `message()` / `unique_key()` 格式化 |
 | `tst_schedule_service` | 学期设置与切换清空、课程增删改查与默认值补齐、信号发射（`QSignalSpy`）、按周 / 星期 / 日期查询、单双周过滤、冲突检测、快照往返、默认作息回退 |
 
 ## 目录结构
@@ -31,6 +32,7 @@ src/core/tests/
 ├── CMakeLists.txt              # 为每个 .cpp 建立可执行文件并 add_test()
 ├── README.md
 ├── tst_conflict_detector.cpp
+├── tst_reminder_scheduler.cpp
 ├── tst_schedule_service.cpp
 ├── tst_week_calculator.cpp
 └── tst_week_mask.cpp

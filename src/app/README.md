@@ -13,7 +13,8 @@
 | ---- | ---- | ---- |
 | `ScheduleUI` | 项目内 | QML 模块（MainDesktop.qml / MainMobile.qml） |
 | `ScheduleEngine` | 项目内 | 桥接对象（`AppBridge`，阶段 4 起扩展） |
-| `ScheduleData` | 项目内 | 阶段 2 起：选择并实例化仓库、导入导出管理器 |
+| `ScheduleData` | 项目内 | 选择并实例化仓库、导入导出管理器 |
+| `Qt6::Widgets` | 外部 | **仅桌面**：`TrayNotificationBackend` 使用 `QSystemTrayIcon` |
 | `Qt6::Core` / `Qt6::Qml` / `Qt6::Quick` | 外部 | 应用与 QML 引擎 |
 
 - 允许依赖：全部下层
@@ -49,6 +50,9 @@ src/app/
 3. 在 C++ 侧实例化桥接对象：
    - `Schedule::AppBridge` → 上下文属性 `bridge`；
    - `Schedule::ScheduleBridge`（持有课程模型与导入导出桥接）→ 上下文属性 `schedule`；
+   - `Schedule::NotificationService`（+ 平台通知后端）→ 上下文属性 `reminders`；
+     桌面使用 `TrayNotificationBackend`（系统托盘气泡），此时改用 `QApplication`
+     以满足 `QSystemTrayIcon` 的要求；后端不可用时自动回退为应用内横幅；
 4. 调用 `schedule_bridge.initialize()` 从数据库载入当前学期，**先有数据再加载 QML**；
 5. 创建 `QQmlApplicationEngine`；
 6. 按平台宏选择主 QML 并加载：
@@ -93,6 +97,8 @@ src/app/
 ├── README.md
 ├── UiConnector.h    # QML ↔ C++ 连接集中管理
 ├── UiConnector.cpp
+├── TrayNotificationBackend.h    # 桌面系统托盘通知后端（仅桌面构建）
+├── TrayNotificationBackend.cpp
 └── main.cpp
 ```
 

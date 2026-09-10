@@ -5,6 +5,19 @@ add_executable(Schedule
 	UiConnector.h
 )
 
+# 桌面系统托盘通知后端依赖 Qt Widgets（QSystemTrayIcon），因此只参与桌面构建。
+# 移动端使用 engine 层的 AndroidNotificationBackend 或应用内横幅。
+if(NOT ANDROID AND NOT IOS)
+	find_package(Qt6 6.9.3 REQUIRED COMPONENTS Widgets)
+	target_sources(Schedule
+		PRIVATE
+			TrayNotificationBackend.cpp
+			TrayNotificationBackend.h
+	)
+	target_compile_definitions(Schedule PRIVATE Schedule_HAS_TRAY_NOTIFICATIONS=1)
+	target_link_libraries(Schedule PRIVATE Qt6::Widgets)
+endif()
+
 target_link_libraries(Schedule
 	PRIVATE
 		ScheduleUI

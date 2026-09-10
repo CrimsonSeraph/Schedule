@@ -9,6 +9,7 @@ set(SCHEDULE_CORE_TESTS
 	tst_week_calculator
 	tst_conflict_detector
 	tst_schedule_service
+	tst_reminder_scheduler
 )
 
 foreach(test_name IN LISTS SCHEDULE_CORE_TESTS)

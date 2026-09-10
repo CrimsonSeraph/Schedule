@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/AppBridge.h"
+#include "engine/NotificationService.h"
 #include "engine/ScheduleBridge.h"
 
 #include <QHash>
@@ -44,12 +45,17 @@ namespace Schedule {
 
     public:
         /**
-         * @param root       QML 根对象（`engine.rootObjects().value(0)`）
-         * @param bridge     课表桥接（不持有所有权）
-         * @param app_bridge 早期桥接对象，承载“测试”按钮（不持有所有权）
-         * @param parent     父对象
+         * @param root          QML 根对象（`engine.rootObjects().value(0)`）
+         * @param bridge        课表桥接（不持有所有权）
+         * @param app_bridge    早期桥接对象，承载“测试”按钮（不持有所有权）
+         * @param notifications 提醒服务（不持有所有权），可为空
+         * @param parent        父对象
          */
-        UiConnector(QObject* root, ScheduleBridge* bridge, AppBridge* app_bridge, QObject* parent = nullptr);
+        UiConnector(QObject* root,
+            ScheduleBridge* bridge,
+            AppBridge* app_bridge,
+            NotificationService* notifications = nullptr,
+            QObject* parent = nullptr);
 
         ~UiConnector() override;
 
@@ -127,6 +133,12 @@ namespace Schedule {
         /** @brief 导出对话框。 */
         void connect_export_dialog();
 
+        /** @brief 提醒设置与通知横幅。 */
+        void connect_reminders();
+
+        /** @brief 在应用内横幅上展示一条提醒；`seconds` 秒后自动隐藏。 */
+        void show_banner(const QString& title, const QString& message, int seconds = 8);
+
         /** @brief 首次填充界面初值（学期表单、设置页文本框）。 */
         void prime_widgets();
 
@@ -180,6 +192,12 @@ namespace Schedule {
 
         /** 早期桥接对象；不持有所有权。 */
         AppBridge* m_app_bridge = nullptr;
+
+        /** 提醒服务；不持有所有权，可为空。 */
+        NotificationService* m_notifications = nullptr;
+
+        /** 横幅自动隐藏的世代计数：新横幅到来时让上一次的定时回调失效。 */
+        int m_banner_generation = 0;
 
         /** 页面栈（`StackLayout`）。 */
         QPointer<QObject> m_page_stack;

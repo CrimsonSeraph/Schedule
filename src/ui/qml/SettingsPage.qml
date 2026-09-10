@@ -180,6 +180,110 @@ Item {
                 }
             }
 
+            // ------------------------------------------------------------ 课程提醒
+            GroupBox {
+                Layout.fillWidth: true
+                Layout.margins: 12
+                title: qsTr("课程提醒")
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 8
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 2
+                        columnSpacing: 8
+                        rowSpacing: 8
+
+                        Label { text: qsTr("启用提醒") }
+                        CheckBox {
+                            id: reminderEnabledCheck
+
+                            objectName: "reminderEnabledCheck"
+                            text: qsTr("上课前通过系统通知提醒")
+                            checked: reminders.enabled
+                        }
+
+                        Label { text: qsTr("提前时间") }
+                        ComboBox {
+                            id: reminderMinutesSelector
+
+                            objectName: "reminderMinutesSelector"
+                            Layout.fillWidth: true
+                            textRole: "label"
+                            valueRole: "value"
+                            model: reminders.minutesOptions
+                            currentIndex: reminders.minutesIndex
+                        }
+
+                        Label { text: qsTr("通知方式") }
+                        Label {
+                            Layout.fillWidth: true
+                            text: reminders.backendName + " · " + reminders.backendStatus
+                            color: "#5A6A80"
+                            wrapMode: Text.WordWrap
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        RowLayout {
+                            Layout.columnSpan: 2
+                            spacing: 8
+
+                            Button {
+                                id: testNotificationButton
+
+                                objectName: "testNotificationButton"
+                                text: qsTr("发送测试通知")
+                            }
+
+                            Button {
+                                id: requestPermissionButton
+
+                                objectName: "requestPermissionButton"
+                                text: qsTr("申请通知权限")
+                            }
+                        }
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("下一次：") + reminders.nextReminderText
+                        color: "#1B4FA8"
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: reminders.todayReminders.length > 0
+                        text: qsTr("今日课程")
+                        font.bold: true
+                        color: "#33415C"
+                    }
+
+                    Repeater {
+                        model: reminders.todayReminders
+
+                        delegate: Label {
+                            Layout.fillWidth: true
+                            text: "• " + modelData.start + " " + modelData.courseName + " · " + modelData.message
+                            color: "#5A6A80"
+                            wrapMode: Text.WordWrap
+                            font.pixelSize: 12
+                        }
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: reminders.lastNotificationText
+                        color: "#8A97A8"
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: 11
+                    }
+                }
+            }
+
             // ------------------------------------------------------------ 数据维护
             GroupBox {
                 Layout.fillWidth: true
