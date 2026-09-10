@@ -34,6 +34,14 @@ namespace Schedule {
         return QStringLiteral("ui/theme");
     }
 
+    QString SettingsKeys::adapter_schedule_url() {
+        return QStringLiteral("adapter/generic_schedule_url");
+    }
+
+    QString SettingsKeys::adapter_login_url() {
+        return QStringLiteral("adapter/generic_login_url");
+    }
+
     QStringList SettingsKeys::all_keys() {
         return QStringList{
             default_import_dir(),
@@ -44,6 +52,8 @@ namespace Schedule {
             reminder_enabled(),
             reminder_minutes(),
             theme(),
+            adapter_schedule_url(),
+            adapter_login_url(),
         };
     }
 

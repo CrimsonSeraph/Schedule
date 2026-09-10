@@ -136,6 +136,9 @@ namespace Schedule {
         /** @brief 提醒设置与通知横幅。 */
         void connect_reminders();
 
+        /** @brief 教务适配器（可选）的地址、Cookie 与导入触发。 */
+        void connect_school_adapters();
+
         /** @brief 在应用内横幅上展示一条提醒；`seconds` 秒后自动隐藏。 */
         void show_banner(const QString& title, const QString& message, int seconds = 8);
 

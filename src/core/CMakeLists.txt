@@ -2,6 +2,7 @@
 # 注意：含 Q_OBJECT 的头文件必须列在目标源中，AUTOMOC 才会为其生成元对象代码
 add_library(ScheduleCore STATIC
 	src/DataEngine.cpp
+	src/adapter/SchoolAdapter.cpp
 	src/model/Conflict.cpp
 	src/model/Course.cpp
 	src/model/CourseSession.cpp
@@ -13,6 +14,7 @@ add_library(ScheduleCore STATIC
 	src/service/ReminderScheduler.cpp
 	src/service/ScheduleService.cpp
 	src/service/WeekCalculator.cpp
+	include/core/adapter/SchoolAdapter.h
 	include/core/model/Conflict.h
 	include/core/model/Course.h
 	include/core/model/CourseSession.h

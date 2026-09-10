@@ -39,6 +39,12 @@ namespace Schedule {
         /** 界面主题（"system" / "light" / "dark"）。 */
         static QString theme();
 
+        /** 通用教务适配器的课表数据接口地址（http(s) 或本地文件路径）。 */
+        static QString adapter_schedule_url();
+
+        /** 通用教务适配器的登录页地址（供 WebView 打开，不保存任何密码）。 */
+        static QString adapter_login_url();
+
         /** 全部已知键，便于设置页遍历与导出。 */
         static QStringList all_keys();
     };

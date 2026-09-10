@@ -6,7 +6,8 @@
 - 本地持久化：SQLite（建表 / 迁移 / 备份 / 恢复）与 JSON 序列化；
 - **导入导出到指定目录**：JSON / CSV / ICS 三种格式，支持预览、冲突检测、合并 / 去重 / 覆盖；
 - QML 界面：周视图、日视图、课程编辑、导入导出向导、学期与设置页，桌面 / 移动两套布局；
-- 本地提醒：上课前 5 / 10 / 15 分钟系统通知（桌面托盘 / Android 本地通知 / 应用内横幅兜底）。
+- 本地提醒：上课前 5 / 10 / 15 分钟系统通知（桌面托盘 / Android 本地通知 / 应用内横幅兜底）；
+- 可选教务适配器：仅本地主动触发，只接收 Cookie、不保存密码，不做后台同步。
 
 > **明确不做**：云同步、账号系统、OAuth、用户表、同步队列、后端 API。
 > 数据只保存在本机，导入导出完全由用户手动触发。
@@ -179,6 +180,19 @@ cmake --build --preset windows-msvc-debug
 
 ---
 
+## 可选教务适配器
+
+分层约定：**接口在 `core`（`core/adapter/SchoolAdapter.h`），实现在 `data`，注册在 `app`**。
+
+- 只在用户点击“从适配器导入”时发起**一次**请求；不做定时轮询、不做后台同步、不做增量合并；
+- **不接收也不保存明文密码**：凭证只来自 WebView / 浏览器登录后的 Cookie，且仅驻留内存，
+  可在设置页一键清除；
+- 适配器只负责“拿到字节”，解析复用已有的 JSON / CSV / ICS 导入器与同一套预览 / 冲突检测流程；
+- 内置两个示例：`local-sample`（离线读取 `samples/schedule_sample.json`）与
+  `generic-jwgl`（实验性，地址与 Cookie 由用户在设置页填写）。
+
+详见 [src/data/adapter/README.md](src/data/adapter/README.md)。
+
 ## 本地提醒
 
 - 支持提前 **5 / 10 / 15** 分钟提醒，可在设置页开关与调整；
@@ -238,7 +252,8 @@ Windows 桌面构建已内置 `windeployqt` 自动部署（`cmake/ScheduleQtDepl
 - [src/data/tests/README.md](src/data/tests/README.md) — 持久化层单元测试
 - [src/engine/README.md](src/engine/README.md) — QML 桥接与提醒服务（`ScheduleEngine`）
 - [src/ui/README.md](src/ui/README.md) — QML 界面（`ScheduleUI`，URI `Schedule`）
-- [src/app/README.md](src/app/README.md) — 应用入口、`UiConnector` 与 `--selftest`
+- [src/app/README.md](src/app/README.md) — 应用入口、`UiConnector`、适配器注册与 `--selftest`
+- [src/data/adapter/README.md](src/data/adapter/README.md) — 可选教务适配器（隐私约束与扩展方式）
 - [samples/README.md](samples/README.md) — 课表样本文件
 - [i18n/README.md](i18n/README.md) — 翻译工作流
 - [docs/ROADMAP.md](docs/ROADMAP.md) — 分层约定与阶段路线图

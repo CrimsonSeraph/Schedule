@@ -7,6 +7,7 @@ set(SCHEDULE_DATA_TESTS
 	tst_import_export
 	tst_sample_files
 	tst_schedule_json
+	tst_school_adapter
 	tst_sqlite_repository
 )
 

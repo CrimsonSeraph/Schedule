@@ -7,7 +7,8 @@
 - **持久化**：SQLite 数据库（建表、迁移、备份、恢复）与 JSON 序列化 / 反序列化；
 - **导入导出**：JSON / CSV / ICS 三种格式的解析与生成，落盘到用户指定目录；
 - **设置存储**：默认导入 / 导出目录、提醒开关、主题等键值配置；
-- **可选教务适配器**（阶段 9，按需）：仅本地主动触发的课表抓取。
+- **可选教务适配器**：仅本地主动触发的课表抓取（接口在 `core`，实现在本层，注册在 `app`），
+  见 [adapter/README.md](adapter/README.md)。
 
 明确**不负责**：
 
@@ -24,6 +25,7 @@
 | `ScheduleCore` | 项目内 | 直接读写 `Semester` / `Course` / `CourseSession` / `TimeSlot` / `ScheduleSnapshot` |
 | `Qt6::Core` | 外部 | `QJson*`、`QFile`、`QSaveFile`、`QStandardPaths`、`QUuid` 等 |
 | `Qt6::Sql` | 外部 | `QSqlDatabase` + QSQLITE 驱动 |
+| `Qt6::Network` | 外部 | 教务适配器的 HTTP(S) 抓取 |
 
 - 允许依赖：`core`
 - 禁止依赖：`engine`、`ui`、`app`
@@ -41,6 +43,8 @@
 src/data/
 ├── CMakeLists.txt
 ├── README.md
+├── adapter/
+│   └── README.md                     # 可选教务适配器详细说明
 ├── import_export/
 │   └── README.md                     # 导入导出子系统详细说明
 ├── include/data/
@@ -59,11 +63,15 @@ src/data/
 │       ├── IcsScheduleIo.h
 │       ├── ImportManager.h
 │       └── ExportManager.h
+│   └── adapter/
+│       ├── GenericSchoolAdapter.h    # 通用适配器 + 本地文件抓取器
+│       └── NetworkScheduleFetcher.h  # HTTP(S) 抓取器
 ├── src/                              # 与 include/ 同构的实现文件
 └── tests/                            # QTest 单元测试（BUILD_TESTS=ON 时构建）
     ├── CMakeLists.txt
     ├── README.md
     ├── tst_import_export.cpp
+    ├── tst_school_adapter.cpp
     ├── tst_schedule_json.cpp
     └── tst_sqlite_repository.cpp
 ```
@@ -82,6 +90,7 @@ src/data/
 | `ImportManager` | `data/import_export/ImportManager.h` | 导入编排：格式识别 → 解析 → 预览 → 冲突检测 → 合并 / 覆盖 |
 | `ExportManager` | `data/import_export/ExportManager.h` | 导出编排：文件名规则 → 建目录 → 原子写入 → 回传实际路径 |
 | `ImportPreview` / `ImportResult` / `ExportResult` | `data/import_export/ImportExportTypes.h` | 预览与结果结构（含**新引入的冲突**、重复统计、实际导出路径） |
+| `GenericSchoolAdapter` / `NetworkScheduleFetcher` / `LocalFileScheduleFetcher` | `data/adapter/` | 可选教务适配器实现，见 [adapter/README.md](adapter/README.md) |
 
 ### 数据库表结构（`user_version = 1`）
 
@@ -167,6 +176,7 @@ ctest --preset windows-msvc -C Debug
 - **路径安全**：默认目录可能不存在，写入前统一 `QDir::mkpath`；
   路径拼接使用 `QDir::filePath` 而非字符串拼接。
 - **禁止事项**：不得在此层引入账号、密码、Token 等持久化字段。
+  教务适配器的会话凭证（Cookie）只存在于内存 `AdapterSession` 中，绝不落库、不写日志。
 
 ## 后续阶段计划
 
@@ -174,7 +184,7 @@ ctest --preset windows-msvc -C Debug
 | ---- | ---- |
 | 阶段 3 | ✅ 已完成：`import_export/` 子目录（JSON / CSV / ICS 导入导出、预览、冲突检测、合并策略、指定目录） |
 | 阶段 7 | 补充数据库迁移与导入导出样本文件测试 |
-| 阶段 9 | 可选教务适配器：接口在 `core`，实现在本层，注册在 `app` |
+| 阶段 9 | ✅ 已完成：教务适配器（接口在 `core`，实现在 `data/adapter`，注册在 `app`） |
 
 ## 导入导出（摘要）
 

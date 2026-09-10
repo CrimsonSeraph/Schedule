@@ -15,6 +15,7 @@
 | `ScheduleEngine` | 项目内 | 桥接对象（`AppBridge`，阶段 4 起扩展） |
 | `ScheduleData` | 项目内 | 选择并实例化仓库、导入导出管理器 |
 | `Qt6::Widgets` | 外部 | **仅桌面**：`TrayNotificationBackend` 使用 `QSystemTrayIcon` |
+| `ScheduleData` 的适配器实现 | 项目内 | `GenericSchoolAdapter` / `NetworkScheduleFetcher` / `LocalFileScheduleFetcher` |
 | `Qt6::Core` / `Qt6::Qml` / `Qt6::Quick` | 外部 | 应用与 QML 引擎 |
 
 - 允许依赖：全部下层
@@ -83,6 +84,35 @@ src/app/
 8. 加载失败（rootObjects 为空）返回 `-1`，否则进入事件循环。
 
 > 桥接对象与 `UiConnector` 必须声明在 `QQmlApplicationEngine` **之前**，保证引擎先析构。
+
+## 教务适配器的注册（阶段 9）
+
+按分层约定，适配器**接口在 `core`、实现在 `data`、注册在 `app`**。`main.cpp` 中注册了两个：
+
+| id | 名称 | 说明 |
+| -- | ---- | ---- |
+| `local-sample` | 本地样本适配器 | 指向 `<exe>/samples/schedule_sample.json`，**离线可用**，用于验证适配器全链路 |
+| `generic-jwgl` | 通用教务适配器（实验性） | 地址从设置读取；需要用户在浏览器 / WebView 登录后粘贴 Cookie |
+
+```cpp
+std::vector<std::shared_ptr<Schedule::IScheduleFetcher>> schedule_fetchers = {
+    std::make_shared<Schedule::NetworkScheduleFetcher>(),
+    std::make_shared<Schedule::LocalFileScheduleFetcher>(),
+};
+Schedule::SchoolAdapterRegistry adapter_registry;
+adapter_registry.register_adapter(
+    std::make_unique<Schedule::GenericSchoolAdapter>(generic_adapter_info, schedule_fetchers));
+...
+schedule_bridge.import_export()->set_adapter_registry(&adapter_registry);
+```
+
+隐私约束（与项目“不做账号系统”的要求一致）：
+
+- 适配器**只接收 Cookie**，不接收也不保存密码；
+- Cookie 只存在于 `AdapterSession` 内存对象里，可随时通过设置页的“清除凭证”擦除；
+- 只在用户点击“从适配器导入”时发起一次请求，**不做后台同步与定时轮询**。
+
+详见 [../data/adapter/README.md](../data/adapter/README.md)。
 
 ## QML ↔ C++ 连接（`UiConnector`）
 

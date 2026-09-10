@@ -1,5 +1,5 @@
 # src/data - 基础设施层：SQLite 持久化、JSON 序列化、导入导出实现
-find_package(Qt6 6.9.3 REQUIRED COMPONENTS Sql)
+find_package(Qt6 6.9.3 REQUIRED COMPONENTS Network Sql)
 
 add_library(ScheduleData STATIC
 	src/AppSettings.cpp
@@ -13,6 +13,8 @@ add_library(ScheduleData STATIC
 	src/import_export/ImportExportTypes.cpp
 	src/import_export/ImportManager.cpp
 	src/import_export/JsonScheduleIo.cpp
+	src/adapter/GenericSchoolAdapter.cpp
+	src/adapter/NetworkScheduleFetcher.cpp
 	include/data/AppSettings.h
 	include/data/ImportSource.h
 	include/data/IScheduleRepository.h
@@ -27,6 +29,8 @@ add_library(ScheduleData STATIC
 	include/data/import_export/ImportExportTypes.h
 	include/data/import_export/ImportManager.h
 	include/data/import_export/JsonScheduleIo.h
+	include/data/adapter/GenericSchoolAdapter.h
+	include/data/adapter/NetworkScheduleFetcher.h
 )
 
 target_include_directories(ScheduleData
@@ -37,6 +41,7 @@ target_link_libraries(ScheduleData
 	PUBLIC
 		ScheduleCore
 		Qt6::Core
+		Qt6::Network
 		Qt6::Sql
 )
 

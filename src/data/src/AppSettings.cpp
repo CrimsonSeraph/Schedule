@@ -169,6 +169,22 @@ namespace Schedule {
         return write_string(SettingsKeys::theme(), normalised, error_message);
     }
 
+    QString AppSettings::adapter_schedule_url() const {
+        return read_string(SettingsKeys::adapter_schedule_url(), QString());
+    }
+
+    bool AppSettings::set_adapter_schedule_url(const QString& url, QString* error_message) {
+        return write_string(SettingsKeys::adapter_schedule_url(), url.trimmed(), error_message);
+    }
+
+    QString AppSettings::adapter_login_url() const {
+        return read_string(SettingsKeys::adapter_login_url(), QString());
+    }
+
+    bool AppSettings::set_adapter_login_url(const QString& url, QString* error_message) {
+        return write_string(SettingsKeys::adapter_login_url(), url.trimmed(), error_message);
+    }
+
     QString AppSettings::current_semester_id() const {
         return read_string(SettingsKeys::current_semester_id(), QString());
     }

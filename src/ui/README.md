@@ -59,6 +59,7 @@ src/ui/
 | 学期 | `semesterNameField`、`semesterStartField`、`semesterWeeksSpin`、`saveSemesterButton` |
 | 设置 | `importDirField`、`chooseImportDirButton`、`importDirDialog`、`exportDirField`、`chooseExportDirButton`、`exportDirDialog`、`saveDirsButton`、`resetDirsButton`、`slotSelector`、`slotLabelField`、`slotStartField`、`slotEndField`、`saveSlotButton`、`resetSlotsButton`、`reloadButton`、`saveNowButton`、`testButton` |
 | 提醒 | `reminderEnabledCheck`、`reminderMinutesSelector`、`testNotificationButton`、`requestPermissionButton`、`notificationBanner` |
+| 适配器 | `adapterSelector`、`adapterScheduleUrlField`、`adapterLoginUrlField`、`adapterCookieField`、`adapterSaveUrlButton`、`adapterImportButton`、`adapterClearSessionButton` |
 | 编辑器 | `courseEditor`、`editor*Field`、`sessionDraftModel`、`sessionList`、`session*`、`sessionAddButton`、`sessionUpdateButton`、`sessionRemoveButton`、`courseSaveButton`、`courseCancelButton` |
 | 导入 | `importWizard`、`importFileField`、`importChooseFileButton`、`importFileDialog`、`importStrategySelector`、`importApplyButton`、`importCancelButton` |
 | 导出 | `exportDialog`、`exportFormatSelector`、`exportDirField`、`exportChooseDirButton`、`exportResetDirButton`、`exportDirDialog`、`exportConfirmButton`、`exportCancelButton` |
@@ -78,6 +79,7 @@ src/ui/
 | 导出对话框 | `schedule.importExport.defaultExportDir` / `lastExportSummary` / **`lastExportPath`** |
 | 状态栏 | `schedule.lastError` / `schedule.lastInfo` |
 | 提醒设置 | `reminders.enabled` / `minutesIndex` / `backendName` / `backendStatus` / `nextReminderText` / `todayReminders` / `lastNotificationText` |
+| 适配器设置 | `schedule.importExport.adapterOptions` / `adapterSessionStatus` |
 
 ## 构建与测试方式
 

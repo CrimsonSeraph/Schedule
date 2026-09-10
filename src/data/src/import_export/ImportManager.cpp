@@ -301,6 +301,13 @@ namespace Schedule {
         return build_preview(parsed, format, source_name, current);
     }
 
+    ImportPreview ImportManager::preview_snapshot(const ScheduleSnapshot& parsed,
+        ScheduleFormat format,
+        const QString& source_name,
+        const ScheduleSnapshot& current) const {
+        return build_preview(parsed, format, source_name, current);
+    }
+
     ImportResult ImportManager::apply(const ImportPreview& preview, ImportStrategy strategy, ScheduleSnapshot* in_out_snapshot) const {
         ImportResult result;
         result.strategy = strategy;

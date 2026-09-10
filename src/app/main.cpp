@@ -1,9 +1,13 @@
 #include "engine/AppBridge.h"
+#include "engine/ImportExportBridge.h"
 #include "engine/NotificationService.h"
 #include "engine/ScheduleBridge.h"
 
+#include "core/adapter/SchoolAdapter.h"
 #include "data/AppSettings.h"
 #include "data/SqliteScheduleRepository.h"
+#include "data/adapter/GenericSchoolAdapter.h"
+#include "data/adapter/NetworkScheduleFetcher.h"
 
 #include "UiConnector.h"
 
@@ -18,6 +22,7 @@
 #endif
 
 #include <QDebug>
+#include <QDir>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QTranslator>
@@ -64,11 +69,45 @@ int main(int argc, char* argv[]) {
     Schedule::AppSettings app_settings(repository.get());
     Schedule::ScheduleService schedule_service;
 
+    // ------------------------------------------------------------ 教务适配器
+    // 分层约定：**接口在 core，实现在 data，注册在 app**。
+    // 隐私约束：适配器只接收“WebView 登录后得到的 Cookie”，绝不接收或保存密码；
+    //          凭证仅驻留内存（AdapterSession），可随时在设置页擦除。
+    std::vector<std::shared_ptr<Schedule::IScheduleFetcher>> schedule_fetchers = {
+        std::make_shared<Schedule::NetworkScheduleFetcher>(),
+        std::make_shared<Schedule::LocalFileScheduleFetcher>(),
+    };
+    Schedule::SchoolAdapterRegistry adapter_registry;
+
+    Schedule::AdapterInfo sample_adapter;
+    sample_adapter.id = QStringLiteral("local-sample");
+    sample_adapter.name = QStringLiteral("本地样本适配器");
+    sample_adapter.description = QStringLiteral("离线演示：从 samples/schedule_sample.json 读取课表，用于验证适配器全链路");
+    sample_adapter.schedule_url = QDir(QCoreApplication::applicationDirPath())
+                                      .filePath(QStringLiteral("samples/schedule_sample.json"));
+    sample_adapter.requires_session = false;
+    sample_adapter.is_experimental = false;
+    adapter_registry.register_adapter(
+        std::make_unique<Schedule::GenericSchoolAdapter>(sample_adapter, schedule_fetchers));
+
+    Schedule::AdapterInfo generic_adapter;
+    generic_adapter.id = QStringLiteral("generic-jwgl");
+    generic_adapter.name = QStringLiteral("通用教务适配器（实验性）");
+    generic_adapter.description = QStringLiteral(
+        "在浏览器 / WebView 中登录教务系统后，把课表接口地址与 Cookie 填入设置页，再点击导入；"
+        "不保存密码，Cookie 仅驻留内存。返回内容需为 JSON / CSV / ICS。");
+    generic_adapter.requires_session = true;
+    generic_adapter.is_experimental = true;
+    adapter_registry.register_adapter(
+        std::make_unique<Schedule::GenericSchoolAdapter>(generic_adapter, schedule_fetchers));
+
     // ---------------------------------------------------------------- 桥接对象
     // 桥接对象由 C++ 侧创建并持有，以上下文属性注入 QML（QML 不再自行实例化）
     Schedule::AppBridge app_bridge;
     Schedule::ScheduleBridge schedule_bridge(&schedule_service, repository.get(), &app_settings);
     schedule_bridge.initialize();
+    // 适配器注册表必须在 ScheduleBridge 之前构造（见上方），此处仅注入引用
+    schedule_bridge.import_export()->set_adapter_registry(&adapter_registry);
 
     // ---------------------------------------------------------------- 本地提醒
     // 提醒服务只负责“何时提醒”，系统通知由后端投递：

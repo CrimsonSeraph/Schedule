@@ -300,6 +300,105 @@ Item {
                 }
             }
 
+            // ------------------------------------------------------ 教务适配器（可选）
+            GroupBox {
+                Layout.fillWidth: true
+                Layout.margins: 12
+                title: qsTr("教务适配器（可选 · 实验性）")
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 8
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("隐私说明：适配器仅在你点击“导入”时主动触发一次，不保存密码、不做后台同步；")
+                              + qsTr("登录 Cookie 只驻留内存，可随时清除。")
+                        color: "#B7791F"
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: 11
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 2
+                        columnSpacing: 8
+                        rowSpacing: 8
+
+                        Label { text: qsTr("适配器") }
+                        ComboBox {
+                            id: adapterSelector
+
+                            objectName: "adapterSelector"
+                            Layout.fillWidth: true
+                            textRole: "name"
+                            model: schedule.importExport.adapterOptions
+                        }
+
+                        Label { text: qsTr("课表接口地址") }
+                        TextField {
+                            id: adapterScheduleUrlField
+
+                            objectName: "adapterScheduleUrlField"
+                            Layout.fillWidth: true
+                            placeholderText: qsTr("http(s) 接口地址或本地文件路径")
+                        }
+
+                        Label { text: qsTr("登录页地址") }
+                        TextField {
+                            id: adapterLoginUrlField
+
+                            objectName: "adapterLoginUrlField"
+                            Layout.fillWidth: true
+                            placeholderText: qsTr("供 WebView 打开；可留空")
+                        }
+
+                        Label { text: qsTr("登录 Cookie") }
+                        TextField {
+                            id: adapterCookieField
+
+                            objectName: "adapterCookieField"
+                            Layout.fillWidth: true
+                            placeholderText: qsTr("从浏览器开发者工具复制 Cookie 请求头")
+                        }
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: schedule.importExport.adapterSessionStatus
+                        color: "#5A6A80"
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: 11
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Button {
+                            id: adapterSaveUrlButton
+
+                            objectName: "adapterSaveUrlButton"
+                            text: qsTr("保存接口地址")
+                        }
+
+                        Button {
+                            id: adapterImportButton
+
+                            objectName: "adapterImportButton"
+                            text: qsTr("从适配器导入")
+                        }
+
+                        Button {
+                            id: adapterClearSessionButton
+
+                            objectName: "adapterClearSessionButton"
+                            text: qsTr("清除凭证")
+                        }
+                    }
+                }
+            }
+
             // ------------------------------------------------------------ 数据维护
             GroupBox {
                 Layout.fillWidth: true

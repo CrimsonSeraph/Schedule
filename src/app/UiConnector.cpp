@@ -164,6 +164,7 @@ namespace Schedule {
         connect_import_wizard();
         connect_export_dialog();
         connect_reminders();
+        connect_school_adapters();
 
         prime_widgets();
 
@@ -640,6 +641,41 @@ namespace Schedule {
         if (m_bridge->save_course(data)) {
             invoke(m_course_editor, "close");
         }
+    }
+
+    // -------------------------------------------------------------- 教务适配器
+
+    void UiConnector::connect_school_adapters() {
+        ImportExportBridge* io = m_bridge->import_export();
+
+        // 切换适配器时把该适配器当前的地址回填到表单
+        on_signal("adapterSelector", "currentIndexChanged()", [this]() {
+            QObject* selector = find("adapterSelector");
+            const int index = combo_index(selector);
+            const QVariantList options = m_bridge->import_export()->adapter_options();
+            if (index < 0 || index >= options.size()) {
+                return;
+            }
+            const QVariantMap option = options.at(index).toMap();
+            set_text("adapterScheduleUrlField", option.value(QStringLiteral("scheduleUrl")).toString());
+            set_text("adapterLoginUrlField", option.value(QStringLiteral("loginUrl")).toString());
+        });
+
+        on_click("adapterSaveUrlButton", [this, io]() {
+            io->save_adapter_endpoints(combo_index(find("adapterSelector")),
+                text_of("adapterScheduleUrlField"),
+                text_of("adapterLoginUrlField"));
+        });
+
+        // 仅在此处把 Cookie 交给桥接对象：桥接只保留在内存中，不写库、不写日志
+        on_click("adapterImportButton", [this, io]() {
+            io->import_from_adapter(combo_index(find("adapterSelector")), text_of("adapterCookieField"));
+        });
+
+        on_click("adapterClearSessionButton", [this, io]() {
+            io->clear_adapter_session();
+            set_text("adapterCookieField", QString());
+        });
     }
 
     // ------------------------------------------------------------------ 提醒

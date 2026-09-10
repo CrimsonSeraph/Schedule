@@ -94,6 +94,18 @@ namespace Schedule {
         /** @brief 设置界面主题；非法值回退为 "system"。 */
         bool set_theme(const QString& theme, QString* error_message = nullptr);
 
+        /** @return 通用教务适配器的课表数据接口地址；未设置时为空串。 */
+        QString adapter_schedule_url() const;
+
+        /** @brief 保存通用教务适配器的课表数据接口地址。 */
+        bool set_adapter_schedule_url(const QString& url, QString* error_message = nullptr);
+
+        /** @return 通用教务适配器的登录页地址；未设置时为空串。 */
+        QString adapter_login_url() const;
+
+        /** @brief 保存通用教务适配器的登录页地址。 */
+        bool set_adapter_login_url(const QString& url, QString* error_message = nullptr);
+
         /** @return 当前学期 id；未设置时为空串。 */
         QString current_semester_id() const;
 

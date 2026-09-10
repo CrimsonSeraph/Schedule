@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/adapter/SchoolAdapter.h"
 #include "core/service/ScheduleService.h"
 #include "data/AppSettings.h"
 #include "data/IScheduleRepository.h"
@@ -92,6 +93,12 @@ namespace Schedule {
         /** 导入 / 导出进度百分比（0..100）。 */
         Q_PROPERTY(int progress READ progress NOTIFY progressChanged)
 
+        /** 已注册的教务适配器（map 列表：`id` / `name` / `description` / `scheduleUrl` / `loginUrl` / `requiresSession`）。 */
+        Q_PROPERTY(QVariantList adapterOptions READ adapter_options NOTIFY adaptersChanged)
+
+        /** 适配器会话状态文本（是否已粘贴 Cookie、凭证年龄）。 */
+        Q_PROPERTY(QString adapterSessionStatus READ adapter_session_status NOTIFY adaptersChanged)
+
     public:
         /**
          * @param service    课表服务（不持有所有权）；导入结果会通过它加载
@@ -124,6 +131,8 @@ namespace Schedule {
         QString last_import_summary() const;
         QString last_error() const;
         int progress() const;
+        QVariantList adapter_options() const;
+        QString adapter_session_status() const;
 
         /** @return 由 `formatNames()` 下标解析格式；越界返回 JSON。 */
         Q_INVOKABLE int format_index_of(const QString& machine_name) const;
@@ -163,6 +172,37 @@ namespace Schedule {
         /** @brief 恢复默认导入 / 导出目录为 `Documents/Schedule`。 */
         void reset_default_directories();
 
+        /**
+         * @brief 注册教务适配器仓库（不接管所有权）。
+         *
+         * 适配器由 `app` 层构造并注册；本对象只负责按需触发一次抓取。
+         */
+        void set_adapter_registry(SchoolAdapterRegistry* registry);
+
+        /**
+         * @brief 保存某个适配器的数据 / 登录地址（写入设置，供下次启动复用）。
+         * @param index        适配器下标
+         * @param schedule_url 课表数据接口地址（http(s) 或本地文件路径）
+         * @param login_url    登录页地址（供 WebView 打开；可为空）
+         */
+        void save_adapter_endpoints(int index, const QString& schedule_url, const QString& login_url);
+
+        /**
+         * @brief 主动触发一次教务适配器导入。
+         *
+         * 抓取成功后与文件导入走完全相同的“预览 → 策略 → 应用”流程。
+         *
+         * @param index         适配器下标
+         * @param cookie_header WebView 登录后取得的 Cookie 串；为空表示沿用已保存的会话
+         *
+         * @note 本方法**不接收也不保存任何密码**；`cookie_header` 只保留在内存中，
+         *       可随时通过 `clear_adapter_session()` 擦除。
+         */
+        void import_from_adapter(int index, const QString& cookie_header);
+
+        /** @brief 立即擦除内存中的适配器会话凭证。 */
+        void clear_adapter_session();
+
     signals:
         /** 目录相关设置变化后发出（QML 据此刷新显示）。 */
         void directoriesChanged();
@@ -189,6 +229,9 @@ namespace Schedule {
 
         /** 导出结果变化后发出。 */
         void exportFinishedChanged();
+
+        /** 适配器列表或会话状态变化后发出。 */
+        void adaptersChanged();
 
         /**
          * @brief 导出完成。
@@ -232,6 +275,12 @@ namespace Schedule {
 
         /** 设置门面；不持有所有权。 */
         AppSettings* m_settings = nullptr;
+
+        /** 教务适配器仓库；不持有所有权，可为空（表示未启用适配器）。 */
+        SchoolAdapterRegistry* m_adapter_registry = nullptr;
+
+        /** 适配器会话（**仅内存**，绝不写入数据库）。 */
+        AdapterSession m_adapter_session;
 
         /** 导入编排器。 */
         ImportManager m_import_manager;

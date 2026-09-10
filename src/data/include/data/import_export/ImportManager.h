@@ -70,6 +70,22 @@ namespace Schedule {
         ImportPreview preview_data(const QByteArray& data, const QString& source_name, const ScheduleSnapshot& current) const;
 
         /**
+         * @brief 从**已解析的快照**生成预览（教务适配器等外部来源使用）。
+         *
+         * 与 `preview()` / `preview_data()` 走同一套冲突检测与重复统计逻辑，
+         * 因此适配器导入与文件导入的用户体验完全一致。
+         *
+         * @param parsed      已经解析好的课表快照
+         * @param format      内容格式（用于提示文本；未知可传 `ScheduleFormat::Unknown`）
+         * @param source_name 逻辑来源名（如适配器名称或接口地址）
+         * @param current     当前课表快照
+         */
+        ImportPreview preview_snapshot(const ScheduleSnapshot& parsed,
+            ScheduleFormat format,
+            const QString& source_name,
+            const ScheduleSnapshot& current) const;
+
+        /**
          * @brief 按指定策略把预览内容应用到快照。
          *
          * @param preview           由 `preview()` 生成的结果

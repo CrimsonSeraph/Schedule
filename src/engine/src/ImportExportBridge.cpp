@@ -114,6 +114,38 @@ namespace Schedule {
         return m_progress;
     }
 
+    QVariantList ImportExportBridge::adapter_options() const {
+        QVariantList list;
+        if (!m_adapter_registry) {
+            return list;
+        }
+        for (const AdapterInfo& info : m_adapter_registry->adapters()) {
+            QVariantMap map;
+            map.insert(QStringLiteral("id"), info.id);
+            map.insert(QStringLiteral("name"), info.name);
+            map.insert(QStringLiteral("description"), info.description);
+            map.insert(QStringLiteral("scheduleUrl"), info.schedule_url);
+            map.insert(QStringLiteral("loginUrl"), info.login_url);
+            map.insert(QStringLiteral("requiresSession"), info.requires_session);
+            map.insert(QStringLiteral("experimental"), info.is_experimental);
+            list.append(map);
+        }
+        return list;
+    }
+
+    QString ImportExportBridge::adapter_session_status() const {
+        if (!m_adapter_registry) {
+            return QStringLiteral("未启用教务适配器");
+        }
+        if (m_adapter_session.is_empty()) {
+            return QStringLiteral("尚未提供登录 Cookie（仅内存保存，不写入磁盘）");
+        }
+        const double age = m_adapter_session.age_hours();
+        const QString age_text = age < 0 ? QStringLiteral("刚刚获取")
+                                         : QStringLiteral("已获取 %1 小时").arg(QString::number(age, 'f', 1));
+        return QStringLiteral("已提供 Cookie（%1，仅内存保存）").arg(age_text);
+    }
+
     int ImportExportBridge::format_index_of(const QString& machine_name) const {
         const ScheduleFormat format = format_from_string(machine_name);
         for (int i = 0; i < EXPORT_FORMAT_COUNT; ++i) {
@@ -191,6 +223,94 @@ namespace Schedule {
             return;
         }
         emit directoriesChanged();
+    }
+
+    void ImportExportBridge::set_adapter_registry(SchoolAdapterRegistry* registry) {
+        m_adapter_registry = registry;
+        // 从设置中恢复上次配置的接口地址，避免每次重启都要重填
+        if (m_adapter_registry && m_settings) {
+            for (int index = 0; index < m_adapter_registry->count(); ++index) {
+                const ISchoolAdapter* adapter = m_adapter_registry->at(index);
+                if (!adapter || !adapter->info().is_experimental) {
+                    continue;
+                }
+                const QString saved_url = m_settings->adapter_schedule_url();
+                const QString saved_login = m_settings->adapter_login_url();
+                if (!saved_url.isEmpty() || !saved_login.isEmpty()) {
+                    const_cast<ISchoolAdapter*>(adapter)->set_endpoints(saved_url, saved_login);
+                }
+            }
+        }
+        emit adaptersChanged();
+    }
+
+    void ImportExportBridge::save_adapter_endpoints(int index, const QString& schedule_url, const QString& login_url) {
+        if (!m_adapter_registry) {
+            report_error(QStringLiteral("未启用教务适配器"));
+            return;
+        }
+        const ISchoolAdapter* adapter = m_adapter_registry->at(index);
+        if (!adapter) {
+            report_error(QStringLiteral("适配器下标越界"));
+            return;
+        }
+
+        const_cast<ISchoolAdapter*>(adapter)->set_endpoints(schedule_url, login_url);
+        if (m_settings) {
+            QString error;
+            m_settings->set_adapter_schedule_url(schedule_url, &error);
+            m_settings->set_adapter_login_url(login_url, &error);
+        }
+        emit adaptersChanged();
+    }
+
+    void ImportExportBridge::clear_adapter_session() {
+        m_adapter_session.clear();
+        emit adaptersChanged();
+    }
+
+    void ImportExportBridge::import_from_adapter(int index, const QString& cookie_header) {
+        if (!m_adapter_registry) {
+            report_error(QStringLiteral("未启用教务适配器"));
+            return;
+        }
+        if (!m_service) {
+            report_error(QStringLiteral("课表服务尚未就绪"));
+            return;
+        }
+        const ISchoolAdapter* adapter = m_adapter_registry->at(index);
+        if (!adapter) {
+            report_error(QStringLiteral("适配器下标越界"));
+            return;
+        }
+
+        // Cookie 只覆盖内存中的会话；不写入设置、不写入日志
+        if (!cookie_header.trimmed().isEmpty()) {
+            m_adapter_session.cookie_header = cookie_header.trimmed().toUtf8();
+            m_adapter_session.created_at = QDateTime::currentDateTime();
+            emit adaptersChanged();
+        }
+
+        set_progress(10, QStringLiteral("正在从教务系统抓取课表…"));
+        ScheduleSnapshot parsed;
+        QString error;
+        if (!adapter->fetch_schedule(m_adapter_session, &parsed, &error)) {
+            set_progress(0, QString());
+            report_error(error);
+            emit importPreviewReady(false, error);
+            return;
+        }
+        set_progress(70, QStringLiteral("正在解析与检查冲突…"));
+
+        const ScheduleFormat format = format_from_string(adapter->last_format());
+        m_pending_preview = m_import_manager.preview_snapshot(parsed, format, adapter->info().name, m_service->snapshot());
+        set_progress(100, QStringLiteral("解析完成"));
+
+        emit previewChanged();
+        emit importPreviewReady(m_pending_preview.is_valid, m_pending_preview.summary());
+        if (!m_pending_preview.is_valid) {
+            report_error(m_pending_preview.error_message);
+        }
     }
 
     void ImportExportBridge::reset_default_directories() {
