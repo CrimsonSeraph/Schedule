@@ -25,47 +25,7 @@
 #include <memory>
 
 #if Schedule_SELFTEST
-#include <QQuickItem>
-#include <QQuickWindow>
-#include <QTimer>
-#include <QtTest/QTest>
-#endif
-
-#if Schedule_SELFTEST
-namespace {
-
-    /**
-     * 自动化 UI 自检：加载完成后向“测试”按钮发送一次鼠标左键点击，
-     * 验证 C++ 侧显式连接链路 Button::clicked -> AppBridge::test_button_clicked()，
-     * 并以退出码 0/2 表示成功/失败。
-     */
-    void schedule_ui_self_test(QQmlApplicationEngine& engine, QGuiApplication& app) {
-        QTimer::singleShot(1500, &app, [&engine, &app]() {
-            QObject* root_object = engine.rootObjects().value(0);
-            auto* window = qobject_cast<QQuickWindow*>(root_object);
-            if (!window) {
-                qWarning() << "[selftest] root object is not a QQuickWindow";
-                app.exit(2);
-                return;
-            }
-
-            QQuickItem* test_button = window->findChild<QQuickItem*>(QStringLiteral("testButton"));
-            if (!test_button) {
-                qWarning() << "[selftest] testButton not found in QML scene";
-                app.exit(2);
-                return;
-            }
-
-            const QPointF center = test_button->mapToScene(
-                QPointF(test_button->width() / 2.0, test_button->height() / 2.0));
-            QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, center.toPoint());
-
-            // 给 qDebug / 事件循环留出输出时间后正常退出
-            QTimer::singleShot(800, &app, [&app]() { app.exit(0); });
-        });
-    }
-
-} // namespace
+#include "SelfTest.h"
 #endif
 
 int main(int argc, char* argv[]) {
@@ -218,8 +178,12 @@ int main(int argc, char* argv[]) {
         });
 
 #if Schedule_SELFTEST
+    // --selftest：在真实 QML 场景下端到端验证导入导出与 C++ 侧连接（详见 SelfTest 注释）
+    std::unique_ptr<Schedule::SelfTest> self_test;
     if (app.arguments().contains(QStringLiteral("--selftest"))) {
-        schedule_ui_self_test(engine, app);
+        self_test = std::make_unique<Schedule::SelfTest>(
+            engine.rootObjects().value(0), &schedule_bridge, &app_bridge, &gui_app);
+        self_test->start();
     }
 #endif
 

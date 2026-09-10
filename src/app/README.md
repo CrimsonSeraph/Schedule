@@ -40,7 +40,21 @@ src/app/
 
 | 参数 | 说明 |
 | ---- | ---- |
-| `--selftest` | 仅在 `-DBUILD_SELFTEST=ON` 构建中存在；自动点击“测试”按钮并退出（`0` 成功 / `2` 失败） |
+| `--selftest` | 仅在 `-DBUILD_SELFTEST=ON` 构建中存在；执行端到端自检后退出（`0` 成功 / `2` 失败） |
+
+### `--selftest` 自检内容（`src/app/SelfTest.cpp`）
+
+| 步骤 | 验证内容 |
+| ---- | -------- |
+| 1 | 鼠标点击导航按钮 `navSettingsButton`，验证 C++ 侧导航连接与 `pageStack.currentIndex` 变化 |
+| 2 | 鼠标点击设置页的 `testButton`，验证 `Button::clicked` → `AppBridge::test_button_clicked()` 链路 |
+| 3 | 从 `<exe>/samples/schedule_sample.json` 生成导入预览，验证解析、冲突检测与重复统计 |
+| 4 | 按“合并”策略应用导入，验证课表写入内存并落库 |
+| 5 | 依次导出 JSON / CSV / ICS 到临时目录，验证**导出文件确实存在于指定目录且非空** |
+| 6 | 把刚导出的 JSON 再导入一次，验证 4 门课程全部识别为重复（往返一致性） |
+
+共 22 项断言。样本文件由 `src/app/CMakeLists.txt` 的 `copy_directory` 复制到可执行文件同级目录，
+因此自检不依赖仓库路径；数据层始终只接收路径，不会读取内嵌资源。
 
 ## 启动流程
 
@@ -117,6 +131,7 @@ cmake --build --preset windows-msvc-debug
 cmake --preset windows-msvc -DBUILD_SELFTEST=ON
 cmake --build --preset windows-msvc-debug
 ./build/windows-msvc/Debug/Schedule.exe --selftest
+# 输出 22 项 PASS 与导出的三个文件路径，退出码 0；任一步失败退出码 2
 ```
 
 点击界面中的“测试”按钮，控制台 / 调试输出应出现：

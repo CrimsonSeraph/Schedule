@@ -8,6 +8,9 @@
 #include "data/SqliteScheduleRepository.h"
 
 #include <QFile>
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -71,6 +74,15 @@ private slots:
 
     /** 重复打开幂等（迁移不会重复执行）。 */
     void migration_is_idempotent();
+
+    /** 建表后六张业务表齐全，可以直接读写。 */
+    void creates_expected_tables();
+
+    /** 版本 0 的空库能被迁移到最新版本。 */
+    void migrates_from_empty_database();
+
+    /** 数据库版本高于本实现支持上限时拒绝打开。 */
+    void rejects_newer_schema_version();
 
     /** 快照往返不丢数据。 */
     void round_trips_snapshot();
@@ -151,6 +163,95 @@ void TestSqliteRepository::migration_is_idempotent() {
         QVERIFY2(repository.load_snapshot(QStringLiteral("s1"), &snapshot, &error), qPrintable(error));
         QCOMPARE(snapshot.courses.size(), 2);
     }
+}
+
+void TestSqliteRepository::creates_expected_tables() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString path = directory.filePath(QStringLiteral("schedule.db"));
+
+    SqliteScheduleRepository repository(path);
+    QString error;
+    QVERIFY2(repository.open(&error), qPrintable(error));
+
+    // 直接查 sqlite_master，确认六张业务表都已建立
+    {
+        QSqlDatabase probe = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), QStringLiteral("probe_tables"));
+        probe.setDatabaseName(path);
+        QVERIFY(probe.open());
+
+        QStringList tables;
+        QSqlQuery query(probe);
+        QVERIFY(query.exec(QStringLiteral("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")));
+        while (query.next()) {
+            tables.append(query.value(0).toString());
+        }
+        probe.close();
+        QSqlDatabase::removeDatabase(QStringLiteral("probe_tables"));
+
+        for (const QString& expected : {QStringLiteral("semesters"), QStringLiteral("time_slots"),
+                 QStringLiteral("courses"), QStringLiteral("course_sessions"),
+                 QStringLiteral("settings"), QStringLiteral("import_sources")}) {
+            QVERIFY2(tables.contains(expected), qPrintable(QStringLiteral("缺少表：") + expected));
+        }
+    }
+}
+
+void TestSqliteRepository::migrates_from_empty_database() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString path = directory.filePath(QStringLiteral("schedule.db"));
+
+    // 先建一个“版本 0”的空库（只有文件头，没有任何业务表）
+    {
+        QSqlDatabase probe = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), QStringLiteral("probe_v0"));
+        probe.setDatabaseName(path);
+        QVERIFY(probe.open());
+        QSqlQuery query(probe);
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version = 0")));
+        probe.close();
+        QSqlDatabase::removeDatabase(QStringLiteral("probe_v0"));
+    }
+
+    // 打开时应自动迁移到最新版本，并且迁移后可正常写入
+    SqliteScheduleRepository repository(path);
+    QString error;
+    QVERIFY2(repository.open(&error), qPrintable(error));
+    QCOMPARE(repository.schema_version(), SqliteScheduleRepository::latest_schema_version());
+
+    QVERIFY2(repository.save_snapshot(make_snapshot(QStringLiteral("s1"), QStringLiteral("学期一"), SEMESTER_START), &error),
+        qPrintable(error));
+    ScheduleSnapshot snapshot;
+    QVERIFY2(repository.load_snapshot(QStringLiteral("s1"), &snapshot, &error), qPrintable(error));
+    QCOMPARE(snapshot.courses.size(), 2);
+}
+
+void TestSqliteRepository::rejects_newer_schema_version() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString path = directory.filePath(QStringLiteral("schedule.db"));
+
+    // 正常建库后再把版本号改高，模拟“用旧版应用打开新版数据库”
+    {
+        SqliteScheduleRepository repository(path);
+        QString error;
+        QVERIFY2(repository.open(&error), qPrintable(error));
+    }
+    {
+        QSqlDatabase probe = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), QStringLiteral("probe_future"));
+        probe.setDatabaseName(path);
+        QVERIFY(probe.open());
+        QSqlQuery query(probe);
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version = %1").arg(SqliteScheduleRepository::latest_schema_version() + 1)));
+        probe.close();
+        QSqlDatabase::removeDatabase(QStringLiteral("probe_future"));
+    }
+
+    SqliteScheduleRepository repository(path);
+    QString error;
+    QVERIFY(!repository.open(&error));
+    QVERIFY(error.contains(QStringLiteral("版本")));
+    QVERIFY(!repository.is_open());
 }
 
 void TestSqliteRepository::round_trips_snapshot() {

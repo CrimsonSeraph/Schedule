@@ -1,0 +1,54 @@
+# samples（课表样本文件）
+
+## 用途
+
+提供**内容等价**的三种格式课表样本，用于：
+
+- 单元测试（`tst_sample_files`）验证 JSON / CSV / ICS 三个导入器解析出同一份课程数据；
+- 应用自检（`Schedule.exe --selftest`）自动导入样本、导出并校验导出文件存在；
+- 手工验证导入向导：直接选择这三个文件即可。
+
+## 文件
+
+| 文件 | 格式 | 说明 |
+| ---- | ---- | ---- |
+| `schedule_sample.json` | 本应用 JSON | 无损格式，含作息表、周次位图、颜色与学分 |
+| `schedule_sample.csv` | CSV（UTF-8 with BOM） | 一行一个上课时间段，Excel 可直接打开 |
+| `schedule_sample.ics` | iCalendar | 含 `X-SCHEDULE-*` 扩展属性，可与系统日历互操作 |
+
+## 样本内容
+
+- 学期：`2024-2025 学年第一学期`，起始日 `2024-09-02`（周一），共 16 周；
+- 作息表：内置默认 11 节（上午 4 + 下午 4 + 晚上 3）；
+- 4 门课程，共 5 个上课时间段：
+
+| 课程 | 代码 | 时间段 | 周次 |
+| ---- | ---- | ------ | ---- |
+| 高等数学 A | MATH101 | 周一 第 1-2 节、周三 第 3-4 节 | 1-16 |
+| 大学英语 | ENG101 | 周二 第 3-4 节 | 1-16 |
+| 大学物理 | PHY101 | 周四 第 5-6 节 | 1-15/2（单周） |
+| 程序设计基础 | CS101 | 周五 第 7-8 节 | 1-4,6,9-10（非连续） |
+
+> 单周用 `1-15/2` 表达（ICS 里是带 `INTERVAL=2` 的 `RRULE`），
+> 非连续周次用 `RDATE` 表达——这两条覆盖了两种最容易被写错的周次形态。
+
+## 使用方式
+
+```bash
+# 单元测试（构建时会把本目录复制到可执行文件同级目录）
+ctest --preset windows-msvc -C Debug -R tst_sample_files
+
+# 应用自检：自动导入 JSON 样本 → 导出三种格式 → 再导入回来校验
+cmake --preset windows-msvc -DBUILD_SELFTEST=ON
+cmake --build --preset windows-msvc-debug
+./build/windows-msvc/Debug/Schedule.exe --selftest
+```
+
+## 注意事项
+
+- **三个文件必须保持内容等价**：修改任意一个都要同步其余两个，否则
+  `tst_sample_files` 会失败（这正是它存在的意义）。
+- 样本中的日期固定为 `2024-09-02` 起始，**不要**改成相对当前日期的值，
+  否则测试结果会随运行日期漂移。
+- 样本文件通过 `src/app/CMakeLists.txt` 的 `copy_directory` 复制到构建输出目录，
+  因此 `--selftest` 无需知道仓库路径。

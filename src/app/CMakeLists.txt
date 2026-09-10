@@ -34,16 +34,34 @@ set_target_properties(Schedule
 		CXX_EXTENSIONS OFF
 )
 
-# 自动化 UI 自检（默认关闭；仅供本地开发验证，勿用于移动端发布包）
+# 自动化端到端自检（默认关闭；仅供本地开发验证，勿用于移动端发布包）
 option(BUILD_SELFTEST
-	"Enable automated UI self test (desktop development only)"
+	"Enable automated end-to-end self test (desktop development only)"
 	OFF
 )
 if(BUILD_SELFTEST)
 	find_package(Qt6 6.9.3 REQUIRED COMPONENTS Test)
+	target_sources(Schedule
+		PRIVATE
+			SelfTest.cpp
+			SelfTest.h
+	)
 	target_link_libraries(Schedule PRIVATE Qt6::Test)
 	target_compile_definitions(Schedule PRIVATE Schedule_SELFTEST=1)
 endif()
+
+# 课表样本文件：复制到可执行文件同级目录，供 --selftest 与手工导入使用。
+# 数据层只接收路径，因此自检读取的是真实文件而不是内嵌资源。
+add_custom_command(
+	TARGET Schedule
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+		"${CMAKE_SOURCE_DIR}/samples"
+		"$<TARGET_FILE_DIR:Schedule>/samples"
+	COMMENT "复制课表样本文件到构建输出目录"
+	VERBATIM
+)
+
 # Windows 桌面：构建后把 Qt 运行库部署到 Schedule.exe 同级目录，可直接双击运行。
 # 具体实现收敛在 cmake/ScheduleQtDeploy.cmake，测试可执行文件复用同一个函数。
 include(${CMAKE_SOURCE_DIR}/cmake/ScheduleQtDeploy.cmake)

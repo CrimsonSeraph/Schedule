@@ -26,12 +26,28 @@ Item {
             width: settingsScroll.width
             spacing: 14
 
-            Label {
+            // 标题行同时承载“自检”按钮：放在页面最顶部，保证任何窗口高度下都可见，
+            // 便于 --selftest 通过真实鼠标点击验证 C++ 侧的连接链路。
+            RowLayout {
+                Layout.fillWidth: true
                 Layout.margins: 12
-                text: qsTr("设置")
-                font.bold: true
-                font.pixelSize: 18
-                color: "#1F2A44"
+                spacing: 8
+
+                Label {
+                    text: qsTr("设置")
+                    font.bold: true
+                    font.pixelSize: 18
+                    color: "#1F2A44"
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Button {
+                    id: testButton
+
+                    objectName: "testButton"
+                    text: qsTr("自检（输出测试信息）")
+                }
             }
 
             // ------------------------------------------------------------ 目录设置
@@ -325,13 +341,6 @@ Item {
 
                             objectName: "saveNowButton"
                             text: qsTr("立即保存")
-                        }
-
-                        Button {
-                            id: testButton
-
-                            objectName: "testButton"
-                            text: qsTr("自检（输出测试信息）")
                         }
                     }
                 }

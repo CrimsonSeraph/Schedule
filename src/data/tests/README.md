@@ -16,13 +16,14 @@
 
 ## 产物
 
-`BUILD_TESTS=ON` 时生成 3 个测试可执行文件，并注册到 CTest：
+`BUILD_TESTS=ON` 时生成 4 个测试可执行文件，并注册到 CTest：
 
 | 测试目标 | 覆盖内容 |
 | -------- | -------- |
 | `tst_import_export` | 格式识别（扩展名 / 内容嗅探）、导出文件名规则与清洗、导出到指定目录（自动建目录、返回实际路径）、JSON / CSV / ICS 三种格式往返、ICS 的 `RRULE` 与 `RDATE`、预览的重复统计与提示、**只报告新引入的冲突**、合并 / 去重 / 覆盖三种策略、错误路径（文件不存在、内容无法识别、非 UTF-8、缺列）、内存导入入口 |
+| `tst_sample_files` | **[样本回归]** `samples/` 下 JSON / CSV / ICS 三个样本必须解析出**内容等价**的课表（课程名 → 时间段签名集合完全一致），同时覆盖单周 `RRULE;INTERVAL=2` 与非连续周次 `RDATE` 两条易错路径 |
 | `tst_schedule_json` | 快照 → 文档 → 快照往返、文档信封字段、拒绝非课表 JSON / 过高版本、`week_bits` 缺失时回退解析表达式、`start_time`/`end_time` 兼容命名、缺省作息表回退、学期缺日期报错、`write_file` 自动建目录与原子覆盖、文件不存在报错 |
-| `tst_sqlite_repository` | 建表迁移与幂等、快照往返与“整体替换”语义、学期 upsert / 排序 / 级联删除、当前学期唯一性、设置读写、导入记录倒序与字段自动补齐、`VACUUM INTO` 备份与恢复（含 `.bak`）、备份文件校验、未打开时的优雅失败、默认数据库路径、`AppSettings` 门面与默认目录规则 |
+| `tst_sqlite_repository` | 六张业务表齐备、版本 0 空库自动迁移、版本过高时拒绝打开、建表迁移与幂等、快照往返与“整体替换”语义、学期 upsert / 排序 / 级联删除、当前学期唯一性、设置读写、导入记录倒序与字段自动补齐、`VACUUM INTO` 备份与恢复（含 `.bak`）、备份文件校验、未打开时的优雅失败、默认数据库路径、`AppSettings` 门面与默认目录规则 |
 
 ## 目录结构
 
@@ -31,6 +32,7 @@ src/data/tests/
 ├── CMakeLists.txt
 ├── README.md
 ├── tst_import_export.cpp
+├── tst_sample_files.cpp
 ├── tst_schedule_json.cpp
 └── tst_sqlite_repository.cpp
 ```
@@ -41,7 +43,9 @@ src/data/tests/
 
 1. 新建 `tst_xxx.cpp`，使用 `QTEST_GUILESS_MAIN(TestXxx)`，末尾 `#include "tst_xxx.moc"`；
 2. 把目标名追加到 `CMakeLists.txt` 的 `SCHEDULE_DATA_TESTS` 列表；
-3. 测试会自动获得 Qt 运行库部署（`schedule_deploy_qt_runtime`），无需手工复制 DLL。
+3. 测试会自动获得 Qt 运行库部署（`schedule_deploy_qt_runtime`），无需手工复制 DLL；
+4. 需要读取 `samples/` 的测试通过编译定义 `SCHEDULE_SAMPLES_DIR` 获得绝对路径
+   （在 `CMakeLists.txt` 中以 `${CMAKE_SOURCE_DIR}/samples` 注入）。
 
 ## 构建与测试方式
 
