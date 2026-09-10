@@ -33,15 +33,17 @@ if(BUILD_TESTS)
 endif()
 
 # Qt 依赖（后续模块按需补充组件）
-find_package(Qt6 6.9.3 REQUIRED COMPONENTS Core Qml)
+find_package(Qt6 6.9.3 REQUIRED COMPONENTS Core Qml Sql)
 
 # Qt 推荐的项目级初始化（启用 AUTOMOC/AUTOUIC/AUTORCC，采纳 Qt 策略默认值）
 qt_standard_project_setup()
 
 # 子模块（按阶段逐步启用）
-# 阶段 2: 核心层，纯 C++，仅依赖 Qt6::Core
+# 阶段 1: 核心层，纯 C++，仅依赖 Qt6::Core
 add_subdirectory(src/core)
-# 阶段 3: 引擎层，QML 绑定对象，依赖 core
+# 阶段 2: 基础设施层，SQLite 持久化与导入导出，依赖 core
+add_subdirectory(src/data)
+# 阶段 3: 引擎层，QML 绑定对象，依赖 core / data
 add_subdirectory(src/engine)
 # 阶段 4: UI 层，QML 模块，依赖 engine
 add_subdirectory(src/ui)

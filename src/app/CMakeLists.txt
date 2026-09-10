@@ -27,33 +27,10 @@ if(BUILD_SELFTEST)
 	target_link_libraries(Schedule PRIVATE Qt6::Test)
 	target_compile_definitions(Schedule PRIVATE Schedule_SELFTEST=1)
 endif()
-# Windows 桌面：构建后把 Qt 运行库部署到 Schedule.exe 同级目录，可直接双击运行
-# add_custom_command(TARGET ...) 必须与目标同目录，故写在这里而非根 CMakeLists.txt。
-# Qt6_DIR（find_package 已由根 CMakeLists 执行）形如 <Qt安装根>/lib/cmake/Qt6，向上三级即套件根目录。
-if(WIN32 AND NOT CMAKE_CROSSCOMPILING)
-	get_filename_component(QT_INSTALL_PREFIX "${Qt6_DIR}/../../.." ABSOLUTE)
-	find_program(WINDEPLOYQT_EXECUTABLE
-		NAMES
-		windeployqt
-		HINTS
-		"${QT_INSTALL_PREFIX}/bin"
-		NO_DEFAULT_PATH
-	)
-	if(WINDEPLOYQT_EXECUTABLE)
-		add_custom_command(
-			TARGET Schedule
-			POST_BUILD
-			COMMAND "${WINDEPLOYQT_EXECUTABLE}" --no-translations
-				--no-system-d3d-compiler --no-opengl-sw --no-ffmpeg --compiler-runtime
-				--qmldir "${CMAKE_SOURCE_DIR}/src/ui/qml"
-				"$<$<CONFIG:Debug>:--debug>$<$<NOT:$<CONFIG:Debug>>:--release>"
-				"$<TARGET_FILE:Schedule>"
-			COMMENT "windeployqt: copying Qt runtime next to Schedule.exe"
-			VERBATIM
-		)
-	else()
-		message(WARNING
-			"windeployqt not found under ${QT_INSTALL_PREFIX}/bin — Qt DLLs will not be deployed next to Schedule.exe"
-		)
-	endif()
-endif()
+# Windows 桌面：构建后把 Qt 运行库部署到 Schedule.exe 同级目录，可直接双击运行。
+# 具体实现收敛在 cmake/ScheduleQtDeploy.cmake，测试可执行文件复用同一个函数。
+include(${CMAKE_SOURCE_DIR}/cmake/ScheduleQtDeploy.cmake)
+schedule_deploy_qt_runtime(Schedule
+	--compiler-runtime
+	--qmldir "${CMAKE_SOURCE_DIR}/src/ui/qml"
+)

@@ -42,7 +42,7 @@ app  ──►  ui  ──►  engine  ──►  data  ──►  core
 - 周次表达式：`1-16`、`1-16/2`、单双周、自定义周；支持当前周计算与冲突检测。
 - QTest 单元测试 + `src/core/README.md` 详细更新。
 
-### 阶段 2：data 持久化层
+### 阶段 2：data 持久化层 —— 已完成
 
 - 新增 `src/data` 模块，CMake 目标 `ScheduleData`。
 - 仓库接口 `IScheduleRepository`，实现 `SqliteScheduleRepository`。
