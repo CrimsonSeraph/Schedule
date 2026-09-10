@@ -35,7 +35,7 @@ app  ──►  ui  ──►  engine  ──►  data  ──►  core
 - 新增 `src/data/README.md` 占位，明确分层扩展为 `core → data → engine → ui → app`。
 - 各模块 README 补充“后续阶段计划”。
 
-### 阶段 1：core 领域模型与核心服务
+### 阶段 1：core 领域模型与核心服务 —— 已完成
 
 - 领域模型：`Semester`、`Course`、`CourseSession`、`TimeSlot`、`WeekMask`、`Conflict`。
 - 核心服务：`ScheduleService`、`ConflictDetector`、`WeekCalculator`。

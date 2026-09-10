@@ -27,6 +27,11 @@ endif()
 # 通用选项
 option(BUILD_TESTS "构建单元测试" OFF)
 
+# 启用 CTest：必须在所有 add_test() 之前调用，故放在顶层
+if(BUILD_TESTS)
+	enable_testing()
+endif()
+
 # Qt 依赖（后续模块按需补充组件）
 find_package(Qt6 6.9.3 REQUIRED COMPONENTS Core Qml)
 
