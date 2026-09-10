@@ -161,12 +161,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # 只保留 sqlite 驱动：其它 sqldrivers（如 libqsqlmimer.dylib）依赖系统里不存在的
+          # libmimerapi.dylib，macdeployqt 会输出 "ERROR: no file at ..."（虽不致命但会污染日志）；
+          # 应用只用到 sqldrivers/qsqlite。
+          find "$QTDIR/plugins/sqldrivers" -type f -name 'libqsql*.dylib' ! -name 'libqsqlite.dylib' -delete || true
           "$QTDIR/bin/macdeployqt" "$APP_REL" \
             -qmldir=src/ui/qml \
             -appstore-compliant \
             -verbose=1
           # -appstore-compliant 会剔除 App Store 不允许的库；若只做 Developer ID 分发
           # 且遇到删库导致的运行问题，可去掉该参数（公证并不要求它）。
+          # -qmldir 指向 QML 源码目录：项目的 QML 虽已编译进二进制，但 QtQuick /
+          # QtQuick.Controls 等 Qt 侧 QML 模块仍需按 import 扫描后复制进 bundle。
           du -sh "$APP_REL"
 
       - name: 检查 Apple secrets

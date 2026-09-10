@@ -83,9 +83,11 @@ jobs:
           BUILD_ARM64: ${{ inputs.build_arm64 }}
         run: |
           set -euo pipefail
-          # Qt 6.9.3 官方同时提供 linux_gcc_64 与 linux_gcc_arm64 两套桌面预编译包
-          x64='{"arch":"x64","runner":"ubuntu-latest","qt_arch":"linux_gcc_64","deb_arch":"amd64","artifact":"Schedule-linux-x64"}'
-          arm64='{"arch":"arm64","runner":"ubuntu-24.04-arm","qt_arch":"linux_gcc_arm64","deb_arch":"arm64","artifact":"Schedule-linux-arm64"}'
+          # Qt 6.9.3 官方同时提供 linux_gcc_64 与 linux_gcc_arm64 两套桌面预编译包。
+          # 注意：aqt 的 host 决定去哪个仓库取包（linux → linux_x64，linux_arm64 → linux_arm64），
+          # host 与 arch 必须匹配，否则会报 "The packages ['qt_base'] were not found"
+          x64='{"arch":"x64","runner":"ubuntu-latest","qt_arch":"linux_gcc_64","qt_host":"linux","deb_arch":"amd64","artifact":"Schedule-linux-x64"}'
+          arm64='{"arch":"arm64","runner":"ubuntu-24.04-arm","qt_arch":"linux_gcc_arm64","qt_host":"linux_arm64","deb_arch":"arm64","artifact":"Schedule-linux-arm64"}'
           if [ "$BUILD_ARM64" = "true" ]; then
             echo "matrix={\"include\":[${x64},${arm64}]}" >> "$GITHUB_OUTPUT"
           else
@@ -130,7 +132,8 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
-          host: linux
+          # host 必须与 arch 匹配：x64 = linux + linux_gcc_64，arm64 = linux_arm64 + linux_gcc_arm64
+          host: ${{ matrix.qt_host }}
           target: desktop
           arch: ${{ matrix.qt_arch }}
           # 显式指定安装目录，便于缓存与排错（默认即 $GITHUB_WORKSPACE/Qt）
@@ -238,6 +241,16 @@ jobs:
           export PATH="$SCHEDULE_TMP:$PATH"
           # 无 FUSE 的容器/runner 上直接解包运行，避免依赖 libfuse
           export APPIMAGE_EXTRACT_AND_RUN=1
+
+          # 本项目的 QML 经 qt_add_qml_module 编译进二进制，AppDir 里没有 .qml 文件，
+          # linuxdeploy-plugin-qt 扫描不到任何 import；必须用 QML_SOURCES_PATHS 指回源码目录，
+          # 否则 QtQuick / QtQuick.Controls / Dialogs / Layouts 等模块不会被打进 AppImage，
+          # 应用运行时会报 "module ... is not installed"。
+          export QML_SOURCES_PATHS="$PWD/src/ui/qml"
+
+          # 只保留 sqlite 驱动：Qt 自带的 libqsqlmimer.so 依赖 libmimerapi.so（系统未提供），
+          # linuxdeploy 解析依赖时会直接 ERROR 退出；应用只需要 sqldrivers/qsqlite。
+          find "$QTDIR/plugins/sqldrivers" -type f -name 'libqsql*.so' ! -name 'libqsqlite.so' -delete || true
 
           "$SCHEDULE_TMP/linuxdeploy" --appdir AppDir \
             --plugin qt \

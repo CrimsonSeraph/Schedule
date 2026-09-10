@@ -228,8 +228,19 @@ jobs:
           & $signtool.FullName sign /sha1 $cert.Thumbprint /fd SHA256 `
             /tr $env:TIMESTAMP_URL /td SHA256 /d "Schedule" $target
           if ($LASTEXITCODE -ne 0) { throw "signtool 签名失败：$target" }
+
+          # 自签名证书（Subject == Issuer）无法链到受信任根，signtool verify /pa 必然报
+          # "a certificate chain processed, but terminated in a root certificate which is not trusted"。
+          # 签名本身是成功的，因此自签时只告警；CA 签发的正式证书仍然硬性校验。
+          $selfSigned = ($cert.Subject -eq $cert.Issuer)
           & $signtool.FullName verify /pa /v $target
-          if ($LASTEXITCODE -ne 0) { throw "signtool 校验失败：$target" }
+          if ($LASTEXITCODE -ne 0) {
+            if ($selfSigned) {
+              Write-Host "::warning title=签名校验未通过::签名证书为自签名（Subject == Issuer），无法建立受信任链；签名已写入 $target，正式发布请使用 CA 签发的代码签名证书。"
+            } else {
+              throw "signtool 校验失败：$target"
+            }
+          }
           # 供“签名安装包”步骤复用，避免重复查找 signtool
           "SIGNTOOL=$($signtool.FullName)" >> $env:GITHUB_ENV
 
@@ -322,8 +333,18 @@ jobs:
           & $signtool sign /sha1 $env:SIGN_THUMBPRINT /fd SHA256 `
             /tr $env:TIMESTAMP_URL /td SHA256 /d "Schedule" $setup.FullName
           if ($LASTEXITCODE -ne 0) { throw "signtool 签名安装包失败" }
+
+          # 与 Schedule.exe 一致：自签证书无法通过链校验，降级为 warning，不影响打包
+          $cert = Get-Item "Cert:\CurrentUser\My\$env:SIGN_THUMBPRINT" -ErrorAction SilentlyContinue
+          $selfSigned = ($cert -and ($cert.Subject -eq $cert.Issuer))
           & $signtool verify /pa /v $setup.FullName
-          if ($LASTEXITCODE -ne 0) { throw "signtool 校验安装包失败" }
+          if ($LASTEXITCODE -ne 0) {
+            if ($selfSigned) {
+              Write-Host "::warning title=安装包签名校验未通过::证书为自签名（Subject == Issuer），signtool verify /pa 无法建立受信任链；签名已写入，正式发布请使用 CA 签发的证书。"
+            } else {
+              throw "signtool 校验安装包失败"
+            }
+          }
 
       - name: 生成 SHA256 校验和
         shell: pwsh

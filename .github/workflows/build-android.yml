@@ -116,7 +116,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 安装 JDK 17
-        uses: actions/setup-java@v4
+        # v4 已进入 deprecated 状态（运行日志中有明确提示），迁移到 v5；
+        # distribution / java-version 入参在 v5 中保持兼容。
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -190,7 +192,9 @@ jobs:
           echo "QTDIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
           echo "Qt Android 套件目录：$QT_ROOT_DIR"
           test -f "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
-          test -x "$QTDIR/bin/androiddeployqt"
+          # 注意：QTDIR 是本步骤刚写进 GITHUB_ENV 的，下一步才可见；
+          # 同一步骤内要用 install-qt-action 已导出的 QT_ROOT_DIR，否则 set -u 报 unbound variable。
+          test -x "$QT_ROOT_DIR/bin/androiddeployqt"
 
       - name: 动态生成 CI 用 CMakeUserPresets.json
         shell: bash

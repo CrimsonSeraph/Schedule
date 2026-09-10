@@ -116,7 +116,9 @@ jobs:
           fi
           echo "QT_HOST_PATH=$QT_HOST_PATH" >> "$GITHUB_ENV"
           echo "host Qt：$QT_HOST_PATH"
-          test -f "$QTDIR/lib/cmake/Qt6/qt.toolchain.cmake"
+          # 注意：QTDIR 是本步骤刚写进 GITHUB_ENV 的，下一步才可见；
+          # 同一步骤内要用 QT_ROOT_DIR，否则 set -u 报 unbound variable。
+          test -f "$QT_ROOT_DIR/lib/cmake/Qt6/qt.toolchain.cmake"
 
       - name: 检查 Apple secrets
         id: apple
