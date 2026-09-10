@@ -17,12 +17,15 @@
 ## 启动流程
 
 1. 创建 `QGuiApplication`，设置组织名 / 应用名 / 版本；
-2. `qmlRegisterType<myapp::AppBridge>("MyApp", 1, 0, "AppBridge")` 注册桥接类型；
+2. 在 C++ 侧实例化 `Schedule::AppBridge`，并注入为 QML 上下文属性 `bridge`；
 3. 创建 `QQmlApplicationEngine`；
 4. 按平台宏选择主 QML 并加载：
-    - `Q_OS_ANDROID` / `Q_OS_IOS` → `qrc:/qt/qml/MyApp/qml/MainMobile.qml`
-    - 其他平台（Windows / Linux / macOS）→ `qrc:/qt/qml/MyApp/qml/MainDesktop.qml`
-5. 加载失败（rootObjects 为空）返回 -1，否则进入事件循环。
+    - `Q_OS_ANDROID` / `Q_OS_IOS` → `qrc:/qt/qml/Schedule/qml/MainMobile.qml`
+    - 其他平台（Windows / Linux / macOS）→ `qrc:/qt/qml/Schedule/qml/MainDesktop.qml`
+5. 加载成功后在 C++ 侧显式建立信号连接（QML 不再隐式连接）：
+    - “测试”按钮 `clicked` → `AppBridge::test_button_clicked()`；
+    - `AppBridge::test_signal(message)` → 应用日志输出；
+6. 加载失败（rootObjects 为空）返回 -1，否则进入事件循环。
 
 ## 本地运行验证
 
@@ -37,7 +40,7 @@ cmake --build --preset windows-msvc-debug
 
 ```text
 Test button clicked!
-[QML] testSignal: testButtonClicked
+[app] test_signal received: test_button_clicked
 ```
 
 ## 构建

@@ -15,7 +15,7 @@ namespace Schedule {
         DataEngine() = default;
 
         /** @return 当前应用版本号，如 "1.0.0"。 */
-        QString getVersion() const;
+        QString get_version() const;
     };
 
 } // namespace Schedule

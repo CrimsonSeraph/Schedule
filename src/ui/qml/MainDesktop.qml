@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Schedule 1.0
 
 ApplicationWindow {
     id: root
@@ -10,18 +9,8 @@ ApplicationWindow {
     visible: true
     title: qsTr("Schedule - Desktop")
 
-    // 桥接对象：读取 version 属性、调用测试槽
-    AppBridge {
-        id: bridge
-    }
-
-    Connections {
-        target: bridge
-        function onTestSignal(msg) {
-            console.log("[QML] testSignal:", msg)
-        }
-    }
-
+    // bridge 是 C++ 侧注入的上下文属性（见 src/app/main.cpp），QML 只读取其属性；
+    // 按钮点击等信号连接均在 C++ 侧显式建立（QObject::connect），QML 不再隐式连接。
     ColumnLayout {
         anchors.centerIn: parent
         spacing: 24
@@ -39,8 +28,6 @@ ApplicationWindow {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 180
             Layout.preferredHeight: 48
-
-            onClicked: bridge.testButtonClicked()
         }
     }
 }

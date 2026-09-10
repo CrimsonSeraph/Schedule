@@ -29,9 +29,8 @@ src/ui/
 
 两个主界面均：
 
-- `import MyApp 1.0` 使用注册到 QML 的类型；
-- 实例化 `AppBridge` 并显示 `bridge.version` 标签；
-- 提供文本为 “测试” 的 `Button`，`onClicked` 调用 `bridge.testButtonClicked()`（触发 C++ 侧 qDebug 输出与 `testSignal`）。
+- 显示版本标签 `bridge.version`（`bridge` 为 C++ 侧注入的上下文属性，见 app 层说明）；
+- 提供文本为 “测试” 的 `Button`（`objectName: "testButton"`），其 `clicked` 信号由 C++ 侧显式连接到 `AppBridge::test_button_clicked()`（触发 qDebug 输出与 `test_signal`）；QML 中不再书写 `onClicked` / `Connections` 等隐式连接。
 
 ## 使用
 

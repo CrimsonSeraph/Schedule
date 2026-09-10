@@ -65,7 +65,7 @@ cmake --build --preset windows-msvc-debug
 ### 构建选项
 
 - `BUILD_TESTS`：构建单元测试（默认 `OFF`）。
-- `BUILD_SELFTEST`：桌面自动化 UI 自检（默认 `OFF`）；启用后运行 `MyApp.exe --selftest` 会自动点击“测试”按钮并输出 `Test button clicked!`，用于验证 QML→C++ 调用链路。
+- `BUILD_SELFTEST`：桌面自动化 UI 自检（默认 `OFF`）；启用后运行 `MyApp.exe --selftest` 会自动点击“测试”按钮并输出 `Test button clicked!`，用于验证 C++ 侧显式建立的按钮信号连接链路。
 
 ### 格式与规范
 

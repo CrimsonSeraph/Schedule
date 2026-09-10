@@ -2,7 +2,7 @@
 
 namespace Schedule {
 
-    QString DataEngine::getVersion() const {
+    QString DataEngine::get_version() const {
         return QStringLiteral("1.0.0");
     }
 

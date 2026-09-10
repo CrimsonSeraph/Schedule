@@ -9,12 +9,12 @@ namespace Schedule {
     }
 
     QString AppBridge::version() const {
-        return m_dataEngine.getVersion();
+        return m_data_engine.get_version();
     }
 
-    void AppBridge::testButtonClicked() {
+    void AppBridge::test_button_clicked() {
         qDebug() << "Test button clicked!";
-        emit testSignal(QStringLiteral("testButtonClicked"));
+        emit test_signal(QStringLiteral("test_button_clicked"));
     }
 
 } // namespace Schedule

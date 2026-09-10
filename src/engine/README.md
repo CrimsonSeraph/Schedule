@@ -18,31 +18,32 @@
 
 | 类型 | 说明 |
 | --- | --- |
-| `AppBridge` | 桥接对象；属性 `version`（来自 `DataEngine::getVersion()`）、`Q_INVOKABLE testButtonClicked()`（qDebug 输出测试信息）、信号 `testSignal(msg)` |
+| `AppBridge` | 桥接对象；C++ 侧持有并注入 QML；属性 `version`（来自 `DataEngine::get_version()`）、公开槽 `test_button_clicked()`（qDebug 输出测试信息并发出信号）、信号 `test_signal(message)` |
 
-## 注册到 QML
+## 注入到 QML
 
-在可执行程序入口（`src/app/main.cpp`）中、加载 QML 之前执行：
+由应用入口（`src/app/main.cpp`）在 C++ 侧实例化 `Schedule::AppBridge`，并在加载 QML 前注入为上下文属性：
 
 ```cpp
-qmlRegisterType<myapp::AppBridge>("MyApp", 1, 0, "AppBridge");
+Schedule::AppBridge app_bridge;
+engine.rootContext()->setContextProperty("bridge", &app_bridge);
 ```
 
-随后 QML 侧即可：
+随后 QML 侧即可（无需 import Schedule）：
 
 ```qml
-import MyApp 1.0
-
-AppBridge {
-    id: bridge
-}
-
 Text { text: bridge.version }
 Button {
+    id: testButton
+    objectName: "testButton"
     text: qsTr("测试")
-    onClicked: bridge.testButtonClicked()
 }
 ```
+
+信号连接约定：
+
+- 与桥接对象之间的信号连接统一在 C++ 侧显式建立（`QObject::connect`，见 `src/app/main.cpp`）；QML 不再使用 `onClicked` / `Connections` 等按名称隐式连接的写法；
+- 命名遵循全小写 + 下划线（如槽 `test_button_clicked()`、信号 `test_signal(message)`）。
 
 ## 构建
 
