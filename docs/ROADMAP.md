@@ -81,7 +81,7 @@ app  ──►  ui  ──►  engine  ──►  data  ──►  core
 - 增加导入导出样本文件。
 - 扩展 `--selftest`：自动导入样本、导出到指定目录、校验导出文件存在。
 
-### 阶段 8：打包、国际化与文档收尾
+### 阶段 8：打包、国际化与文档收尾 —— 已完成
 
 - `windeployqt` / `macdeployqt` / `androiddeployqt` 部署说明。
 - Qt Linguist 国际化基础（`tr()` / `qsTr()` + `.ts` 文件）。

@@ -37,6 +37,12 @@ namespace Schedule {
         };
 
         /**
+         * @brief 全量冲突检测（使用默认检测开关）。
+         * @see detect(const QList<Course>&, const Semester&, const QList<TimeSlot>&, const Options&)
+         */
+        static QList<Conflict> detect(const QList<Course>& courses, const Semester& semester, const QList<TimeSlot>& time_slots);
+
+        /**
          * @brief 全量冲突检测。
          *
          * @param courses     待检测课程（应同属 `semester`）
@@ -44,11 +50,20 @@ namespace Schedule {
          * @param time_slots  作息表（提供最大节次；为空时跳过节次范围校验）
          * @param options     检测开关
          * @return 问题列表，可能为空；已排序、去重。
+         *
+         * @note 这里使用**重载**而不是 `const Options& options = Options()` 默认实参：
+         *       `Options` 是带成员初始化器的嵌套类型，在类定义内部用作默认实参会被
+         *       Clang（Android / iOS 工具链）判为非法，而 MSVC 能通过。重载写法可移植。
          */
         static QList<Conflict> detect(const QList<Course>& courses,
             const Semester& semester,
             const QList<TimeSlot>& time_slots,
-            const Options& options = Options());
+            const Options& options);
+
+        /**
+         * @brief 单课程自检（使用默认检测开关）。
+         */
+        static QList<Conflict> detect_in_course(const Course& course, const Semester& semester, const QList<TimeSlot>& time_slots);
 
         /**
          * @brief 单课程自检。
@@ -59,7 +74,12 @@ namespace Schedule {
         static QList<Conflict> detect_in_course(const Course& course,
             const Semester& semester,
             const QList<TimeSlot>& time_slots,
-            const Options& options = Options());
+            const Options& options);
+
+        /**
+         * @brief 两门课程之间的冲突检测（使用默认检测开关）。
+         */
+        static QList<Conflict> detect_between(const Course& first, const Course& second, const Semester& semester);
 
         /**
          * @brief 两门课程之间的冲突检测。
@@ -69,7 +89,7 @@ namespace Schedule {
         static QList<Conflict> detect_between(const Course& first,
             const Course& second,
             const Semester& semester,
-            const Options& options = Options());
+            const Options& options);
 
         /**
          * @brief 判断两个时间段是否冲突。

@@ -50,6 +50,22 @@ if(BUILD_SELFTEST)
 	target_compile_definitions(Schedule PRIVATE Schedule_SELFTEST=1)
 endif()
 
+# ---------------------------------------------------------------- 国际化
+# 源语言是简体中文（qsTr/tr 直接写中文），因此只需要其它语言的 .ts。
+# qt_add_translations 会把 .qm 嵌入资源（前缀 /i18n），并创建 update_translations 目标。
+# 缺少 Qt Linguist 工具时降级为“不翻译”，不影响构建。
+find_package(Qt6 6.9.3 QUIET COMPONENTS LinguistTools)
+if(Qt6LinguistTools_FOUND)
+	qt_add_translations(Schedule
+		TS_FILES
+			"${CMAKE_SOURCE_DIR}/i18n/schedule_en.ts"
+		RESOURCE_PREFIX
+			"/i18n"
+	)
+else()
+	message(WARNING "未找到 Qt Linguist 工具（lupdate/lrelease），本次构建不包含翻译文件")
+endif()
+
 # 课表样本文件：复制到可执行文件同级目录，供 --selftest 与手工导入使用。
 # 数据层只接收路径，因此自检读取的是真实文件而不是内嵌资源。
 add_custom_command(

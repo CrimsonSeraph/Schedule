@@ -20,6 +20,7 @@
 #include <QDebug>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QTranslator>
 #include <QUrl>
 
 #include <memory>
@@ -38,6 +39,14 @@ int main(int argc, char* argv[]) {
     gui_app.setOrganizationName(QStringLiteral("Schedule"));
     gui_app.setApplicationName(QStringLiteral("Schedule"));
     gui_app.setApplicationVersion(QStringLiteral("1.0.0"));
+
+    // ------------------------------------------------------------------ 国际化
+    // 源语言是简体中文；若存在与系统语言匹配的 .qm（由 qt_add_translations 嵌入 :/i18n），
+    // 则安装翻译器，否则自动回退到中文源字符串。
+    QTranslator translator;
+    if (translator.load(QLocale(), QStringLiteral("schedule"), QStringLiteral("_"), QStringLiteral(":/i18n"))) {
+        gui_app.installTranslator(&translator);
+    }
 
     // ---------------------------------------------------------------- 数据层组装
     // 数据库位于 AppDataLocation/schedule.db；若无法打开（只读介质、驱动缺失等），

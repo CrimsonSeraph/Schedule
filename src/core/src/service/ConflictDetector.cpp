@@ -84,6 +84,10 @@ namespace Schedule {
         return true;
     }
 
+    QList<Conflict> ConflictDetector::detect_in_course(const Course& course, const Semester& semester, const QList<TimeSlot>& time_slots) {
+        return detect_in_course(course, semester, time_slots, Options());
+    }
+
     QList<Conflict> ConflictDetector::detect_in_course(const Course& course,
         const Semester& semester,
         const QList<TimeSlot>& time_slots,
@@ -164,6 +168,10 @@ namespace Schedule {
         return conflicts;
     }
 
+    QList<Conflict> ConflictDetector::detect_between(const Course& first, const Course& second, const Semester& semester) {
+        return detect_between(first, second, semester, Options());
+    }
+
     QList<Conflict> ConflictDetector::detect_between(const Course& first,
         const Course& second,
         const Semester& semester,
@@ -200,6 +208,10 @@ namespace Schedule {
         }
 
         return conflicts;
+    }
+
+    QList<Conflict> ConflictDetector::detect(const QList<Course>& courses, const Semester& semester, const QList<TimeSlot>& time_slots) {
+        return detect(courses, semester, time_slots, Options());
     }
 
     QList<Conflict> ConflictDetector::detect(const QList<Course>& courses,
