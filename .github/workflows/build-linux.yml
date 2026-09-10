@@ -315,7 +315,7 @@ jobs:
           cp "$SUMS" "dist/SHA256SUMS-linux-${ARCH}.txt"
           ls -lh dist
 
-      - name: 检查 GPG secrets
+      - name: 检查并解析 GPG 私钥
         id: gpg
         shell: bash
         env:
@@ -323,31 +323,78 @@ jobs:
           FORCE_SIGN: ${{ inputs.sign }}
         run: |
           set -euo pipefail
-          if [ -n "$GPG_KEY" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "检测到 LINUX_GPG_PRIVATE_KEY，将对产物生成 .asc 分离签名。"
-          else
+          mkdir -p "$SCHEDULE_TMP"
+          if [ -z "$GPG_KEY" ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=跳过 GPG 签名::未配置 secret LINUX_GPG_PRIVATE_KEY，本次仅提供 sha256 校验和。"
             if [ "$FORCE_SIGN" = "true" ]; then
               echo "::error title=缺少签名 secrets::inputs.sign=true 要求强制签名，但 LINUX_GPG_PRIVATE_KEY 未配置。"
               exit 1
             fi
+            exit 0
           fi
+
+          # secret 的常见三种写法都要兼容，否则 gpg --import 会以 "no valid OpenPGP data found" 失败：
+          #   ① ASCII-armored 私钥原文（含 -----BEGIN PGP PRIVATE KEY BLOCK-----）
+          #   ② 私钥原文经 base64（与其它平台 *_BASE64 secret 命名风格一致）
+          #   ③ 整段压成一行、换行写成字面量 \n
+          RAW="$SCHEDULE_TMP/gpg-key.raw"
+          KEY_FILE="$SCHEDULE_TMP/gpg-key.asc"
+          printf '%s' "$GPG_KEY" | sed 's/\\n/\n/g' > "$RAW"
+          FORMAT=""
+          if grep -q -- '-----BEGIN PGP' "$RAW"; then
+            cp "$RAW" "$KEY_FILE"
+            FORMAT="armored"
+          elif tr -d '\n\r ' < "$RAW" | base64 -d > "$KEY_FILE" 2>/dev/null && grep -q -- '-----BEGIN PGP' "$KEY_FILE"; then
+            FORMAT="base64"
+          fi
+
+          if [ -z "$FORMAT" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=跳过 GPG 签名::LINUX_GPG_PRIVATE_KEY 既不是 ASCII-armored 私钥，也不是它的 base64 编码，本次仅提供 sha256 校验和（产物照常上传）。期望内容：gpg --armor --export-secret-keys <KEYID> 的完整输出，或该输出的 base64。"
+            if [ "$FORCE_SIGN" = "true" ]; then
+              echo "::error title=GPG 私钥不可用::inputs.sign=true 要求强制签名，但无法解析 LINUX_GPG_PRIVATE_KEY。"
+              exit 1
+            fi
+            exit 0
+          fi
+
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+          echo "GPG_KEY_FILE=$KEY_FILE" >> "$GITHUB_ENV"
+          echo "已解析 GPG 私钥（格式：$FORMAT），将对产物生成 .asc 分离签名。"
 
       - name: GPG 分离签名（可选）
         if: ${{ steps.gpg.outputs.ready == 'true' }}
         shell: bash
         env:
-          GPG_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+          FORCE_SIGN: ${{ inputs.sign }}
         run: |
           set -euo pipefail
           GNUPGHOME="$(mktemp -d "$SCHEDULE_TMP/gnupg.XXXXXX")"
           chmod 700 "$GNUPGHOME"
           echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
           export GNUPGHOME
-          printf '%s' "$GPG_KEY" | gpg --batch --quiet --import
+
+          # 导入失败或导入后没有私钥，都说明私钥内容/格式不可用
+          IMPORT_OK=true
+          gpg --batch --quiet --import "$GPG_KEY_FILE" || IMPORT_OK=false
+          if [ "$IMPORT_OK" = "true" ] \
+            && ! gpg --batch --with-colons --list-secret-keys 2>/dev/null | grep -q '^sec:'; then
+            IMPORT_OK=false
+          fi
+          if [ "$IMPORT_OK" != "true" ]; then
+            if [ "$FORCE_SIGN" = "true" ]; then
+              echo "::error title=GPG 私钥导入失败::inputs.sign=true 要求强制签名，请确认 LINUX_GPG_PRIVATE_KEY 是完整私钥（非公钥）且未被截断。"
+              exit 1
+            fi
+            # 非强制签名时不让可选的 GPG 环节拖垮整条流水线：产物仍有 sha256 校验和
+            echo "::warning title=跳过 GPG 签名::GPG 私钥无法导入（可能只是公钥、内容被截断或格式不受支持），本次只提供 sha256 校验和，产物照常上传。"
+            gpgconf --kill all 2>/dev/null || true
+            rm -rf "$GNUPGHOME"
+            exit 0
+          fi
+
           for f in dist/*; do
             # 私钥口令通过环境变量传入，不打印、不出现在命令行历史里
             gpg --batch --yes --armor --detach-sign \

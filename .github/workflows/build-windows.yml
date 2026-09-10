@@ -237,6 +237,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             if ($selfSigned) {
               Write-Host "::warning title=签名校验未通过::签名证书为自签名（Subject == Issuer），无法建立受信任链；签名已写入 $target，正式发布请使用 CA 签发的代码签名证书。"
+              # PowerShell 会把最后一个原生命令（signtool.exe）的退出码当作脚本退出码，
+              # 这里必须显式清零，否则“已容忍的校验失败”仍会让整个 step 判为失败。
+              $global:LASTEXITCODE = 0
             } else {
               throw "signtool 校验失败：$target"
             }
@@ -341,6 +344,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             if ($selfSigned) {
               Write-Host "::warning title=安装包签名校验未通过::证书为自签名（Subject == Issuer），signtool verify /pa 无法建立受信任链；签名已写入，正式发布请使用 CA 签发的证书。"
+              # 同 Schedule.exe：清零原生命令退出码，避免整步被判失败
+              $global:LASTEXITCODE = 0
             } else {
               throw "signtool 校验安装包失败"
             }
