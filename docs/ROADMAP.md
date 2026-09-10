@@ -1,7 +1,6 @@
 # Schedule 课表项目阶段路线图
 
-本文档记录课表应用的**分层约定**与**阶段划分**，是各模块 `README.md` 的公共依据。
-每完成一个阶段，需同步更新本文件中该阶段的状态。
+本文档记录课表应用的**分层约定**与**阶段划分**，是各模块 `README.md` 的公共依据。每完成一个阶段，需同步更新本文件中该阶段的状态。
 
 ## 一、分层约定
 
@@ -12,7 +11,7 @@ app  ──►  ui  ──►  engine  ──►  data  ──►  core
 ```
 
 | 层 | 目录 | 目标名 | 允许依赖 | 说明 |
-| -- | ---- | ------ | -------- | ---- |
+| --- | --- | --- | --- | --- |
 | core | `src/core` | `ScheduleCore` | `Qt6::Core` | 纯业务与数据逻辑，无任何 GUI 依赖，可在无显示环境下单元测试 |
 | data | `src/data` | `ScheduleData` | `ScheduleCore`、`Qt6::Core`、`Qt6::Sql` | 基础设施层：SQLite 持久化、JSON 序列化、导入导出实现、可选教务适配器 |
 | engine | `src/engine` | `ScheduleEngine` | `ScheduleData`、`ScheduleCore`、`Qt6::Core`、`Qt6::Qml` | QML 桥接层：`QObject` 桥接对象与 `QAbstractListModel` 模型 |
@@ -64,8 +63,7 @@ app  ──►  ui  ──►  engine  ──►  data  ──►  core
 
 ### 阶段 5：QML 界面 —— 已完成
 
-- 页面：`WeekView`、`DayView`、`CourseCard`、`CourseEditor`、`ImportWizard`、
-  `ExportDialog`、`SettingsPage`、`SemesterPage`。
+- 页面：`WeekView`、`DayView`、`CourseCard`、`CourseEditor`、`ImportWizard`、 `ExportDialog`、`SettingsPage`、`SemesterPage`。
 - 布局：`MainDesktop.qml` / `MainMobile.qml`。
 - 关键控件添加 `objectName`，供 C++ 侧连接与 UI 自检定位。
 

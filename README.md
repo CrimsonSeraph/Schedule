@@ -108,8 +108,7 @@ cmake --preset android
 cmake --build build/android --target apk        # 打 APK（--target aab 出 Google Play 的 AAB）
 ```
 
-> `windows-msvc` / `android` 属于**本机预设**，定义在已被 `.gitignore` 忽略的 `CMakeUserPresets.json` 中；新克隆的仓库需自行创建该文件，继承 `CMakePresets.json` 里的基础预设并填入本机 Qt / NDK 路径（`android` 预设还需要 `QT_HOST_PATH`）。
-> Android 打包必须走 Qt 自带的 `qt.toolchain.cmake`（预设里已配置），只用 NDK 工具链只能编译出 `.so`，详见 [docs/PACKAGING.md](docs/PACKAGING.md) 第 4 节。
+> `windows-msvc` / `android` 属于**本机预设**，定义在已被 `.gitignore` 忽略的 `CMakeUserPresets.json` 中；新克隆的仓库需自行创建该文件，继承 `CMakePresets.json` 里的基础预设并填入本机 Qt / NDK 路径（`android` 预设还需要 `QT_HOST_PATH`）。Android 打包必须走 Qt 自带的 `qt.toolchain.cmake`（预设里已配置），只用 NDK 工具链只能编译出 `.so`，详见 [docs/PACKAGING.md](docs/PACKAGING.md) 第 4 节。
 
 ### 构建选项
 
