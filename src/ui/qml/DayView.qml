@@ -42,8 +42,8 @@ Item {
             Label {
                 Layout.fillWidth: true
                 text: schedule.selectedDay === 0
-                      ? qsTr("整周共 %1 节课").arg(schedule.sessionModel.count())
-                      : qsTr("%1 共 %2 节课").arg(schedule.day_name(schedule.selectedDay)).arg(schedule.sessionModel.count())
+                      ? qsTr("整周共 %1 节课").arg(schedule.sessionModel.count)
+                      : qsTr("%1 共 %2 节课").arg(schedule.day_name(schedule.selectedDay)).arg(schedule.sessionModel.count)
                 color: "#6B7A90"
                 horizontalAlignment: Text.AlignRight
             }
@@ -88,7 +88,7 @@ Item {
 
                 Label {
                     width: parent.width
-                    visible: schedule.sessionModel.count() === 0
+                    visible: schedule.sessionModel.count === 0
                     text: qsTr("这一天还没有课程。点击顶部“新建课程”开始添加。")
                     color: "#8A97A8"
                     wrapMode: Text.WordWrap

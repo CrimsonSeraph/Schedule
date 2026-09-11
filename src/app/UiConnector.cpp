@@ -247,6 +247,8 @@ namespace Schedule {
             }
             m_bridge->remove_course(course_id);
         });
+
+        connect_overflow_menu();
     }
 
     void UiConnector::connect_semester_page() {
@@ -369,6 +371,25 @@ namespace Schedule {
         on_signal("sessionList", "currentIndexChanged()", [this]() {
             QObject* list = find("sessionList");
             load_session_row_into_form(list ? list->property("currentIndex").toInt() : -1);
+        });
+    }
+
+    void UiConnector::connect_overflow_menu() {
+        ImportExportBridge* io = m_bridge->import_export();
+
+        on_click("moreMenuButton", [this]() {
+            if (QObject* menu = find("moreMenu")) {
+                invoke(menu, "open");
+            }
+        });
+        on_signal("addCourseMenuItem", "triggered()", [this]() { open_course_editor(QString()); });
+        on_signal("importMenuItem", "triggered()", [this, io]() {
+            set_property(m_import_wizard, "initialDirectory", io->last_import_dir());
+            invoke(m_import_wizard, "open");
+        });
+        on_signal("exportMenuItem", "triggered()", [this, io]() {
+            set_text("exportDirField", io->default_export_dir());
+            invoke(m_export_dialog, "open");
         });
     }
 

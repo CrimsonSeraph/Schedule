@@ -127,6 +127,9 @@ namespace Schedule {
         /** @brief 课程编辑器。 */
         void connect_course_editor();
 
+        /** @brief 折叠菜单 */
+        void connect_overflow_menu();
+
         /** @brief 导入向导。 */
         void connect_import_wizard();
 

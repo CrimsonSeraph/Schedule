@@ -9,27 +9,55 @@ import QtQuick.Layouts
 //  - 每个交互控件都有稳定的 objectName，由 C++ 侧（app 层 UiConnector）在
 //    `engine.load()` 之后显式建立连接；
 //  - 界面只通过属性绑定读取 `schedule` / `bridge` 的状态。
+//
+// 响应式约定：
+//  - 最小窗口下调到 640×420：小屏、分屏、低高度窗口不再被 900×600 的硬下限挡住；
+//  - 断点只依赖窗口宽高（不依赖平台宏），横竖屏切换与手动缩放走同一条代码路径：
+//      * compactToolbar（宽度 < 1440）：次要操作（新建 / 导入 / 导出）折叠进
+//        “更多”折叠菜单（moreMenuButton + moreMenu），周次与导航按钮改用短文案；
+//        阈值由实测得出：完整工具栏需要约 1400px 才不裁切；
+//      * narrow（宽度 < 800）：隐藏标题与学期回显，把宽度让给导航；
+//      * shortHeight（高度 < 520）：压缩底部状态栏与提醒横幅的纵向占位。
+//  - 折叠菜单项（addCourseMenuItem / importMenuItem / exportMenuItem）与触发按钮
+//    moreMenuButton 是**新增控件**，需要 C++ 侧（app 层 UiConnector）显式连接
+//    `clicked()`（打开菜单）与 `triggered()`（菜单动作）；
+//    宽屏内联的 addCourseButton / importButton / exportButton 及其既有连接保持不变。
 ApplicationWindow {
     id: root
 
     objectName: "mainWindow"
     width: 1180
     height: 760
-    minimumWidth: 900
-    minimumHeight: 600
+    minimumWidth: 640
+    minimumHeight: 420
     visible: true
     title: qsTr("Schedule - 课表")
+
+    // ------------------------------------------------------------ 响应式断点
+    // 窄窗口：折叠次要操作并缩短按钮文案。
+    // 实测：完整工具栏（标题 + 学期回显 + 周次 + 4 个导航 + 冲突 + 3 个操作）需要约
+    // 1400px 才不裁切，因此以 1440 作为折叠阈值；默认窗口 1180 落在折叠形态，
+    // 避免“导出…”被窗口右边缘裁掉。
+    readonly property bool compactToolbar: width < 1440
+
+    // 超窄窗口：隐藏非必要回显，只保留导航骨架
+    readonly property bool narrow: width < 800
+
+    // 低高度窗口（横屏 / 分屏）：压缩纵向占位
+    readonly property bool shortHeight: height < 520
 
     header: ToolBar {
         RowLayout {
             anchors.fill: parent
-            spacing: 8
+            spacing: root.compactToolbar ? 2 : 8
 
             Label {
                 text: qsTr("课表")
                 font.bold: true
                 font.pixelSize: 18
                 leftPadding: 8
+                // 超窄窗口下标题让位给导航按钮
+                visible: !root.narrow
             }
 
             Label {
@@ -39,22 +67,26 @@ ApplicationWindow {
                 color: "#5A6A80"
                 elide: Text.ElideRight
                 Layout.maximumWidth: 260
+                // 窄窗口下先折叠学期回显：完整信息在“学期与课程”页仍可见
+                visible: !root.compactToolbar
             }
 
-            ToolSeparator {}
+            ToolSeparator {
+                visible: !root.compactToolbar
+            }
 
             ToolButton {
                 id: prevWeekButton
 
                 objectName: "prevWeekButton"
-                text: qsTr("◀ 上一周")
+                text: root.compactToolbar ? qsTr("◀") : qsTr("◀ 上一周")
             }
 
             ComboBox {
                 id: weekSelector
 
                 objectName: "weekSelector"
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: root.compactToolbar ? 108 : 150
                 textRole: "label"
                 valueRole: "value"
                 model: schedule.weekOptions
@@ -65,23 +97,27 @@ ApplicationWindow {
                 id: nextWeekButton
 
                 objectName: "nextWeekButton"
-                text: qsTr("下一周 ▶")
+                text: root.compactToolbar ? qsTr("▶") : qsTr("下一周 ▶")
             }
 
             ToolButton {
                 id: currentWeekButton
 
                 objectName: "currentWeekButton"
-                text: schedule.currentWeek > 0 ? qsTr("回到第 %1 周").arg(schedule.currentWeek) : qsTr("回到本周")
+                text: root.compactToolbar
+                      ? qsTr("本周")
+                      : (schedule.currentWeek > 0 ? qsTr("回到第 %1 周").arg(schedule.currentWeek) : qsTr("回到本周"))
             }
 
-            ToolSeparator {}
+            ToolSeparator {
+                visible: !root.compactToolbar
+            }
 
             ToolButton {
                 id: navWeekButton
 
                 objectName: "navWeekButton"
-                text: qsTr("周视图")
+                text: root.compactToolbar ? qsTr("周") : qsTr("周视图")
                 checkable: true
                 checked: pageStack.currentIndex === 0
             }
@@ -90,7 +126,7 @@ ApplicationWindow {
                 id: navDayButton
 
                 objectName: "navDayButton"
-                text: qsTr("日视图")
+                text: root.compactToolbar ? qsTr("日") : qsTr("日视图")
                 checkable: true
                 checked: pageStack.currentIndex === 1
             }
@@ -99,7 +135,7 @@ ApplicationWindow {
                 id: navSemesterButton
 
                 objectName: "navSemesterButton"
-                text: qsTr("学期与课程")
+                text: root.compactToolbar ? qsTr("课程") : qsTr("学期与课程")
                 checkable: true
                 checked: pageStack.currentIndex === 2
             }
@@ -122,15 +158,21 @@ ApplicationWindow {
                 text: schedule.conflictSummary
                 color: schedule.hasBlockingConflicts ? "#C0392B" : "#2E7D5B"
                 font.bold: schedule.hasBlockingConflicts
+                // 冲突明细在“学期与课程”页与底部状态栏仍有展示，超窄时先隐藏
+                visible: !root.narrow
             }
 
-            ToolSeparator {}
+            ToolSeparator {
+                visible: !root.compactToolbar
+            }
 
+            // 宽屏：次要操作直接内联（objectName 与既有 C++ 连接保持不变）
             ToolButton {
                 id: addCourseButton
 
                 objectName: "addCourseButton"
                 text: qsTr("＋ 新建课程")
+                visible: !root.compactToolbar
             }
 
             ToolButton {
@@ -138,6 +180,7 @@ ApplicationWindow {
 
                 objectName: "importButton"
                 text: qsTr("导入…")
+                visible: !root.compactToolbar
             }
 
             ToolButton {
@@ -145,6 +188,20 @@ ApplicationWindow {
 
                 objectName: "exportButton"
                 text: qsTr("导出…")
+                visible: !root.compactToolbar
+            }
+
+            // 窄屏折叠入口：新建 / 导入 / 导出。
+            // 该按钮只负责“触发”，菜单的展开由 C++ 侧（UiConnector）读取 objectName 后调用
+            // Menu.open() 完成，QML 中不出现任何信号处理器（与 chooseImportDirButton →
+            // importDirDialog 的既有写法一致）。菜单项同样是新增交互控件，需要 C++ 侧连接
+            // triggered()，清单见文件头注释。
+            ToolButton {
+                id: moreMenuButton
+
+                objectName: "moreMenuButton"
+                text: qsTr("更多 ▾")
+                visible: root.compactToolbar
             }
         }
     }
@@ -159,6 +216,8 @@ ApplicationWindow {
 
         WeekView {
             id: weekPage
+            // 低高度窗口压缩节次高度，尽量让整周可见
+            slotHeight: root.shortHeight ? 52 : 64
         }
 
         DayView {
@@ -195,6 +254,8 @@ ApplicationWindow {
             Label {
                 text: qsTr("第 %1 周 · %2").arg(schedule.selectedWeek).arg(schedule.selectedWeekRange)
                 color: "#8A97A8"
+                // 超窄窗口优先保证状态行不折行
+                visible: !root.narrow
             }
         }
     }
@@ -211,8 +272,9 @@ ApplicationWindow {
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 20
-        width: Math.min(parent.width - 48, 460)
+        anchors.bottomMargin: root.shortHeight ? 8 : 20
+        // 两侧留白随窗口收缩，且保证宽度不会因为极窄窗口变成负数
+        width: Math.max(160, Math.min(parent.width - 32, 460))
         height: notificationBanner.bannerTitle.length > 0 ? 76 : 0
         visible: height > 0
         radius: 10
@@ -243,7 +305,31 @@ ApplicationWindow {
         }
     }
 
-    // 各页共用的对话框
+    // 折叠菜单：窄屏下由 moreMenuButton 触发，C++ 侧（UiConnector）读取 objectName 后
+    // 调用 open() 展开，QML 中不需要信号处理器。菜单项需要 C++ 侧连接 triggered()。
+    Menu {
+        id: moreMenu
+
+        objectName: "moreMenu"
+        title: qsTr("更多")
+
+        MenuItem {
+            objectName: "addCourseMenuItem"
+            text: qsTr("＋ 新建课程")
+        }
+
+        MenuItem {
+            objectName: "importMenuItem"
+            text: qsTr("导入…")
+        }
+
+        MenuItem {
+            objectName: "exportMenuItem"
+            text: qsTr("导出…")
+        }
+    }
+
+    // 各页共用的对话框（尺寸策略保持 Math.min 限制，不超出父窗口）
     CourseEditor {
         id: courseEditor
     }

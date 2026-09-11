@@ -5,7 +5,21 @@ import QtQuick.Layouts
 // 移动端主界面：紧凑头部（周次切换）+ 中央页面栈 + 底部导航 + 三个对话框。
 //
 // 交互约定与桌面版一致：QML 不含任何信号处理器，全部交互由 C++ 侧 UiConnector 显式连接。
-// 底部导航按钮与桌面版使用**相同的 objectName**，因此 C++ 连接代码可以复用。
+//
+// 响应式约定：
+//  - 底部导航精简为 4 个主 Tab（周 / 日 / 课程 / 设置），新建、导入、导出折叠进
+//    “更多”折叠菜单，避免 7 个按钮在 320dp 宽的屏幕上互相挤压；
+//  - 断点只依赖窗口宽高，竖屏 / 横屏切换与折叠屏展开走同一条代码路径：
+//      * narrow（宽度 < 360）：极端窄屏，状态行与回显进一步精简；
+//      * shortHeight（高度 < 520，例如横屏 844×390）：隐藏学期回显行与底部状态行；
+//      * landscape：横屏时节次高度进一步压缩，保证整周可见。
+//  - 折叠菜单项（addCourseMenuItem / importMenuItem / exportMenuItem）与触发按钮
+//    moreMenuButton 是**新增控件**，需要 C++ 侧（app 层 UiConnector）显式连接
+//    `triggered()` 与 `clicked()`（打开菜单）；桌面版使用同一批 objectName，
+//    因此两端只需要一套连接代码。
+//  - 原本内联在底部导航的 addCourseButton / importButton / exportButton 已随“4 个主 Tab”
+//    一起移出本文件；课程编辑入口仍然可用（学期页的 pageNewCourseButton 连接不变），
+//    导入 / 导出由上面的菜单项承接。
 ApplicationWindow {
     id: root
 
@@ -15,6 +29,16 @@ ApplicationWindow {
     visible: true
     title: qsTr("Schedule - 课表")
 
+    // ------------------------------------------------------------ 响应式断点
+    // 极端窄屏（小屏手机竖屏）
+    readonly property bool narrow: width < 360
+
+    // 低高度（手机横屏 / 分屏）
+    readonly property bool shortHeight: height < 520
+
+    // 横屏：宽大于高
+    readonly property bool landscape: width > height
+
     header: ToolBar {
         ColumnLayout {
             anchors.fill: parent
@@ -23,6 +47,8 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 6
+                // 低高度时省掉这一行，把垂直空间让给课表本体
+                visible: !root.shortHeight
 
                 Label {
                     text: schedule.hasSemester ? schedule.semesterName : qsTr("尚未设置学期")
@@ -73,7 +99,7 @@ ApplicationWindow {
                     id: currentWeekButton
 
                     objectName: "currentWeekButton"
-                    text: qsTr("本周")
+                    text: root.narrow ? qsTr("周") : qsTr("本周")
                 }
             }
         }
@@ -89,9 +115,9 @@ ApplicationWindow {
         WeekView {
             id: weekPage
 
-            // 手机屏幕窄，压缩节次高度让整周尽量可见
-            slotHeight: 56
-            slotColumnWidth: 56
+            // 手机屏幕窄，压缩节次高度让整周尽量可见；横屏 / 低高度时再压一档
+            slotHeight: (root.shortHeight || root.landscape) ? 48 : 56
+            slotColumnWidth: root.narrow ? 44 : 56
         }
 
         DayView {
@@ -119,6 +145,8 @@ ApplicationWindow {
             Layout.rightMargin: 8
             elide: Text.ElideRight
             font.pixelSize: 11
+            // 低高度屏幕优先保证课表可见，状态信息仍可从错误提示能力之外的页面获取
+            visible: !root.shortHeight
             text: schedule.lastError.length > 0
                   ? qsTr("⚠ %1").arg(schedule.lastError)
                   : (schedule.lastInfo.length > 0 ? qsTr("✓ %1").arg(schedule.lastInfo) : qsTr("就绪"))
@@ -161,28 +189,15 @@ ApplicationWindow {
                 text: qsTr("设置")
             }
 
+            // 折叠入口：新建 / 导入 / 导出。按钮只负责触发，菜单的展开由 C++ 侧
+            // （UiConnector）读取 objectName 后调用 Menu.open() 完成，QML 中不出现任何
+            // 信号处理器；菜单项是新增交互控件，需要 C++ 侧连接 triggered()。
             ToolButton {
-                id: addCourseButton
+                id: moreMenuButton
 
-                objectName: "addCourseButton"
+                objectName: "moreMenuButton"
                 Layout.fillWidth: true
-                text: qsTr("新建")
-            }
-
-            ToolButton {
-                id: importButton
-
-                objectName: "importButton"
-                Layout.fillWidth: true
-                text: qsTr("导入")
-            }
-
-            ToolButton {
-                id: exportButton
-
-                objectName: "exportButton"
-                Layout.fillWidth: true
-                text: qsTr("导出")
+                text: qsTr("更多")
             }
         }
     }
@@ -199,8 +214,9 @@ ApplicationWindow {
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 20
-        width: Math.min(parent.width - 48, 460)
+        anchors.bottomMargin: root.shortHeight ? 8 : 20
+        // 两侧留白随窗口收缩，且保证宽度不会因为极窄窗口变成负数
+        width: Math.max(160, Math.min(parent.width - 32, 460))
         height: notificationBanner.bannerTitle.length > 0 ? 76 : 0
         visible: height > 0
         radius: 10
@@ -228,6 +244,30 @@ ApplicationWindow {
                 font.pixelSize: 12
                 elide: Text.ElideRight
             }
+        }
+    }
+
+    // 折叠菜单：由 moreMenuButton 触发，C++ 侧（UiConnector）读取 objectName 后调用
+    // open() 展开，QML 中不需要信号处理器；菜单项需要 C++ 侧连接 triggered()。
+    Menu {
+        id: moreMenu
+
+        objectName: "moreMenu"
+        title: qsTr("更多")
+
+        MenuItem {
+            objectName: "addCourseMenuItem"
+            text: qsTr("＋ 新建课程")
+        }
+
+        MenuItem {
+            objectName: "importMenuItem"
+            text: qsTr("导入…")
+        }
+
+        MenuItem {
+            objectName: "exportMenuItem"
+            text: qsTr("导出…")
         }
     }
 
