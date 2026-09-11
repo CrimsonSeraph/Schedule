@@ -8,6 +8,11 @@ import QtQuick.Layouts
 //  - 学期表单的保存按钮：C++ 读取 semesterNameField / semesterStartField / semesterWeeksSpin，
 //    根据 schedule.hasSemester 决定调用 create_semester() 还是 update_semester()；
 //  - 课程列表使用 ListView 内建的 currentIndex 选中行为，C++ 读取该属性完成编辑 / 删除。
+//
+// 响应式策略：
+//  - SplitView 方向随宽度切换：够宽时左表单 / 右列表；窄屏（< 900）改为上下排列，
+//    表单限高、课程列表占据剩余高度，避免左右都被压到不可用；
+//  - 课程列表的操作按钮改用 Flow，窄屏自动换行而不是被挤出视口。
 Item {
     id: semesterPage
 
@@ -16,14 +21,20 @@ Item {
     // C++ 在打开编辑器时会把选中课程 id 写回这里（供界面高亮，可选）
     property string highlightedCourseId: ""
 
+    // 宽屏：左右分栏；窄屏：上下分栏
+    readonly property bool wideLayout: semesterPage.width >= 900
+
     SplitView {
         anchors.fill: parent
-        orientation: Qt.Horizontal
+        orientation: semesterPage.wideLayout ? Qt.Horizontal : Qt.Vertical
 
         // ---------------------------------------------------------------- 学期表单
         ScrollView {
-            SplitView.preferredWidth: 320
-            SplitView.minimumWidth: 280
+            // 宽屏时占左侧固定宽度；窄屏时改为限制纵向高度（-1 表示不参与该方向的分配）
+            SplitView.preferredWidth: semesterPage.wideLayout ? 320 : -1
+            SplitView.minimumWidth: semesterPage.wideLayout ? 260 : -1
+            SplitView.preferredHeight: semesterPage.wideLayout ? -1 : 300
+            SplitView.minimumHeight: semesterPage.wideLayout ? -1 : 200
             clip: true
 
             ColumnLayout {
@@ -113,10 +124,12 @@ Item {
 
         // ---------------------------------------------------------------- 课程列表
         ColumnLayout {
-            SplitView.fillWidth: true
+            // 宽屏：占满右侧剩余宽度；窄屏：占满下方剩余高度
+            SplitView.fillWidth: semesterPage.wideLayout
+            SplitView.fillHeight: !semesterPage.wideLayout
             spacing: 0
 
-            RowLayout {
+            ColumnLayout {
                 Layout.fillWidth: true
                 Layout.margins: 12
                 spacing: 8
@@ -128,27 +141,31 @@ Item {
                     color: "#1F2A44"
                 }
 
-                Item { Layout.fillWidth: true }
+                // 用 Flow 承载操作按钮：窄屏自动换行，不会被挤出视口
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: 8
 
-                Button {
-                    id: pageNewCourseButton
+                    Button {
+                        id: pageNewCourseButton
 
-                    objectName: "pageNewCourseButton"
-                    text: qsTr("新建课程")
-                }
+                        objectName: "pageNewCourseButton"
+                        text: qsTr("新建课程")
+                    }
 
-                Button {
-                    id: editCourseButton
+                    Button {
+                        id: editCourseButton
 
-                    objectName: "editCourseButton"
-                    text: qsTr("编辑选中")
-                }
+                        objectName: "editCourseButton"
+                        text: qsTr("编辑选中")
+                    }
 
-                Button {
-                    id: deleteCourseButton
+                    Button {
+                        id: deleteCourseButton
 
-                    objectName: "deleteCourseButton"
-                    text: qsTr("删除选中")
+                        objectName: "deleteCourseButton"
+                        text: qsTr("删除选中")
+                    }
                 }
             }
 

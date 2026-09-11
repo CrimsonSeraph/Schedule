@@ -13,6 +13,12 @@ import QtQuick.Layouts
 //  - 课程级字段由 C++ 在保存时直接读取各 TextField 的 text；
 //  - 时间段草稿保存在 `sessionDraftModel`（QML ListModel）中，C++ 通过
 //    QMetaObject::invokeMethod 调用其 append / set / remove / get。
+//
+// 响应式策略：
+//  - 基本信息 / 时间段两个 GridLayout 不再固定 4 列：宽表单 4 列（两对“标签+输入框”
+//    并排），中等宽度 2 列，窄屏 1 列（标签在上、输入框在下），输入框始终 fillWidth；
+//  - 时间段操作按钮改用 Flow，窄屏自动换行；
+//  - 对话框尺寸继续用 Math.min 限制在父窗口内，内部内容由 ScrollView 承载。
 Dialog {
     id: courseEditor
 
@@ -23,6 +29,13 @@ Dialog {
 
     // C++ 在打开编辑器时写入：冲突提示文本（为空表示无冲突）
     property string conflictHint: ""
+
+    // 表单断点：宽表单 4 列、中等 2 列、窄屏 1 列（输入框一律 fillWidth）
+    readonly property bool wideForm: courseEditor.width >= 620
+    readonly property bool mediumForm: courseEditor.width >= 420
+    readonly property int formColumns: courseEditor.wideForm ? 4 : (courseEditor.mediumForm ? 2 : 1)
+    // 课程名称在宽表单里跨 3 列（凑满一行），其余情况占 1 列
+    readonly property int nameFieldSpan: courseEditor.wideForm ? 3 : 1
 
     title: courseEditor.editingCourseId.length > 0 ? qsTr("编辑课程") : qsTr("新建课程")
     modal: true
@@ -63,7 +76,7 @@ Dialog {
 
                     GridLayout {
                         anchors.fill: parent
-                        columns: 4
+                        columns: courseEditor.formColumns
                         columnSpacing: 8
                         rowSpacing: 8
 
@@ -72,7 +85,7 @@ Dialog {
                             id: editorNameField
 
                             objectName: "editorNameField"
-                            Layout.columnSpan: 3
+                            Layout.columnSpan: courseEditor.nameFieldSpan
                             Layout.fillWidth: true
                             placeholderText: qsTr("如 高等数学 A")
                         }
@@ -181,7 +194,8 @@ Dialog {
 
                         GridLayout {
                             Layout.fillWidth: true
-                            columns: 4
+                            // 宽表单两对“标签 + 输入框”并排；中等宽度一对一行；窄屏标签在上
+                            columns: courseEditor.formColumns
                             columnSpacing: 8
                             rowSpacing: 8
 
@@ -249,37 +263,45 @@ Dialog {
                             }
                         }
 
-                        RowLayout {
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 8
+                            spacing: 6
 
-                            Button {
-                                id: sessionAddButton
+                            // 按钮行用 Flow：窄屏自动换行，不会把按钮挤出对话框
+                            Flow {
+                                Layout.fillWidth: true
+                                spacing: 8
 
-                                objectName: "sessionAddButton"
-                                text: qsTr("添加时间段")
+                                Button {
+                                    id: sessionAddButton
+
+                                    objectName: "sessionAddButton"
+                                    text: qsTr("添加时间段")
+                                }
+
+                                Button {
+                                    id: sessionUpdateButton
+
+                                    objectName: "sessionUpdateButton"
+                                    text: qsTr("更新选中时间段")
+                                }
+
+                                Button {
+                                    id: sessionRemoveButton
+
+                                    objectName: "sessionRemoveButton"
+                                    text: qsTr("删除选中时间段")
+                                }
                             }
-
-                            Button {
-                                id: sessionUpdateButton
-
-                                objectName: "sessionUpdateButton"
-                                text: qsTr("更新选中时间段")
-                            }
-
-                            Button {
-                                id: sessionRemoveButton
-
-                                objectName: "sessionRemoveButton"
-                                text: qsTr("删除选中时间段")
-                            }
-
-                            Item { Layout.fillWidth: true }
 
                             Label {
+                                Layout.fillWidth: true
+                                // 窄屏优先保证按钮可用，操作提示省略
+                                visible: courseEditor.wideForm
                                 text: qsTr("选中列表中的行可回填到表单")
                                 color: "#8A97A8"
                                 font.pixelSize: 11
+                                elide: Text.ElideRight
                             }
                         }
                     }
@@ -304,6 +326,8 @@ Dialog {
                 text: qsTr("带 * 的为必填项；保存后会自动写入本地数据库")
                 color: "#8A97A8"
                 font.pixelSize: 11
+                // 窄屏时可压缩到 0 宽度，保证“取消 / 保存”始终可见
+                elide: Text.ElideRight
             }
 
             Button {

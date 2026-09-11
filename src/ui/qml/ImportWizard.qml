@@ -12,6 +12,12 @@ import QtQuick.Dialogs
 //  - importFileDialog.accepted       -> 读取 selectedFile -> importExport.preview_import(url)
 //  - importApplyButton.clicked       -> importExport.apply_import(策略下标) 并关闭
 //  - importCancelButton.clicked      -> importExport.cancel_import() 并关闭
+//
+// 响应式策略：
+//  - 整个内容套一层 ScrollView：低高度屏幕（横屏 / 分屏）可以整体滚动，不再被裁掉；
+//  - 预览区高度按对话框高度收紧（不再依赖 Layout.fillHeight，因为外层高度不定）；
+//  - 策略按钮行改用 Flow，窄屏自动换行；
+//  - 对话框尺寸继续用 Math.min 限制在父窗口内。
 Dialog {
     id: importWizard
 
@@ -27,150 +33,174 @@ Dialog {
     // C++ 侧在打开对话框前把文件对话框的初始目录写到这里
     property string initialDirectory: schedule.importExport.lastImportDir
 
-    contentItem: ColumnLayout {
-        spacing: 10
+    contentItem: ScrollView {
+        id: wizardScroll
 
-        // ------------------------------------------------------------------ 选择文件
-        GroupBox {
-            Layout.fillWidth: true
-            title: qsTr("第 1 步：选择文件")
+        clip: true
 
-            RowLayout {
-                anchors.fill: parent
-                spacing: 8
+        // 关闭横向滚动条并让内容宽度直接跟随 ScrollView 宽度，
+        // 避免 contentWidth 与 availableWidth 互相依赖造成绑定循环
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-                TextField {
-                    id: importFileField
+        ColumnLayout {
+            width: wizardScroll.width
+            spacing: 10
 
-                    objectName: "importFileField"
-                    Layout.fillWidth: true
-                    readOnly: true
-                    placeholderText: qsTr("支持 JSON / CSV / ICS")
-                }
+            // -------------------------------------------------------------- 选择文件
+            GroupBox {
+                Layout.fillWidth: true
+                title: qsTr("第 1 步：选择文件")
 
-                Button {
-                    id: importChooseFileButton
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: 8
 
-                    objectName: "importChooseFileButton"
-                    text: qsTr("浏览…")
+                    TextField {
+                        id: importFileField
+
+                        objectName: "importFileField"
+                        Layout.fillWidth: true
+                        readOnly: true
+                        placeholderText: qsTr("支持 JSON / CSV / ICS")
+                    }
+
+                    Button {
+                        id: importChooseFileButton
+
+                        objectName: "importChooseFileButton"
+                        text: qsTr("浏览…")
+                    }
                 }
             }
-        }
 
-        // -------------------------------------------------------------------- 预览
-        GroupBox {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            title: qsTr("第 2 步：预览与冲突检查")
+            // ---------------------------------------------------------------- 预览
+            GroupBox {
+                Layout.fillWidth: true
+                // 外层是 ScrollView（高度不定），这里给出与对话框高度相关的有限高度
+                Layout.preferredHeight: Math.max(140, Math.min(260, Math.round(importWizard.height * 0.32)))
+                Layout.minimumHeight: 120
+                title: qsTr("第 2 步：预览与冲突检查")
 
-            ColumnLayout {
-                anchors.fill: parent
-                spacing: 6
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 6
 
-                Label {
-                    Layout.fillWidth: true
-                    text: schedule.importExport.previewSummary
-                    wrapMode: Text.WordWrap
-                    color: schedule.importExport.previewConflictCount > 0 ? "#C0392B" : "#2E7D5B"
-                    font.bold: true
-                }
+                    Label {
+                        Layout.fillWidth: true
+                        text: schedule.importExport.previewSummary
+                        wrapMode: Text.WordWrap
+                        color: schedule.importExport.previewConflictCount > 0 ? "#C0392B" : "#2E7D5B"
+                        font.bold: true
+                    }
 
-                Label {
-                    Layout.fillWidth: true
-                    visible: schedule.importExport.previewWarnings.length > 0
-                    text: qsTr("提示：") + schedule.importExport.previewWarnings.join("\n提示：")
-                    wrapMode: Text.WordWrap
-                    color: "#B7791F"
-                }
+                    Label {
+                        Layout.fillWidth: true
+                        visible: schedule.importExport.previewWarnings.length > 0
+                        text: qsTr("提示：") + schedule.importExport.previewWarnings.join("\n提示：")
+                        wrapMode: Text.WordWrap
+                        color: "#B7791F"
+                    }
 
-                ScrollView {
-                    id: conflictScroll
+                    ScrollView {
+                        id: conflictScroll
 
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
 
-                    // 关闭横向滚动条并让内容宽度直接跟随 ScrollView 宽度，
-                    // 避免 contentWidth 与 availableWidth 互相依赖造成绑定循环
-                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        // 关闭横向滚动条并让内容宽度直接跟随 ScrollView 宽度，
+                        // 避免 contentWidth 与 availableWidth 互相依赖造成绑定循环
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-                    Column {
-                        width: conflictScroll.width
-                        spacing: 4
+                        Column {
+                            width: conflictScroll.width
+                            spacing: 4
 
-                        Repeater {
-                            model: schedule.importExport.previewConflicts
+                            Repeater {
+                                model: schedule.importExport.previewConflicts
 
-                            delegate: Label {
+                                delegate: Label {
+                                    width: parent.width
+                                    text: "• [" + modelData.typeName + "] " + modelData.message
+                                    wrapMode: Text.WordWrap
+                                    color: modelData.blocking ? "#C0392B" : "#B7791F"
+                                    font.pixelSize: 12
+                                }
+                            }
+
+                            Label {
                                 width: parent.width
-                                text: "• [" + modelData.typeName + "] " + modelData.message
-                                wrapMode: Text.WordWrap
-                                color: modelData.blocking ? "#C0392B" : "#B7791F"
+                                visible: schedule.importExport.previewConflicts.length === 0
+                                text: schedule.importExport.hasPendingPreview
+                                      ? qsTr("没有发现新引入的冲突。")
+                                      : qsTr("选择文件后将在此显示预览结果。")
+                                color: "#8A97A8"
                                 font.pixelSize: 12
                             }
-                        }
-
-                        Label {
-                            width: parent.width
-                            visible: schedule.importExport.previewConflicts.length === 0
-                            text: schedule.importExport.hasPendingPreview
-                                  ? qsTr("没有发现新引入的冲突。")
-                                  : qsTr("选择文件后将在此显示预览结果。")
-                            color: "#8A97A8"
-                            font.pixelSize: 12
                         }
                     }
                 }
             }
-        }
 
-        // ------------------------------------------------------------------ 策略
-        GroupBox {
-            Layout.fillWidth: true
-            title: qsTr("第 3 步：合并策略")
+            // ---------------------------------------------------------------- 策略
+            GroupBox {
+                Layout.fillWidth: true
+                title: qsTr("第 3 步：合并策略")
 
-            RowLayout {
-                anchors.fill: parent
-                spacing: 8
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 8
 
-                ComboBox {
-                    id: importStrategySelector
+                    ComboBox {
+                        id: importStrategySelector
 
-                    objectName: "importStrategySelector"
-                    Layout.fillWidth: true
-                    model: schedule.importExport.strategyNames
-                    currentIndex: 0
-                }
+                        objectName: "importStrategySelector"
+                        Layout.fillWidth: true
+                        model: schedule.importExport.strategyNames
+                        currentIndex: 0
+                    }
 
-                Button {
-                    id: importApplyButton
+                    // 按钮行用 Flow：窄屏自动换行，不会被裁掉
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 8
 
-                    objectName: "importApplyButton"
-                    text: qsTr("开始导入")
-                    enabled: schedule.importExport.hasPendingPreview
-                }
+                        Button {
+                            id: importApplyButton
 
-                Button {
-                    id: importCancelButton
+                            objectName: "importApplyButton"
+                            text: qsTr("开始导入")
+                            enabled: schedule.importExport.hasPendingPreview
+                        }
 
-                    objectName: "importCancelButton"
-                    text: qsTr("取消")
+                        Button {
+                            id: importCancelButton
+
+                            objectName: "importCancelButton"
+                            text: qsTr("取消")
+                        }
+                    }
                 }
             }
-        }
 
-        Label {
-            Layout.fillWidth: true
-            text: schedule.importExport.lastImportSummary
-            color: "#5A6A80"
-            wrapMode: Text.WordWrap
-        }
+            Label {
+                Layout.fillWidth: true
+                text: schedule.importExport.lastImportSummary
+                color: "#5A6A80"
+                wrapMode: Text.WordWrap
+            }
 
-        ProgressBar {
-            Layout.fillWidth: true
-            from: 0
-            to: 100
-            value: schedule.importExport.progress
+            ProgressBar {
+                Layout.fillWidth: true
+                from: 0
+                to: 100
+                value: schedule.importExport.progress
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+            }
         }
     }
 

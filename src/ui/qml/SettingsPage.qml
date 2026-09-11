@@ -7,10 +7,20 @@ import QtQuick.Dialogs
 //
 // 交互约定：按钮不带 onClicked，文件 / 目录选择对话框也不带 onAccepted；
 // C++ 侧（app 层 UiConnector）显式连接并读写下列具名控件。
+//
+// 响应式策略：
+//  - 各表单 GridLayout 的列数由页面宽度决定（宽屏 3/2 列、窄屏单列），
+//    输入框一律 Layout.fillWidth，窄屏下改为“标签在上、输入框在下”；
+//  - 按钮行改用 Flow，宽度不足时自动换行，不再依赖固定像素宽度。
 Item {
     id: settingsPage
 
     objectName: "settingsPage"
+
+    // 宽表单：目录 / 作息表用 3 列，其余用 2 列；窄屏统一降为单列
+    readonly property bool wideForm: settingsPage.width >= 640
+    readonly property int groupColumns: settingsPage.wideForm ? 3 : 1
+    readonly property int pairColumns: settingsPage.wideForm ? 2 : 1
 
     ScrollView {
         id: settingsScroll
@@ -34,13 +44,14 @@ Item {
                 spacing: 8
 
                 Label {
+                    Layout.fillWidth: true
                     text: qsTr("设置")
                     font.bold: true
                     font.pixelSize: 18
                     color: "#1F2A44"
+                    // 窄屏时省略标题而不是把“自检”按钮挤出视口
+                    elide: Text.ElideRight
                 }
-
-                Item { Layout.fillWidth: true }
 
                 Button {
                     id: testButton
@@ -58,7 +69,7 @@ Item {
 
                 GridLayout {
                     anchors.fill: parent
-                    columns: 3
+                    columns: settingsPage.groupColumns
                     columnSpacing: 8
                     rowSpacing: 8
 
@@ -98,10 +109,15 @@ Item {
                         text: qsTr("选择…")
                     }
 
-                    Item { Layout.fillWidth: true }
+                    Item {
+                        Layout.fillWidth: true
+                        // 单列排版时不需要占位撑开按钮行
+                        visible: settingsPage.wideForm
+                    }
 
-                    RowLayout {
-                        Layout.columnSpan: 2
+                    Flow {
+                        Layout.fillWidth: true
+                        Layout.columnSpan: settingsPage.wideForm ? 2 : 1
                         spacing: 8
 
                         Button {
@@ -129,7 +145,7 @@ Item {
 
                 GridLayout {
                     anchors.fill: parent
-                    columns: 3
+                    columns: settingsPage.groupColumns
                     columnSpacing: 8
                     rowSpacing: 8
 
@@ -152,7 +168,8 @@ Item {
                         id: slotLabelField
 
                         objectName: "slotLabelField"
-                        Layout.columnSpan: 2
+                        // 宽表单里名称字段跨到按钮列；单列排版时占满整行
+                        Layout.columnSpan: settingsPage.wideForm ? 2 : 1
                         Layout.fillWidth: true
                         placeholderText: qsTr("第 1 节")
                     }
@@ -173,10 +190,14 @@ Item {
                         placeholderText: "08:45"
                     }
 
-                    Item { Layout.fillWidth: true }
+                    Item {
+                        Layout.fillWidth: true
+                        visible: settingsPage.wideForm
+                    }
 
-                    RowLayout {
-                        Layout.columnSpan: 2
+                    Flow {
+                        Layout.fillWidth: true
+                        Layout.columnSpan: settingsPage.wideForm ? 2 : 1
                         spacing: 8
 
                         Button {
@@ -208,7 +229,7 @@ Item {
 
                     GridLayout {
                         Layout.fillWidth: true
-                        columns: 2
+                        columns: settingsPage.pairColumns
                         columnSpacing: 8
                         rowSpacing: 8
 
@@ -241,10 +262,14 @@ Item {
                             wrapMode: Text.WordWrap
                         }
 
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                            visible: settingsPage.wideForm
+                        }
 
-                        RowLayout {
-                            Layout.columnSpan: 2
+                        Flow {
+                            Layout.fillWidth: true
+                            Layout.columnSpan: settingsPage.wideForm ? 2 : 1
                             spacing: 8
 
                             Button {
@@ -321,7 +346,7 @@ Item {
 
                     GridLayout {
                         Layout.fillWidth: true
-                        columns: 2
+                        columns: settingsPage.pairColumns
                         columnSpacing: 8
                         rowSpacing: 8
 
@@ -371,7 +396,7 @@ Item {
                         font.pixelSize: 11
                     }
 
-                    RowLayout {
+                    Flow {
                         Layout.fillWidth: true
                         spacing: 8
 
@@ -407,7 +432,7 @@ Item {
 
                 GridLayout {
                     anchors.fill: parent
-                    columns: 2
+                    columns: settingsPage.pairColumns
                     columnSpacing: 8
                     rowSpacing: 8
 
@@ -422,10 +447,14 @@ Item {
                     Label { text: qsTr("课程数量") }
                     Label { text: String(schedule.courseCount) }
 
-                    Item { Layout.fillWidth: true }
+                    Item {
+                        Layout.fillWidth: true
+                        visible: settingsPage.wideForm
+                    }
 
-                    RowLayout {
-                        Layout.columnSpan: 2
+                    Flow {
+                        Layout.fillWidth: true
+                        Layout.columnSpan: settingsPage.wideForm ? 2 : 1
                         spacing: 8
 
                         Button {
