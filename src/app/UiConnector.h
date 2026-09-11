@@ -148,6 +148,9 @@ namespace Schedule {
         /** @brief 首次填充界面初值（学期表单、设置页文本框）。 */
         void prime_widgets();
 
+        /** @return 导入导出桥接；`m_bridge` 为空时返回 nullptr。 */
+        ImportExportBridge* import_export() const;
+
         // ------------------------------------------------------------ 课程编辑器
 
         /** @brief 打开课程编辑器；`course_id` 为空表示新建。 */

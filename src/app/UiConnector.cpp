@@ -269,8 +269,6 @@ namespace Schedule {
     // ------------------------------------------------------------------ 设置页
 
     void UiConnector::connect_settings_page() {
-        ImportExportBridge* io = m_bridge->import_export();
-
         // --- 默认导入目录
         on_click("chooseImportDirButton", [this]() {
             if (QObject* dialog = find("importDirDialog")) {
@@ -293,12 +291,14 @@ namespace Schedule {
             set_text("exportDirField", local_path_property(find("exportDirDialog"), "selectedFolder"));
         });
 
-        on_click("saveDirsButton", [this, io]() {
+        on_click("saveDirsButton", [this]() {
+            auto* io = import_export();
             io->set_default_import_dir(local_url(text_of("importDirField")));
             io->set_default_export_dir(local_url(text_of("exportDirField")));
         });
 
-        on_click("resetDirsButton", [this, io]() {
+        on_click("resetDirsButton", [this]() {
+            auto* io = import_export();
             io->reset_default_directories();
             set_text("importDirField", io->default_import_dir());
             set_text("exportDirField", io->default_export_dir());
@@ -375,33 +375,33 @@ namespace Schedule {
     }
 
     void UiConnector::connect_overflow_menu() {
-        ImportExportBridge* io = m_bridge->import_export();
-
         on_click("moreMenuButton", [this]() {
             if (QObject* menu = find("moreMenu")) {
                 invoke(menu, "open");
             }
         });
         on_signal("addCourseMenuItem", "triggered()", [this]() { open_course_editor(QString()); });
-        on_signal("importMenuItem", "triggered()", [this, io]() {
+        on_signal("importMenuItem", "triggered()", [this]() {
+            auto* io = import_export();
             set_property(m_import_wizard, "initialDirectory", io->last_import_dir());
             invoke(m_import_wizard, "open");
         });
-        on_signal("exportMenuItem", "triggered()", [this, io]() {
+        on_signal("exportMenuItem", "triggered()", [this]() {
+            auto* io = import_export();
             set_text("exportDirField", io->default_export_dir());
             invoke(m_export_dialog, "open");
         });
     }
 
     void UiConnector::connect_import_wizard() {
-        ImportExportBridge* io = m_bridge->import_export();
-
-        on_click("importButton", [this, io]() {
+        on_click("importButton", [this]() {
+            auto* io = import_export();
             set_property(m_import_wizard, "initialDirectory", io->last_import_dir());
             invoke(m_import_wizard, "open");
         });
 
-        on_click("importChooseFileButton", [this, io]() {
+        on_click("importChooseFileButton", [this]() {
+            auto* io = import_export();
             if (QObject* dialog = find("importFileDialog")) {
                 dialog->setProperty("currentFolder", local_url(io->last_import_dir()));
                 invoke(dialog, "open");
@@ -409,28 +409,30 @@ namespace Schedule {
         });
 
         // 文件选择对话框属于 UI 层，选完后把路径交给数据层解析
-        on_signal("importFileDialog", "accepted()", [this, io]() {
+        on_signal("importFileDialog", "accepted()", [this]() {
+            auto* io = import_export();
             QObject* dialog = find("importFileDialog");
             const QUrl url = dialog ? dialog->property("selectedFile").toUrl() : QUrl();
             set_text("importFileField", url.toLocalFile());
             io->preview_import(url);
         });
 
-        on_click("importApplyButton", [this, io]() {
+        on_click("importApplyButton", [this]() {
+            auto* io = import_export();
             io->apply_import(combo_index(find("importStrategySelector")));
             invoke(m_import_wizard, "close");
         });
 
-        on_click("importCancelButton", [this, io]() {
+        on_click("importCancelButton", [this]() {
+            auto* io = import_export();
             io->cancel_import();
             invoke(m_import_wizard, "close");
         });
     }
 
     void UiConnector::connect_export_dialog() {
-        ImportExportBridge* io = m_bridge->import_export();
-
-        on_click("exportButton", [this, io]() {
+        on_click("exportButton", [this]() {
+            auto* io = import_export();
             set_text("exportDirField", io->default_export_dir());
             invoke(m_export_dialog, "open");
         });
@@ -446,11 +448,13 @@ namespace Schedule {
             set_text("exportDirField", local_path_property(find("exportDirDialog"), "selectedFolder"));
         });
 
-        on_click("exportResetDirButton", [this, io]() {
+        on_click("exportResetDirButton", [this]() {
+            auto* io = import_export();
             set_text("exportDirField", io->default_export_dir());
         });
 
-        on_click("exportConfirmButton", [this, io]() {
+        on_click("exportConfirmButton", [this]() {
+            auto* io = import_export();
             io->export_schedule(combo_index(find("exportFormatSelector")), local_url(text_of("exportDirField")));
         });
 
@@ -473,7 +477,7 @@ namespace Schedule {
         }
 
         // 设置页目录与首个节次
-        ImportExportBridge* io = m_bridge->import_export();
+        auto* io = import_export();
         set_text("importDirField", io->default_import_dir());
         set_text("exportDirField", io->default_export_dir());
 
@@ -484,6 +488,10 @@ namespace Schedule {
             set_text("slotStartField", period.value(QStringLiteral("start")).toString());
             set_text("slotEndField", period.value(QStringLiteral("end")).toString());
         }
+    }
+
+    ImportExportBridge* UiConnector::import_export() const {
+        return m_bridge ? m_bridge->import_export() : nullptr;
     }
 
     // ------------------------------------------------------------ 编辑器的实现
@@ -667,8 +675,6 @@ namespace Schedule {
     // -------------------------------------------------------------- 教务适配器
 
     void UiConnector::connect_school_adapters() {
-        ImportExportBridge* io = m_bridge->import_export();
-
         // 切换适配器时把该适配器当前的地址回填到表单
         on_signal("adapterSelector", "currentIndexChanged()", [this]() {
             QObject* selector = find("adapterSelector");
@@ -682,18 +688,21 @@ namespace Schedule {
             set_text("adapterLoginUrlField", option.value(QStringLiteral("loginUrl")).toString());
         });
 
-        on_click("adapterSaveUrlButton", [this, io]() {
+        on_click("adapterSaveUrlButton", [this]() {
+            auto* io = import_export();
             io->save_adapter_endpoints(combo_index(find("adapterSelector")),
                 text_of("adapterScheduleUrlField"),
                 text_of("adapterLoginUrlField"));
         });
 
         // 仅在此处把 Cookie 交给桥接对象：桥接只保留在内存中，不写库、不写日志
-        on_click("adapterImportButton", [this, io]() {
+        on_click("adapterImportButton", [this]() {
+            auto* io = import_export();
             io->import_from_adapter(combo_index(find("adapterSelector")), text_of("adapterCookieField"));
         });
 
-        on_click("adapterClearSessionButton", [this, io]() {
+        on_click("adapterClearSessionButton", [this]() {
+            auto* io = import_export();
             io->clear_adapter_session();
             set_text("adapterCookieField", QString());
         });
