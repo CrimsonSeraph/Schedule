@@ -18,6 +18,12 @@ set_target_properties(ScheduleUI
 		CXX_EXTENSIONS OFF
 )
 
+# Responsive.qml 是 QML 单例（统一断点与设计常量），必须在 qt6_add_qml_module 之前声明
+set_source_files_properties(qml/Responsive.qml
+	PROPERTIES
+		QT_QML_SINGLETON_TYPE TRUE
+)
+
 qt6_add_qml_module(
 	ScheduleUI
 	URI
@@ -28,6 +34,7 @@ qt6_add_qml_module(
 	OUTPUT_DIRECTORY
 	"${CMAKE_CURRENT_BINARY_DIR}/Schedule"
 	QML_FILES
+	qml/Responsive.qml
 	qml/MainDesktop.qml
 	qml/MainMobile.qml
 	qml/WeekView.qml

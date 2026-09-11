@@ -34,8 +34,8 @@ Item {
     // 星期表头高度
     property int headerHeight: 38
 
-    // 单个星期列的最小可读宽度：再窄就横向滚动，不再继续压缩
-    property int minDayWidth: 64
+    // 单个星期列的最小可读宽度：再窄就横向滚动，不再继续压缩（常量见 Responsive）
+    property int minDayWidth: Responsive.minDayWidth
 
     readonly property int dayCount: 7
     readonly property var periods: schedule.timeSlots
@@ -72,8 +72,8 @@ Item {
             Layout.topMargin: 6
             visible: weekView.horizontallyScrollable
             text: qsTr("屏幕较窄：左右滑动查看整周，或切换到“日视图”")
-            color: "#B7791F"
-            font.pixelSize: 11
+            color: Responsive.warning
+            font.pixelSize: Responsive.fontSmall
             elide: Text.ElideRight
         }
 
@@ -116,7 +116,7 @@ Item {
                                 text: schedule.day_name(dayHeader.dayIndex)
                                 font.bold: true
                                 font.pixelSize: weekView.dayWidth < 72 ? 11 : 13
-                                color: (dayHeader.dayIndex === schedule.selectedDay) ? "#1B4FA8" : "#33415C"
+                                color: (dayHeader.dayIndex === schedule.selectedDay) ? Responsive.accentStrong : Responsive.textStrong
                             }
 
                             Text {
@@ -124,7 +124,7 @@ Item {
                                 // 列太窄时隐藏日期，只留星期，避免文字互相挤压
                                 visible: weekView.dayWidth >= 52
                                 text: schedule.week_date_text(schedule.selectedWeek, dayHeader.dayIndex)
-                                font.pixelSize: 10
+                                font.pixelSize: Responsive.fontCaption
                                 color: "#6B7A90"
                             }
                         }
@@ -177,7 +177,7 @@ Item {
                             height: weekView.effectiveSlotHeight
                             color: "#F7F9FC"
                             border.width: 1
-                            border.color: "#E3E9F2"
+                            border.color: Responsive.border
 
                             Column {
                                 anchors.centerIn: parent
@@ -186,9 +186,9 @@ Item {
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: modelData.label
-                                    font.pixelSize: 11
+                                    font.pixelSize: Responsive.fontSmall
                                     font.bold: true
-                                    color: "#33415C"
+                                    color: Responsive.textStrong
                                 }
 
                                 Text {

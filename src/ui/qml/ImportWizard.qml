@@ -53,7 +53,7 @@ Dialog {
 
                 RowLayout {
                     anchors.fill: parent
-                    spacing: 8
+                    spacing: Responsive.spacing
 
                     TextField {
                         id: importFileField
@@ -89,7 +89,7 @@ Dialog {
                         Layout.fillWidth: true
                         text: schedule.importExport.previewSummary
                         wrapMode: Text.WordWrap
-                        color: schedule.importExport.previewConflictCount > 0 ? "#C0392B" : "#2E7D5B"
+                        color: schedule.importExport.previewConflictCount > 0 ? Responsive.danger : Responsive.success
                         font.bold: true
                     }
 
@@ -98,7 +98,7 @@ Dialog {
                         visible: schedule.importExport.previewWarnings.length > 0
                         text: qsTr("提示：") + schedule.importExport.previewWarnings.join("\n提示：")
                         wrapMode: Text.WordWrap
-                        color: "#B7791F"
+                        color: Responsive.warning
                     }
 
                     ScrollView {
@@ -123,8 +123,8 @@ Dialog {
                                     width: parent.width
                                     text: "• [" + modelData.typeName + "] " + modelData.message
                                     wrapMode: Text.WordWrap
-                                    color: modelData.blocking ? "#C0392B" : "#B7791F"
-                                    font.pixelSize: 12
+                                    color: modelData.blocking ? Responsive.danger : Responsive.warning
+                                    font.pixelSize: Responsive.fontBody
                                 }
                             }
 
@@ -134,8 +134,8 @@ Dialog {
                                 text: schedule.importExport.hasPendingPreview
                                       ? qsTr("没有发现新引入的冲突。")
                                       : qsTr("选择文件后将在此显示预览结果。")
-                                color: "#8A97A8"
-                                font.pixelSize: 12
+                                color: Responsive.textMuted
+                                font.pixelSize: Responsive.fontBody
                             }
                         }
                     }
@@ -149,7 +149,7 @@ Dialog {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    spacing: 8
+                    spacing: Responsive.spacing
 
                     ComboBox {
                         id: importStrategySelector
@@ -163,7 +163,7 @@ Dialog {
                     // 按钮行用 Flow：窄屏自动换行，不会被裁掉
                     Flow {
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: Responsive.spacing
 
                         Button {
                             id: importApplyButton
@@ -186,7 +186,7 @@ Dialog {
             Label {
                 Layout.fillWidth: true
                 text: schedule.importExport.lastImportSummary
-                color: "#5A6A80"
+                color: Responsive.textSecondary
                 wrapMode: Text.WordWrap
             }
 

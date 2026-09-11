@@ -9,9 +9,9 @@ import QtQuick.Layouts
 // 响应式约定：
 //  - 底部导航精简为 4 个主 Tab（周 / 日 / 课程 / 设置），新建、导入、导出折叠进
 //    “更多”折叠菜单，避免 7 个按钮在 320dp 宽的屏幕上互相挤压；
-//  - 断点只依赖窗口宽高，竖屏 / 横屏切换与折叠屏展开走同一条代码路径：
-//      * narrow（宽度 < 360）：极端窄屏，状态行与回显进一步精简；
-//      * shortHeight（高度 < 520，例如横屏 844×390）：隐藏学期回显行与底部状态行；
+//  - 断点只依赖窗口宽高且来自 Responsive 单例，竖屏 / 横屏切换与折叠屏展开走同一条路径：
+//      * narrow（宽度 < Responsive.tinyWidth）：极端窄屏，状态行与回显进一步精简；
+//      * shortHeight（高度 < Responsive.shortHeight，例如横屏 844×390）：隐藏学期回显与状态行；
 //      * landscape：横屏时节次高度进一步压缩，保证整周可见。
 //  - 折叠菜单项（addCourseMenuItem / importMenuItem / exportMenuItem）与触发按钮
 //    moreMenuButton 是**新增控件**，需要 C++ 侧（app 层 UiConnector）显式连接
@@ -30,11 +30,12 @@ ApplicationWindow {
     title: qsTr("Schedule - 课表")
 
     // ------------------------------------------------------------ 响应式断点
+    // 全部来自 Responsive 单例
     // 极端窄屏（小屏手机竖屏）
-    readonly property bool narrow: width < 360
+    readonly property bool narrow: Responsive.isTiny(width)
 
     // 低高度（手机横屏 / 分屏）
-    readonly property bool shortHeight: height < 520
+    readonly property bool shortHeight: Responsive.isShort(height)
 
     // 横屏：宽大于高
     readonly property bool landscape: width > height
@@ -60,8 +61,8 @@ ApplicationWindow {
 
                 Label {
                     text: schedule.conflictSummary
-                    color: schedule.hasBlockingConflicts ? "#C0392B" : "#2E7D5B"
-                    font.pixelSize: 11
+                    color: schedule.hasBlockingConflicts ? Responsive.danger : Responsive.success
+                    font.pixelSize: Responsive.fontSmall
                     rightPadding: 8
                 }
             }
@@ -144,13 +145,13 @@ ApplicationWindow {
             Layout.leftMargin: 8
             Layout.rightMargin: 8
             elide: Text.ElideRight
-            font.pixelSize: 11
+            font.pixelSize: Responsive.fontSmall
             // 低高度屏幕优先保证课表可见，状态信息仍可从错误提示能力之外的页面获取
             visible: !root.shortHeight
             text: schedule.lastError.length > 0
                   ? qsTr("⚠ %1").arg(schedule.lastError)
                   : (schedule.lastInfo.length > 0 ? qsTr("✓ %1").arg(schedule.lastInfo) : qsTr("就绪"))
-            color: schedule.lastError.length > 0 ? "#C0392B" : "#5A6A80"
+            color: schedule.lastError.length > 0 ? Responsive.danger : Responsive.textSecondary
         }
 
         RowLayout {
@@ -220,7 +221,7 @@ ApplicationWindow {
         height: notificationBanner.bannerTitle.length > 0 ? 76 : 0
         visible: height > 0
         radius: 10
-        color: "#1F2A44"
+        color: Responsive.textPrimary
         opacity: 0.97
 
         Column {
@@ -233,7 +234,7 @@ ApplicationWindow {
                 text: notificationBanner.bannerTitle
                 color: "white"
                 font.bold: true
-                font.pixelSize: 14
+                font.pixelSize: Responsive.fontSubheading
                 elide: Text.ElideRight
             }
 
@@ -241,7 +242,7 @@ ApplicationWindow {
                 width: parent.width
                 text: notificationBanner.bannerMessage
                 color: "#C9D6EA"
-                font.pixelSize: 12
+                font.pixelSize: Responsive.fontBody
                 elide: Text.ElideRight
             }
         }

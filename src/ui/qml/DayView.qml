@@ -18,43 +18,27 @@ Item {
 
     objectName: "dayView"
 
-    // 卡片高度的首选值与上下限（像素）。
-    // 96px 是“完整信息不裁切”的下限（见 CourseCard.denseHeight），因此首选值取 96。
-    property int preferredCardHeight: 96
-    property int minCardHeight: 60
-    property int maxCardHeight: 112
-
-    // 一屏希望完整看到的卡片数量：据此把卡片高度压到可用高度之内
-    property int visibleCardTarget: 3
-
-    // 顶部选择栏占用的高度（含外边距），用于估算列表可用高度
-    readonly property int selectorBarHeight: 64
-
-    readonly property int cardHeight: {
-        const usable = Math.max(0, dayView.height - dayView.selectorBarHeight);
-        const fitted = Math.round(usable / Math.max(1, dayView.visibleCardTarget));
-        const preferred = Math.min(dayView.preferredCardHeight, fitted > 0 ? fitted : dayView.preferredCardHeight);
-        return Math.max(dayView.minCardHeight, Math.min(dayView.maxCardHeight, preferred));
-    }
+    // 卡片高度：按可用高度与“一屏目标卡片数”推导，上下限与目标张数都在 Responsive 里
+    readonly property int cardHeight: Responsive.dayCardHeight(dayView.height)
 
     // 窄屏（手机竖屏 / 分屏）：压缩选择栏
-    readonly property bool narrowBar: dayView.width < 360
+    readonly property bool narrowBar: Responsive.isTiny(dayView.width)
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 8
+        spacing: Responsive.spacing
 
         // ---------------------------------------------------------------- 星期选择
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
+            Layout.leftMargin: Responsive.margin
+            Layout.rightMargin: Responsive.margin
             Layout.topMargin: 10
-            spacing: 8
+            spacing: Responsive.spacing
 
             Label {
                 text: qsTr("查看")
-                color: "#33415C"
+                color: Responsive.textStrong
                 // 超窄时省掉提示词，把宽度让给选择器
                 visible: !dayView.narrowBar
             }
@@ -90,8 +74,8 @@ Item {
 
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
+            Layout.leftMargin: Responsive.margin
+            Layout.rightMargin: Responsive.margin
             Layout.bottomMargin: 12
             clip: true
 
@@ -101,7 +85,7 @@ Item {
 
             Column {
                 width: dayScroll.width
-                spacing: 8
+                spacing: Responsive.spacing
 
                 Repeater {
                     model: schedule.sessionModel
@@ -126,7 +110,7 @@ Item {
                     width: parent.width
                     visible: schedule.sessionModel.count === 0
                     text: qsTr("这一天还没有课程。点击顶部“新建课程”开始添加。")
-                    color: "#8A97A8"
+                    color: Responsive.textMuted
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
                     topPadding: 24

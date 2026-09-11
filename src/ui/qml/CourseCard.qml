@@ -20,18 +20,18 @@ Rectangle {
     property string location: ""
     property string timeText: ""
     property string weeksText: ""
-    property color cardColor: "#4C8DFF"
+    property color cardColor: Responsive.accent
     property bool compact: false
 
     // 偏窄 / 偏矮阈值：低于它们就不再展示地点、教师等次要信息。
     // 阈值按“完整信息（课程名 + 地点 + 教师 + 时间 + 周次）实际需要约 92px”标定，
     // 因此矮于 96px 时提前降级，避免最后一行被 clip 裁掉。
-    property int denseWidth: 104
-    property int denseHeight: 96
+    property int denseWidth: Responsive.cardDenseWidth
+    property int denseHeight: Responsive.cardDenseHeight
 
     // 极窄 / 极矮阈值：再低于它们只保留课程名与时间
-    property int tightWidth: 84
-    property int tightHeight: 44
+    property int tightWidth: Responsive.cardTightWidth
+    property int tightHeight: Responsive.cardTightHeight
 
     readonly property bool dense: card.compact || card.width < card.denseWidth || card.height < card.denseHeight
     readonly property bool tight: card.width < card.tightWidth || card.height < card.tightHeight
@@ -54,7 +54,7 @@ Rectangle {
             text: card.courseName
             color: "white"
             font.bold: true
-            font.pixelSize: card.tight ? 11 : (card.dense ? 12 : 14)
+            font.pixelSize: card.tight ? Responsive.fontSmall : (card.dense ? Responsive.fontBody : Responsive.fontSubheading)
             elide: Text.ElideRight
             // 极矮卡片只留一行标题，避免第二行被裁掉
             maximumLineCount: card.tight ? 1 : 2
@@ -66,7 +66,7 @@ Rectangle {
             visible: !card.dense && card.location.length > 0
             text: "📍 " + card.location
             color: "#EAF1FF"
-            font.pixelSize: 11
+            font.pixelSize: Responsive.fontSmall
             elide: Text.ElideRight
         }
 
@@ -75,7 +75,7 @@ Rectangle {
             visible: !card.dense && card.teacher.length > 0
             text: "👤 " + card.teacher
             color: "#EAF1FF"
-            font.pixelSize: 11
+            font.pixelSize: Responsive.fontSmall
             elide: Text.ElideRight
         }
 
@@ -84,7 +84,7 @@ Rectangle {
             visible: card.timeText.length > 0
             text: card.timeText
             color: "#D8E4FF"
-            font.pixelSize: card.tight ? 10 : 11
+            font.pixelSize: card.tight ? Responsive.fontCaption : Responsive.fontSmall
             elide: Text.ElideRight
         }
 
@@ -93,7 +93,7 @@ Rectangle {
             visible: !card.tight && card.weeksText.length > 0
             text: card.weeksText
             color: "#CBD9FF"
-            font.pixelSize: 10
+            font.pixelSize: Responsive.fontCaption
             elide: Text.ElideRight
         }
     }

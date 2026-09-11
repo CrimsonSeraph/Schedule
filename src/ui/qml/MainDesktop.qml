@@ -11,13 +11,14 @@ import QtQuick.Layouts
 //  - 界面只通过属性绑定读取 `schedule` / `bridge` 的状态。
 //
 // 响应式约定：
-//  - 最小窗口下调到 640×420：小屏、分屏、低高度窗口不再被 900×600 的硬下限挡住；
-//  - 断点只依赖窗口宽高（不依赖平台宏），横竖屏切换与手动缩放走同一条代码路径：
-//      * compactToolbar（宽度 < 1440）：次要操作（新建 / 导入 / 导出）折叠进
-//        “更多”折叠菜单（moreMenuButton + moreMenu），周次与导航按钮改用短文案；
-//        阈值由实测得出：完整工具栏需要约 1400px 才不裁切；
-//      * narrow（宽度 < 800）：隐藏标题与学期回显，把宽度让给导航；
-//      * shortHeight（高度 < 520）：压缩底部状态栏与提醒横幅的纵向占位。
+//  - 最小窗口取 Responsive.minWindowWidth / minWindowHeight：小屏、分屏、低高度窗口
+//    不再被 900×600 的硬下限挡住；
+//  - 断点只依赖窗口宽高（不依赖平台宏），且全部来自 Responsive 单例，
+//    横竖屏切换与手动缩放走同一条代码路径：
+//      * compactToolbar（宽度 < Responsive.compactToolbarWidth）：次要操作
+//        （新建 / 导入 / 导出）折叠进“更多”折叠菜单（moreMenuButton + moreMenu）；
+//      * narrow（宽度 < Responsive.narrowWidth）：隐藏标题与学期回显，把宽度让给导航；
+//      * shortHeight（高度 < Responsive.shortHeight）：压缩底部状态栏与提醒横幅占位。
 //  - 折叠菜单项（addCourseMenuItem / importMenuItem / exportMenuItem）与触发按钮
 //    moreMenuButton 是**新增控件**，需要 C++ 侧（app 层 UiConnector）显式连接
 //    `clicked()`（打开菜单）与 `triggered()`（菜单动作）；
@@ -28,23 +29,21 @@ ApplicationWindow {
     objectName: "mainWindow"
     width: 1180
     height: 760
-    minimumWidth: 640
-    minimumHeight: 420
+    minimumWidth: Responsive.minWindowWidth
+    minimumHeight: Responsive.minWindowHeight
     visible: true
     title: qsTr("Schedule - 课表")
 
     // ------------------------------------------------------------ 响应式断点
-    // 窄窗口：折叠次要操作并缩短按钮文案。
-    // 实测：完整工具栏（标题 + 学期回显 + 周次 + 4 个导航 + 冲突 + 3 个操作）需要约
-    // 1400px 才不裁切，因此以 1440 作为折叠阈值；默认窗口 1180 落在折叠形态，
-    // 避免“导出…”被窗口右边缘裁掉。
-    readonly property bool compactToolbar: width < 1440
+    // 全部来自 Responsive 单例：完整工具栏需要约 1400px 才不裁切，
+    // 因此 compactToolbarWidth 取 1440，默认窗口 1180 落在折叠形态。
+    readonly property bool compactToolbar: Responsive.isCompactToolbar(width)
 
     // 超窄窗口：隐藏非必要回显，只保留导航骨架
-    readonly property bool narrow: width < 800
+    readonly property bool narrow: Responsive.isNarrow(width)
 
     // 低高度窗口（横屏 / 分屏）：压缩纵向占位
-    readonly property bool shortHeight: height < 520
+    readonly property bool shortHeight: Responsive.isShort(height)
 
     header: ToolBar {
         RowLayout {
@@ -54,7 +53,7 @@ ApplicationWindow {
             Label {
                 text: qsTr("课表")
                 font.bold: true
-                font.pixelSize: 18
+                font.pixelSize: Responsive.fontTitle
                 leftPadding: 8
                 // 超窄窗口下标题让位给导航按钮
                 visible: !root.narrow
@@ -64,7 +63,7 @@ ApplicationWindow {
                 text: schedule.hasSemester
                       ? qsTr("%1 · 共 %2 周").arg(schedule.semesterName).arg(schedule.totalWeeks)
                       : qsTr("尚未设置学期")
-                color: "#5A6A80"
+                color: Responsive.textSecondary
                 elide: Text.ElideRight
                 Layout.maximumWidth: 260
                 // 窄窗口下先折叠学期回显：完整信息在“学期与课程”页仍可见
@@ -156,7 +155,7 @@ ApplicationWindow {
 
                 objectName: "conflictBadge"
                 text: schedule.conflictSummary
-                color: schedule.hasBlockingConflicts ? "#C0392B" : "#2E7D5B"
+                color: schedule.hasBlockingConflicts ? Responsive.danger : Responsive.success
                 font.bold: schedule.hasBlockingConflicts
                 // 冲突明细在“学期与课程”页与底部状态栏仍有展示，超窄时先隐藏
                 visible: !root.narrow
@@ -236,7 +235,7 @@ ApplicationWindow {
     footer: ToolBar {
         RowLayout {
             anchors.fill: parent
-            spacing: 8
+            spacing: Responsive.spacing
 
             Label {
                 id: statusLabel
@@ -248,12 +247,12 @@ ApplicationWindow {
                 text: schedule.lastError.length > 0
                       ? qsTr("⚠ %1").arg(schedule.lastError)
                       : (schedule.lastInfo.length > 0 ? qsTr("✓ %1").arg(schedule.lastInfo) : qsTr("就绪"))
-                color: schedule.lastError.length > 0 ? "#C0392B" : "#5A6A80"
+                color: schedule.lastError.length > 0 ? Responsive.danger : Responsive.textSecondary
             }
 
             Label {
                 text: qsTr("第 %1 周 · %2").arg(schedule.selectedWeek).arg(schedule.selectedWeekRange)
-                color: "#8A97A8"
+                color: Responsive.textMuted
                 // 超窄窗口优先保证状态行不折行
                 visible: !root.narrow
             }
@@ -278,7 +277,7 @@ ApplicationWindow {
         height: notificationBanner.bannerTitle.length > 0 ? 76 : 0
         visible: height > 0
         radius: 10
-        color: "#1F2A44"
+        color: Responsive.textPrimary
         opacity: 0.97
 
         Column {
@@ -291,7 +290,7 @@ ApplicationWindow {
                 text: notificationBanner.bannerTitle
                 color: "white"
                 font.bold: true
-                font.pixelSize: 14
+                font.pixelSize: Responsive.fontSubheading
                 elide: Text.ElideRight
             }
 
@@ -299,7 +298,7 @@ ApplicationWindow {
                 width: parent.width
                 text: notificationBanner.bannerMessage
                 color: "#C9D6EA"
-                font.pixelSize: 12
+                font.pixelSize: Responsive.fontBody
                 elide: Text.ElideRight
             }
         }

@@ -22,7 +22,7 @@ Item {
     property string highlightedCourseId: ""
 
     // 宽屏：左右分栏；窄屏：上下分栏
-    readonly property bool wideLayout: semesterPage.width >= 900
+    readonly property bool wideLayout: Responsive.isWideSplit(semesterPage.width)
 
     SplitView {
         anchors.fill: parent
@@ -42,15 +42,15 @@ Item {
                 spacing: 10
 
                 Label {
-                    Layout.margins: 12
+                    Layout.margins: Responsive.margin
                     text: qsTr("学期设置")
                     font.bold: true
-                    font.pixelSize: 16
-                    color: "#1F2A44"
+                    font.pixelSize: Responsive.fontHeading
+                    color: Responsive.textPrimary
                 }
 
                 GridLayout {
-                    Layout.margins: 12
+                    Layout.margins: Responsive.margin
                     Layout.fillWidth: true
                     columns: 2
                     columnSpacing: 8
@@ -91,13 +91,13 @@ Item {
                     id: saveSemesterButton
 
                     objectName: "saveSemesterButton"
-                    Layout.margins: 12
+                    Layout.margins: Responsive.margin
                     Layout.fillWidth: true
                     text: schedule.hasSemester ? qsTr("保存学期信息") : qsTr("创建学期")
                 }
 
                 Label {
-                    Layout.margins: 12
+                    Layout.margins: Responsive.margin
                     Layout.fillWidth: true
                     text: schedule.hasSemester
                           ? qsTr("当前：%1\n%2 ~ %3（共 %4 周）")
@@ -106,15 +106,15 @@ Item {
                                 .arg(schedule.semesterEndDate)
                                 .arg(schedule.totalWeeks)
                           : qsTr("尚未创建学期")
-                    color: "#5A6A80"
+                    color: Responsive.textSecondary
                     wrapMode: Text.WordWrap
                 }
 
                 Label {
-                    Layout.margins: 12
+                    Layout.margins: Responsive.margin
                     Layout.fillWidth: true
                     text: qsTr("共 %1 门课程 · %2").arg(schedule.courseCount).arg(schedule.conflictSummary)
-                    color: schedule.hasBlockingConflicts ? "#C0392B" : "#2E7D5B"
+                    color: schedule.hasBlockingConflicts ? Responsive.danger : Responsive.success
                     wrapMode: Text.WordWrap
                 }
 
@@ -131,20 +131,20 @@ Item {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.margins: 12
-                spacing: 8
+                Layout.margins: Responsive.margin
+                spacing: Responsive.spacing
 
                 Label {
                     text: qsTr("课程列表")
                     font.bold: true
-                    font.pixelSize: 16
-                    color: "#1F2A44"
+                    font.pixelSize: Responsive.fontHeading
+                    color: Responsive.textPrimary
                 }
 
                 // 用 Flow 承载操作按钮：窄屏自动换行，不会被挤出视口
                 Flow {
                     Layout.fillWidth: true
-                    spacing: 8
+                    spacing: Responsive.spacing
 
                     Button {
                         id: pageNewCourseButton
@@ -175,7 +175,7 @@ Item {
                 objectName: "courseList"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.margins: 12
+                Layout.margins: Responsive.margin
                 clip: true
                 spacing: 6
                 model: schedule.courseModel
@@ -186,7 +186,7 @@ Item {
                     radius: 6
                     color: ListView.isCurrentItem ? "#E8F0FF" : "#FFFFFF"
                     border.width: 1
-                    border.color: ListView.isCurrentItem ? "#9FBEF5" : "#E3E9F2"
+                    border.color: ListView.isCurrentItem ? "#9FBEF5" : Responsive.border
 
                     Rectangle {
                         id: colorBar
@@ -212,17 +212,17 @@ Item {
                             width: parent.width
                             text: model.name + (model.code.length > 0 ? "（" + model.code + "）" : "")
                             font.bold: true
-                            font.pixelSize: 14
+                            font.pixelSize: Responsive.fontSubheading
                             elide: Text.ElideRight
-                            color: "#1F2A44"
+                            color: Responsive.textPrimary
                         }
 
                         Text {
                             width: parent.width
                             text: model.daySummary.length > 0 ? model.daySummary : qsTr("未设置上课时间")
-                            font.pixelSize: 12
+                            font.pixelSize: Responsive.fontBody
                             elide: Text.ElideRight
-                            color: "#5A6A80"
+                            color: Responsive.textSecondary
                         }
 
                         Text {
@@ -230,9 +230,9 @@ Item {
                             text: (model.location.length > 0 ? model.location + " · " : "")
                                   + (model.teacher.length > 0 ? model.teacher + " · " : "")
                                   + model.weekDisplay
-                            font.pixelSize: 11
+                            font.pixelSize: Responsive.fontSmall
                             elide: Text.ElideRight
-                            color: "#8A97A8"
+                            color: Responsive.textMuted
                         }
                     }
                 }
@@ -242,20 +242,20 @@ Item {
                     visible: schedule.courseCount === 0
                     text: qsTr("还没有课程\n点击“新建课程”开始录入")
                     horizontalAlignment: Text.AlignHCenter
-                    color: "#8A97A8"
+                    color: Responsive.textMuted
                 }
             }
 
             // 冲突列表
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.margins: 12
+                Layout.margins: Responsive.margin
                 spacing: 4
 
                 Label {
                     text: schedule.conflictSummary
                     font.bold: true
-                    color: schedule.hasBlockingConflicts ? "#C0392B" : "#2E7D5B"
+                    color: schedule.hasBlockingConflicts ? Responsive.danger : Responsive.success
                 }
 
                 Repeater {
@@ -264,7 +264,7 @@ Item {
                     delegate: Label {
                         Layout.fillWidth: true
                         text: "• " + modelData.message
-                        color: modelData.blocking ? "#C0392B" : "#B7791F"
+                        color: modelData.blocking ? Responsive.danger : Responsive.warning
                         wrapMode: Text.WordWrap
                     }
                 }

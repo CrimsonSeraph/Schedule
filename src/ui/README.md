@@ -38,14 +38,15 @@ src/ui/
 │   ├── ImportWizard.qml   # 导入向导（选文件 → 预览 → 策略 → 应用）
 │   ├── ExportDialog.qml   # 导出对话框（选格式与目录，展示实际路径）
 │   ├── SemesterPage.qml   # 学期设置 + 课程列表 + 冲突列表
-│   └── SettingsPage.qml   # 目录设置 / 作息表设置 / 数据维护 / 关于
+│   ├── SettingsPage.qml   # 目录设置 / 作息表设置 / 数据维护 / 关于
+│   └── Responsive.qml     # 【QML 单例】统一断点 / 间距 / 字号 / 卡片尺寸 / 常用颜色
 └── resources/
     └── assets.qrc         # 静态资源清单（占位）
 ```
 
 ## 公开接口与关键类型
 
-本层不导出 C++ 类型，只导出 QML 类型（同模块内可直接互相引用，无需 `import`）。两个主界面都暴露相同的“契约 `objectName`”，因此 `app` 层的连接代码在桌面 / 移动端通用：
+本层不导出 C++ 类型，只导出 QML 类型（同模块内可直接互相引用，无需 `import`）。两个主界面暴露同一套“契约 `objectName`”，因此 `app` 层的连接代码在桌面 / 移动端通用（例外：`addCourseButton` / `importButton` / `exportButton` 三个次要操作按钮只保留在桌面宽屏工具栏中，窄屏与移动端由 `moreMenuButton` + 菜单项承接）：
 
 | 区域 | objectName |
 | --- | --- |
@@ -59,6 +60,7 @@ src/ui/
 | 提醒 | `reminderEnabledCheck`、`reminderMinutesSelector`、`testNotificationButton`、`requestPermissionButton`、`notificationBanner` |
 | 适配器 | `adapterSelector`、`adapterScheduleUrlField`、`adapterLoginUrlField`、`adapterCookieField`、`adapterSaveUrlButton`、`adapterImportButton`、`adapterClearSessionButton` |
 | 编辑器 | `courseEditor`、`editor*Field`、`sessionDraftModel`、`sessionList`、`session*`、`sessionAddButton`、`sessionUpdateButton`、`sessionRemoveButton`、`courseSaveButton`、`courseCancelButton` |
+| 窄屏折叠菜单 | `moreMenuButton`（触发）、`moreMenu`（菜单本体）、`addCourseMenuItem`、`importMenuItem`、`exportMenuItem` |
 | 导入 | `importWizard`、`importFileField`、`importChooseFileButton`、`importFileDialog`、`importStrategySelector`、`importApplyButton`、`importCancelButton` |
 | 导出 | `exportDialog`、`exportFormatSelector`、`exportDirField`、`exportChooseDirButton`、`exportResetDirButton`、`exportDirDialog`、`exportConfirmButton`、`exportCancelButton` |
 | 动态课卡 | `sessionCardClick`（由 `CourseCard` 提供，含 `courseId` 属性） |
@@ -102,6 +104,38 @@ cmake --build --preset windows-msvc-debug
 ```
 
 - 文件选择：`ImportWizard` 使用 `FileDialog`，`ExportDialog` 与 `SettingsPage` 使用 `FolderDialog`；选中的 `QUrl` 由 C++ 侧读取后交给 `ImportExportBridge`，**数据层只接收路径**。
+
+## 响应式约定与测试矩阵
+
+所有断点、间距、字号、卡片尺寸与常用颜色都集中在 QML 单例 **`Responsive.qml`**（CMake 里通过 `QT_QML_SINGLETON_TYPE` 注册），页面只引用常量或 `Responsive.isXxx(...)` 判断，不再各写一套魔法数字：
+
+| 常量 | 值 | 用途 |
+| --- | --- | --- |
+| `compactToolbarWidth` | 1440 | 桌面工具栏折叠次要操作（完整工具栏实测需约 1400px） |
+| `narrowWidth` | 800 | 桌面隐藏标题 / 学期回显 |
+| `shortHeight` | 520 | 低高度（横屏 / 分屏）压缩纵向占位 |
+| `minWindowWidth` / `minWindowHeight` | 640 / 420 | 主窗口最小尺寸 |
+| `wideSplitWidth` | 900 | 学期页左右 / 上下分栏切换 |
+| `wideFormWidth` | 640 | 设置页表单多列 / 单列切换 |
+| `editorWideWidth` / `editorMediumWidth` | 620 / 420 | 课程编辑器 4 / 2 / 1 列 |
+| `dialogWideWidth` | 460 | 导出对话框标签并排 / 上下 |
+| `tinyWidth` | 360 | 移动端与日视图选择栏的极窄断点 |
+| `minDayWidth` | 64 | 周视图最小可读列宽，再窄改为横向滚动 |
+| `cardMinHeight` / `cardPreferredHeight` / `cardMaxHeight` | 60 / 96 / 112 | 日视图卡片高度区间 |
+| `cardDenseWidth` / `cardDenseHeight` | 104 / 96 | 课卡隐藏地点、教师的阈值 |
+| `cardTightWidth` / `cardTightHeight` | 84 / 44 | 课卡只留课程名与时间的阈值 |
+
+回归验证使用 `custom/tools` 的窗口截图链路（离屏烟测 + `PrintWindow` 抓图 + 空白帧检测），固定跑下面 7 档尺寸；本机屏幕缩放 125%，顺带覆盖高 DPI：
+
+| 尺寸     | 覆盖场景                                      |
+| -------- | --------------------------------------------- |
+| 320×568  | 最窄手机竖屏：周视图横向滚动 + 提示，课卡紧凑 |
+| 360×640  | 小屏手机竖屏：极窄断点边界                    |
+| 390×844  | 主流手机竖屏：4 Tab + 折叠菜单                |
+| 480×860  | 大屏手机竖屏：横向滚动边界                    |
+| 844×390  | 手机横屏 / 低高度窗口：头部压缩、节次高度收缩 |
+| 900×600  | 桌面窄窗口：工具栏折叠、学期页上下分栏        |
+| 1180×760 | 桌面默认：折叠形态、7 列完整可见              |
 
 ## 信号连接约定
 

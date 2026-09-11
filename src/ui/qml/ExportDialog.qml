@@ -31,7 +31,7 @@ Dialog {
     anchors.centerIn: parent
 
     // 窄表单：标签在上、输入框在下
-    readonly property bool narrowForm: exportDialog.width < 460
+    readonly property bool narrowForm: Responsive.isDialogNarrow(exportDialog.width)
 
     contentItem: ScrollView {
         id: exportScroll
@@ -80,7 +80,7 @@ Dialog {
                     Flow {
                         Layout.fillWidth: true
                         Layout.columnSpan: exportDialog.narrowForm ? 1 : 2
-                        spacing: 8
+                        spacing: Responsive.spacing
 
                         Button {
                             id: exportChooseDirButton
@@ -115,14 +115,14 @@ Dialog {
                               ? schedule.importExport.lastExportSummary
                               : qsTr("尚未导出。文件名规则：Schedule_<学期>_<yyyyMMdd_HHmmss>.<扩展名>")
                         wrapMode: Text.WordWrap
-                        color: schedule.importExport.lastExportPath.length > 0 ? "#2E7D5B" : "#5A6A80"
+                        color: schedule.importExport.lastExportPath.length > 0 ? Responsive.success : Responsive.textSecondary
                     }
 
                     Label {
                         Layout.fillWidth: true
                         text: schedule.importExport.lastExportPath
                         wrapMode: Text.WrapAnywhere
-                        color: "#1B4FA8"
+                        color: Responsive.accentStrong
                         font.bold: true
                     }
 
@@ -132,21 +132,21 @@ Dialog {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: Responsive.spacing
 
                 Label {
                     Layout.fillWidth: true
                     text: schedule.importExport.lastError
-                    color: "#C0392B"
+                    color: Responsive.danger
                     wrapMode: Text.WordWrap
-                    font.pixelSize: 11
+                    font.pixelSize: Responsive.fontSmall
                 }
 
                 // Flow：窄屏时“导出 / 关闭”自动换行，不会被挤出对话框
                 Flow {
                     Layout.fillWidth: true
                     layoutDirection: Qt.RightToLeft
-                    spacing: 8
+                    spacing: Responsive.spacing
 
                     Button {
                         id: exportConfirmButton

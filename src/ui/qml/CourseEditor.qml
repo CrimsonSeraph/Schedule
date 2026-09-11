@@ -30,10 +30,9 @@ Dialog {
     // C++ 在打开编辑器时写入：冲突提示文本（为空表示无冲突）
     property string conflictHint: ""
 
-    // 表单断点：宽表单 4 列、中等 2 列、窄屏 1 列（输入框一律 fillWidth）
-    readonly property bool wideForm: courseEditor.width >= 620
-    readonly property bool mediumForm: courseEditor.width >= 420
-    readonly property int formColumns: courseEditor.wideForm ? 4 : (courseEditor.mediumForm ? 2 : 1)
+    // 表单断点：宽表单 4 列、中等 2 列、窄屏 1 列（输入框一律 fillWidth），断点来自 Responsive
+    readonly property int formColumns: Responsive.editorColumns(courseEditor.width)
+    readonly property bool wideForm: courseEditor.formColumns === 4
     // 课程名称在宽表单里跨 3 列（凑满一行），其余情况占 1 列
     readonly property int nameFieldSpan: courseEditor.wideForm ? 3 : 1
 
@@ -151,7 +150,7 @@ Dialog {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: 8
+                        spacing: Responsive.spacing
 
                         ListView {
                             id: sessionList
@@ -169,7 +168,7 @@ Dialog {
                                 radius: 4
                                 color: ListView.isCurrentItem ? "#E8F0FF" : "#F7F9FC"
                                 border.width: 1
-                                border.color: ListView.isCurrentItem ? "#9FBEF5" : "#E3E9F2"
+                                border.color: ListView.isCurrentItem ? "#9FBEF5" : Responsive.border
 
                                 Text {
                                     anchors.left: parent.left
@@ -180,7 +179,7 @@ Dialog {
                                     text: model.summary
                                     elide: Text.ElideRight
                                     font.pixelSize: 13
-                                    color: "#33415C"
+                                    color: Responsive.textStrong
                                 }
                             }
 
@@ -188,7 +187,7 @@ Dialog {
                                 anchors.centerIn: parent
                                 visible: sessionDraft.count === 0
                                 text: qsTr("尚未添加时间段，请在下方填写后点击“添加时间段”")
-                                color: "#8A97A8"
+                                color: Responsive.textMuted
                             }
                         }
 
@@ -270,7 +269,7 @@ Dialog {
                             // 按钮行用 Flow：窄屏自动换行，不会把按钮挤出对话框
                             Flow {
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: Responsive.spacing
 
                                 Button {
                                     id: sessionAddButton
@@ -299,8 +298,8 @@ Dialog {
                                 // 窄屏优先保证按钮可用，操作提示省略
                                 visible: courseEditor.wideForm
                                 text: qsTr("选中列表中的行可回填到表单")
-                                color: "#8A97A8"
-                                font.pixelSize: 11
+                                color: Responsive.textMuted
+                                font.pixelSize: Responsive.fontSmall
                                 elide: Text.ElideRight
                             }
                         }
@@ -311,7 +310,7 @@ Dialog {
                     Layout.fillWidth: true
                     visible: courseEditor.conflictHint.length > 0
                     text: courseEditor.conflictHint
-                    color: "#C0392B"
+                    color: Responsive.danger
                     wrapMode: Text.WordWrap
                 }
             }
@@ -319,13 +318,13 @@ Dialog {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Responsive.spacing
 
             Label {
                 Layout.fillWidth: true
                 text: qsTr("带 * 的为必填项；保存后会自动写入本地数据库")
-                color: "#8A97A8"
-                font.pixelSize: 11
+                color: Responsive.textMuted
+                font.pixelSize: Responsive.fontSmall
                 // 窄屏时可压缩到 0 宽度，保证“取消 / 保存”始终可见
                 elide: Text.ElideRight
             }
