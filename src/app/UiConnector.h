@@ -5,6 +5,7 @@
 #include "engine/ScheduleBridge.h"
 
 #include <QHash>
+#include <QList>
 #include <QObject>
 #include <QPointer>
 #include <QSet>
@@ -12,6 +13,8 @@
 #include <QVariantMap>
 
 #include <functional>
+
+class QQuickItem;
 
 namespace Schedule {
 
@@ -35,11 +38,13 @@ namespace Schedule {
      * | 编辑器 | `courseSaveButton` / `courseCancelButton` / `sessionAddButton` / `sessionUpdateButton` / `sessionRemoveButton` / `sessionList` | 课程与时间段编辑 |
      * | 导入 | `importButton` / `importChooseFileButton` / `importFileDialog` / `importApplyButton` / `importCancelButton` | 导入向导 |
      * | 导出 | `exportButton` / `exportChooseDirButton` / `exportResetDirButton` / `exportDirDialog` / `exportConfirmButton` / `exportCancelButton` | 导出对话框 |
-     * | 动态卡片 | `sessionCardClick`（周 / 日视图内由 `Repeater` 生成） | 点击课卡打开对应课程的编辑器 |
+     * | 动态卡片 | `sessionCardClick`（周 / 日视图内由 `Repeater` 生成） | 点击课卡打开课程详情弹层 |
+     * | 课程详情 | `courseDetailEditButton` / `courseDetailCloseButton` | 进入课程编辑器 / 关闭详情弹层 |
      * | 课程列表 | `courseListItemClick`（学期页 `ListView` 的委托） | 点击列表项设置 `courseList.currentIndex` |
      *
-     * 因为 `Repeater` 生成的卡片会随模型重置而重建，`ListView` 的委托也会随滚动增删，
-     * 本类会在相关模型 reset 后、以及 `courseList` 的可视子项变化时重新扫描并连接
+     * `Repeater` 生成的课卡与 `ListView` 的委托都会被 `setParentItem()` 挂进可视树，
+     * 其 `QObject` 父对象为空，`findChildren()` 扫不到，因此本类沿 `QQuickItem::childItems()`
+     * 查找热区；委托增删由承载容器的 `childrenChanged` 或模型 reset 触发重扫
      * （见 `schedule_card_reconnect()`）。
      */
     class UiConnector : public QObject {
@@ -142,6 +147,9 @@ namespace Schedule {
         /** @brief 课程编辑器。 */
         void connect_course_editor();
 
+        /** @brief 课程详情弹层：进入编辑器 / 关闭。 */
+        void connect_course_detail();
+
         /** @brief 折叠菜单 */
         void connect_overflow_menu();
 
@@ -167,6 +175,12 @@ namespace Schedule {
         ImportExportBridge* import_export() const;
 
         // ------------------------------------------------------------ 课程编辑器
+
+        /**
+         * @brief 打开课程详情弹层并填充 `course` / `sessions`。
+         * @param course_id 课程 id；为空或查不到课程时不弹层
+         */
+        void show_course_detail(const QString& course_id);
 
         /** @brief 打开课程编辑器；`course_id` 为空表示新建。 */
         void open_course_editor(const QString& course_id);
@@ -196,6 +210,12 @@ namespace Schedule {
 
         /** @brief 立即扫描并连接全部 `sessionCardClick` 热区。 */
         void connect_session_cards();
+
+        /** @return 可视子树中全部 objectName 匹配的节点（委托不在 `QObject::children()` 中）。 */
+        QList<QQuickItem*> visual_hotspots(const QString& name) const;
+
+        /** @return 可视树根；`ApplicationWindow` 的根是它的 `contentItem`。 */
+        QQuickItem* root_item() const;
 
         /**
          * @brief 扫描并连接课程列表页的列表项热区（`courseListItemClick`）。
@@ -236,6 +256,12 @@ namespace Schedule {
 
         /** 课程编辑器对话框。 */
         QPointer<QObject> m_course_editor;
+
+        /** 课程详情弹层。 */
+        QPointer<QObject> m_course_detail;
+
+        /** 详情弹层当前展示的课程 id；「编辑」按钮据此进入课程编辑器。 */
+        QString m_detail_course_id;
 
         /** 导入向导对话框。 */
         QPointer<QObject> m_import_wizard;

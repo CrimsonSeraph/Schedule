@@ -69,7 +69,7 @@ src/app/
     - `Q_OS_ANDROID` / `Q_OS_IOS` → `qrc:/qt/qml/Schedule/qml/MainMobile.qml`
     - 其他平台（Windows / Linux / macOS）→ `qrc:/qt/qml/Schedule/qml/MainDesktop.qml`
 7. 加载成功后在 C++ 侧显式建立信号连接（QML 不隐式连接）：
-    - `UiConnector` 统一连接**全部界面交互**（导航、周次、课程编辑、导入导出向导、设置页），以及动态生成的热区 `sessionCardClick`、`courseListItemClick`；
+    - `UiConnector` 统一连接**全部界面交互**（导航、周次、课程/学期编辑、导入导出向导、设置页），以及动态生成的热区 `sessionCardClick`（→ 课程详情弹层）、`courseListItemClick`；课卡改为先弹 `courseDetailDialog`，其 `courseDetailEditButton` / `courseDetailCloseButton` 也由 `UiConnector` 连接；
     - 设置页 `testButton` `clicked` → `AppBridge::test_button_clicked()`；
     - `AppBridge::test_signal(message)` → 应用日志输出；
     - `ScheduleBridge::errorOccurred` / `infoMessage` → 应用日志；
@@ -121,8 +121,8 @@ schedule_bridge.import_export()->set_adapter_registry(&adapter_registry);
 
     `dispatch()` 用 `sender()` 查表执行对应处理函数，连接仍然全部发生在 C++ 侧。
 
-- 动态生成的课卡（`Repeater`）在模型 `modelReset`、周次 / 星期变化后**延迟一拍**重新扫描，并用 `destroyed` 信号清理映射，避免悬空指针。
-- `ListView` 的委托只挂在 `contentItem` 的**可视**子树下，不进入 `QObject::children()`，`findChildren()` 扫不到；课程列表项因此沿 `QQuickItem::childItems()` 扫描，并在 `contentItem.childrenChanged` 时重扫。
+- 动态生成的课卡（`Repeater`）与列表项（`ListView`）热区都只在可视树里（`setParentItem()` 挂载，`QObject` 父对象为空），因此沿 `QQuickItem::childItems()` 扫描；委托增删由模型 `modelReset` 或承载容器的 `childrenChanged` 触发**延迟一拍**重扫，并用 `destroyed` 信号清理映射，避免悬空指针。
+- 点击课卡先打开课程详情弹层（`courseDetailDialog`），弹层里的「编辑」（`courseDetailEditButton`）再进入 `courseEditor`；「关闭」（`courseDetailCloseButton`）只关弹层。
 - 启动日志会输出已建立的连接数量，便于确认界面契约是否完整。
 
 ## 目录结构（补充）

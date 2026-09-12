@@ -10,7 +10,7 @@ import QtQuick.Controls
 //      * tight：卡片极窄或极矮 —— 再隐藏周次，标题只留一行。
 //
 // 交互约定：卡片内的 MouseArea 命名为 "sessionCardClick" 并暴露 courseId，
-// 由 C++ 侧在 app 层扫描后显式连接到“打开课程编辑器”，QML 不写 onClicked。
+// 由 C++ 侧在 app 层扫描后显式连接到“打开课程详情弹层”，QML 不写 onClicked。
 Rectangle {
     id: card
 

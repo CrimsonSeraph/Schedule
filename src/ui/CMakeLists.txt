@@ -20,8 +20,7 @@ set_target_properties(ScheduleUI
 
 # Responsive.qml 是 QML 单例（统一断点与设计常量），必须在 qt6_add_qml_module 之前声明
 set_source_files_properties(qml/Responsive.qml
-	PROPERTIES
-		QT_QML_SINGLETON_TYPE TRUE
+	PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
 
 qt6_add_qml_module(
@@ -41,6 +40,7 @@ qt6_add_qml_module(
 	qml/DayView.qml
 	qml/CourseCard.qml
 	qml/CourseEditor.qml
+	qml/CourseDetailDialog.qml
 	qml/ImportWizard.qml
 	qml/ExportDialog.qml
 	qml/SettingsPage.qml

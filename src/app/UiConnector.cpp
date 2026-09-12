@@ -39,6 +39,24 @@ namespace Schedule {
             return combo ? combo->property("currentIndex").toInt() : 0;
         }
 
+        /**
+         * @brief 递归收集可视子树中 `objectName` 匹配的节点。
+         *
+         * `Repeater` / `ListView` 生成的委托经 `setParentItem()` 挂进可视树，`QObject`
+         * 父对象为空，`findChildren()` 扫不到，只能沿 `QQuickItem::childItems()` 查找。
+         */
+        void collect_visual_children(QQuickItem* item, const QString& name, QList<QQuickItem*>* out) {
+            if (!item) {
+                return;
+            }
+            if (item->objectName() == name) {
+                out->append(item);
+            }
+            for (QQuickItem* child : item->childItems()) {
+                collect_visual_children(child, name, out);
+            }
+        }
+
     } // namespace
 
     UiConnector::UiConnector(QObject* root,
@@ -179,6 +197,7 @@ namespace Schedule {
 
         m_page_stack = find("pageStack");
         m_course_editor = find("courseEditor");
+        m_course_detail = find("courseDetailDialog");
         m_import_wizard = find("importWizard");
         m_export_dialog = find("exportDialog");
 
@@ -191,6 +210,7 @@ namespace Schedule {
         connect_semester_page();
         connect_settings_page();
         connect_course_editor();
+        connect_course_detail();
         connect_import_wizard();
         connect_export_dialog();
         connect_reminders();
@@ -198,7 +218,8 @@ namespace Schedule {
 
         prime_widgets();
 
-        // 模型重置后 Repeater 会重建卡片，需要重新连接热区
+        // 模型重置后 Repeater / ListView 会重建委托，需要重新连接热区；
+        // 委托增删本身由承载容器的 childrenChanged 触发（见 connect_session_cards()）
         if (QAbstractItemModel* course_model = m_bridge->course_model()) {
             connect(course_model, &QAbstractItemModel::modelReset, this, [this]() { schedule_card_reconnect(); });
         }
@@ -208,8 +229,6 @@ namespace Schedule {
         if (QAbstractItemModel* session_model = m_bridge->session_model()) {
             connect(session_model, &QAbstractItemModel::modelReset, this, [this]() { schedule_card_reconnect(); });
         }
-        connect(m_bridge, &ScheduleBridge::selectedWeekChanged, this, [this]() { schedule_card_reconnect(); });
-        connect(m_bridge, &ScheduleBridge::selectedDayChanged, this, [this]() { schedule_card_reconnect(); });
 
         schedule_card_reconnect();
         qInfo() << "[app] UiConnector: 已建立" << m_connection_count << "个 QML ↔ C++ 连接";
@@ -433,6 +452,19 @@ namespace Schedule {
         });
     }
 
+    void UiConnector::connect_course_detail() {
+        // 详情窗只是入口：先关闭详情窗，再复用既有的课程编辑器
+        on_click("courseDetailEditButton", [this]() {
+            const QString course_id = m_detail_course_id;
+            invoke(m_course_detail, "close");
+            if (!course_id.isEmpty()) {
+                open_course_editor(course_id);
+            }
+        });
+
+        on_click("courseDetailCloseButton", [this]() { invoke(m_course_detail, "close"); });
+    }
+
     void UiConnector::connect_overflow_menu() {
         on_click("moreMenuButton", [this]() {
             if (QObject* menu = find("moreMenu")) {
@@ -554,6 +586,22 @@ namespace Schedule {
     }
 
     // ------------------------------------------------------------ 编辑器的实现
+
+    void UiConnector::show_course_detail(const QString& course_id) {
+        if (course_id.isEmpty() || !m_course_detail) {
+            return;
+        }
+        auto* model = qobject_cast<CourseListModel*>(m_bridge->course_model());
+        const QVariantMap course = model ? model->find(course_id) : QVariantMap();
+        if (course.isEmpty()) {
+            return;
+        }
+
+        m_detail_course_id = course_id;
+        set_property(m_course_detail, "course", course);
+        set_property(m_course_detail, "sessions", course.value(QStringLiteral("sessions")));
+        invoke(m_course_detail, "open");
+    }
 
     void UiConnector::open_course_editor(const QString& course_id) {
         // 先清空表单，避免上一次编辑的残留
@@ -836,26 +884,48 @@ namespace Schedule {
         }
         prune_card_connections();
 
-        const QList<QObject*> cards = m_root->findChildren<QObject*>(QStringLiteral("sessionCardClick"));
-        for (QObject* card : cards) {
-            if (!card || m_connected_cards.contains(card)) {
+        // `Repeater` 生成的课卡经 `setParentItem()` 挂到可视树上，`QObject` 父对象为空，
+        // 因此 `findChildren("sessionCardClick")` 恒为空，只能沿 `childItems()` 递归查找。
+        const QList<QQuickItem*> hotspots = visual_hotspots(QStringLiteral("sessionCardClick"));
+        for (QQuickItem* hotspot : hotspots) {
+            // 课卡增删（模型重置 / 周次 / 星期切换）时重扫；同一容器只连一次
+            if (QQuickItem* host = hotspot->parentItem()) {
+                QObject::connect(host, &QQuickItem::childrenChanged,
+                    this, &UiConnector::schedule_card_reconnect, Qt::UniqueConnection);
+            }
+
+            if (m_connected_cards.contains(hotspot)) {
                 continue;
             }
-            m_connected_cards.insert(card);
+            m_connected_cards.insert(hotspot);
 
             // 课卡的 courseId 由 QML 从当前 model 赋值，点击时读取即可
-            on_signal(card, "clicked()", [this, card]() {
-                const QString course_id = card->property("courseId").toString();
-                if (!course_id.isEmpty()) {
-                    open_course_editor(course_id);
-                }
+            on_signal(hotspot, "clicked()", [this, hotspot]() {
+                show_course_detail(hotspot->property("courseId").toString());
             });
             // 模型重置会销毁旧卡片，及时清理映射，避免悬空键
-            QObject::connect(card, &QObject::destroyed, this, [this, card]() {
-                m_handlers.remove(card);
-                m_connected_cards.remove(card);
+            QObject::connect(hotspot, &QObject::destroyed, this, [this, hotspot]() {
+                m_handlers.remove(hotspot);
+                m_connected_cards.remove(hotspot);
             });
         }
+    }
+
+    QList<QQuickItem*> UiConnector::visual_hotspots(const QString& name) const {
+        QList<QQuickItem*> result;
+        collect_visual_children(root_item(), name, &result);
+        return result;
+    }
+
+    QQuickItem* UiConnector::root_item() const {
+        if (!m_root) {
+            return nullptr;
+        }
+        // `ApplicationWindow` 是 `QQuickWindow`（不是 `QQuickItem`），可视树的根是它的 contentItem
+        if (auto* item = qobject_cast<QQuickItem*>(m_root.data())) {
+            return item;
+        }
+        return qobject_cast<QQuickItem*>(m_root->property("contentItem").value<QObject*>());
     }
 
     void UiConnector::connect_course_list_items() {

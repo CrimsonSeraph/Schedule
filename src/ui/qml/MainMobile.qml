@@ -273,6 +273,10 @@ ApplicationWindow {
         id: courseEditor
     }
 
+    CourseDetailDialog {
+        id: courseDetailDialog
+    }
+
     ImportWizard {
         id: importWizard
     }

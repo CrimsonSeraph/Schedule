@@ -35,6 +35,7 @@ src/ui/
 │   ├── DayView.qml        # 日视图：按天列出课程
 │   ├── CourseCard.qml     # 课程卡片（周 / 日视图复用）
 │   ├── CourseEditor.qml   # 课程编辑对话框（含时间段草稿列表）
+│   ├── CourseDetailDialog.qml # 课程详情弹层（点击课卡后展示，可进入编辑器）
 │   ├── ImportWizard.qml   # 导入向导（选文件 → 预览 → 策略 → 应用）
 │   ├── ExportDialog.qml   # 导出对话框（选格式与目录，展示实际路径）
 │   ├── SemesterPage.qml   # 学期设置 + 课程列表 + 冲突列表
@@ -60,6 +61,7 @@ src/ui/
 | 提醒 | `reminderEnabledCheck`、`reminderMinutesSelector`、`testNotificationButton`、`requestPermissionButton`、`notificationBanner` |
 | 适配器 | `adapterSelector`、`adapterScheduleUrlField`、`adapterLoginUrlField`、`adapterCookieField`、`adapterSaveUrlButton`、`adapterImportButton`、`adapterClearSessionButton` |
 | 编辑器 | `courseEditor`、`editor*Field`、`sessionDraftModel`、`sessionList`、`session*`、`sessionAddButton`、`sessionUpdateButton`、`sessionRemoveButton`、`courseSaveButton`、`courseCancelButton` |
+| 课程详情 | `courseDetailDialog`、`courseDetailName`、`courseDetailCode`、`courseDetailTeacher`、`courseDetailLocation`、`courseDetailCredits`、`courseDetailNotes`、`courseDetailSessions`、`courseDetailEditButton`、`courseDetailCloseButton` |
 | 窄屏折叠菜单 | `moreMenuButton`（触发）、`moreMenu`（菜单本体）、`addCourseMenuItem`、`importMenuItem`、`exportMenuItem` |
 | 导入 | `importWizard`、`importFileField`、`importChooseFileButton`、`importFileDialog`、`importStrategySelector`、`importApplyButton`、`importCancelButton` |
 | 导出 | `exportDialog`、`exportFormatSelector`、`exportDirField`、`exportChooseDirButton`、`exportResetDirButton`、`exportDirDialog`、`exportConfirmButton`、`exportCancelButton` |
@@ -142,8 +144,9 @@ cmake --build --preset windows-msvc-debug
 
 - QML **不写** `onClicked` / `Connections` / `onXxx` 等任何信号处理器；所有交互（按钮点击、下拉切换、对话框确认、列表选中）由 `app/UiConnector` 在 C++ 侧按 `objectName` 显式连接。
 - 因此每个交互控件都必须有**唯一且稳定**的 `objectName`；新增交互控件时须同步更新 `UiConnector` 与本文档的表格。
-- 列表选中统一使用 `ListView` 内建的 `currentIndex` 行为（鼠标按下即更新），C++ 读取该属性，无需为每个 delegate 建立连接。
-- 周 / 日视图的课卡由 `Repeater` 动态生成，`UiConnector` 会在模型 `modelReset` 与周次 / 星期变化后延迟一拍重新扫描 `sessionCardClick` 并连接。
+- 列表选中由委托内的 `courseListItemClick` 热区驱动：C++ 连接 `clicked()` 后把该委托的 `itemIndex` 写回 `courseList.currentIndex`，高亮仍由 `ListView.isCurrentItem` 负责。
+- 周 / 日视图的课卡由 `Repeater` 动态生成，课卡经 `setParentItem()` 挂进可视树、不进入 `QObject::children()`，因此 `UiConnector` 沿 `QQuickItem::childItems()` 扫描 `sessionCardClick`，并在承载委托的可视父级 `childrenChanged` / 模型 `modelReset` 后重扫。
+- 点击课卡先弹出课程详情弹层（`courseDetailDialog`），再由其中的「编辑」（`courseDetailEditButton`）进入 `courseEditor`。
 - 学期页的列表项由 `ListView` 动态生成：委托只挂在 `contentItem` 的**可视**子树下，不进入 `QObject::children()`，`findChildren()` 扫不到。因此 `UiConnector` 沿 `QQuickItem::childItems()` 扫描 `courseListItemClick`，并在 `contentItem` 的可视子项变化（`childrenChanged`）时重扫，保证滚动或模型重置后新出现的行同样可点。
 
 ## 扩展点与注意事项
