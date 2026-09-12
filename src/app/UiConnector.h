@@ -286,6 +286,9 @@ namespace Schedule {
         /** 同步 weekSelector.currentIndex 时抑制信号回环。 */
         bool m_syncing_week_selector = false;
 
+        /** 同步 daySelector.currentIndex 时抑制信号回环。 */
+        bool m_syncing_day_selector = false;
+
         /** 已成功建立的 `clicked` 连接数量（用于启动日志与自检）。 */
         int m_connection_count = 0;
     };

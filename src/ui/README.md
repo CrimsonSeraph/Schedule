@@ -145,6 +145,7 @@ cmake --build --preset windows-msvc-debug
 - QML **不写** `onClicked` / `Connections` / `onXxx` 等任何信号处理器；所有交互（按钮点击、下拉切换、对话框确认、列表选中）由 `app/UiConnector` 在 C++ 侧按 `objectName` 显式连接。
 - 因此每个交互控件都必须有**唯一且稳定**的 `objectName`；新增交互控件时须同步更新 `UiConnector` 与本文档的表格。
 - 列表选中由委托内的 `courseListItemClick` 热区驱动：C++ 连接 `clicked()` 后把该委托的 `itemIndex` 写回 `courseList.currentIndex`，高亮仍由 `ListView.isCurrentItem` 负责。
+- 周次（`weekSelector`）与星期（`daySelector`）下拉框的 `currentIndex` **不在 QML 中绑定** `schedule.selectedWeek` / `selectedDay`：用户操作会破坏绑定，且 `currentValue` 在 `currentIndexChanged` 触发时尚未更新。改由 `UiConnector` 读 `currentIndex` 下发，并在桥接信号回来时带抑制标志回写。
 - 周 / 日视图的课卡由 `Repeater` 动态生成，课卡经 `setParentItem()` 挂进可视树、不进入 `QObject::children()`，因此 `UiConnector` 沿 `QQuickItem::childItems()` 扫描 `sessionCardClick`，并在承载委托的可视父级 `childrenChanged` / 模型 `modelReset` 后重扫。
 - 点击课卡先弹出课程详情弹层（`courseDetailDialog`），再由其中的「编辑」（`courseDetailEditButton`）进入 `courseEditor`。
 - 学期页的列表项由 `ListView` 动态生成：委托只挂在 `contentItem` 的**可视**子树下，不进入 `QObject::children()`，`findChildren()` 扫不到。因此 `UiConnector` 沿 `QQuickItem::childItems()` 扫描 `courseListItemClick`，并在 `contentItem` 的可视子项变化（`childrenChanged`）时重扫，保证滚动或模型重置后新出现的行同样可点。

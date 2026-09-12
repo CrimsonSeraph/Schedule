@@ -308,8 +308,41 @@ namespace Schedule {
         }
 
         on_signal("daySelector", "currentIndexChanged()", [this]() {
-            m_bridge->select_day(combo_value(find("daySelector")).toInt());
+            if (m_syncing_day_selector) {
+                return;
+            }
+            QObject* combo = find("daySelector");
+            if (!combo) {
+                return;
+            }
+            // 读 currentIndex 而不是 currentValue：后者在 currentIndexChanged 触发时尚未更新，
+            // 会读回旧值 0 并把「整周」写回 selectedDay（dayOptions 的下标与 value 一致）
+            const int day_of_week = combo->property("currentIndex").toInt();
+            if (day_of_week >= 0) {
+                m_bridge->select_day(day_of_week);
+            }
         });
+
+        // selectedDay 也可能由业务侧改变（初始化等），统一由 C++ 回写下拉框，避免两边不同步
+        connect(m_bridge, &ScheduleBridge::selectedDayChanged, this, [this]() {
+            QObject* combo = find("daySelector");
+            if (!combo) {
+                return;
+            }
+            const int index = qMax(0, m_bridge->property("selectedDay").toInt());
+            if (combo->property("currentIndex").toInt() == index) {
+                return;
+            }
+            m_syncing_day_selector = true;
+            combo->setProperty("currentIndex", index);
+            m_syncing_day_selector = false;
+        });
+
+        if (QObject* combo = find("daySelector")) {
+            m_syncing_day_selector = true;
+            combo->setProperty("currentIndex", qMax(0, m_bridge->property("selectedDay").toInt()));
+            m_syncing_day_selector = false;
+        }
     }
 
     // ---------------------------------------------------------------- 课程操作

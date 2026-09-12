@@ -53,7 +53,8 @@ Item {
                 textRole: "label"
                 valueRole: "value"
                 model: schedule.dayOptions
-                currentIndex: schedule.selectedDay
+                // currentIndex 不在此绑定：用户操作会破坏绑定，改由 C++ 侧
+                // （UiConnector::connect_week_navigation）统一双向同步
             }
 
             Label {
