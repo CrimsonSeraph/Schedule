@@ -58,9 +58,7 @@ Item {
 
             Label {
                 Layout.fillWidth: true
-                text: schedule.selectedDay === 0
-                      ? qsTr("整周共 %1 节课").arg(schedule.sessionModel.count)
-                      : qsTr("%1 共 %2 节课").arg(schedule.day_name(schedule.selectedDay)).arg(schedule.sessionModel.count)
+                text: schedule.selectedDay === 0 ? qsTr("整周共 %1 节课").arg(schedule.sessionModel.count) : qsTr("%1 共 %2 节课").arg(schedule.day_name(schedule.selectedDay)).arg(schedule.sessionModel.count)
                 color: "#6B7A90"
                 horizontalAlignment: Text.AlignRight
                 elide: Text.ElideRight
@@ -99,8 +97,7 @@ Item {
                         teacher: model.teacher
                         location: model.location
                         cardColor: model.color
-                        timeText: model.dayName + " " + model.startTime + "-" + model.endTime
-                                 + qsTr("（第 %1-%2 节）").arg(model.startSlot).arg(model.endSlot)
+                        timeText: model.dayName + " " + model.startTime + "-" + model.endTime + qsTr("（第 %1-%2 节）").arg(model.startSlot).arg(model.endSlot)
                         weeksText: model.weeksDisplay
                         // 紧凑程度交给 CourseCard 按卡片实际宽高判定（宽卡片在全信息放不下时自动降级）
                     }

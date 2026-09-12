@@ -148,9 +148,7 @@ ApplicationWindow {
             font.pixelSize: Responsive.fontSmall
             // 低高度屏幕优先保证课表可见，状态信息仍可从错误提示能力之外的页面获取
             visible: !root.shortHeight
-            text: schedule.lastError.length > 0
-                  ? qsTr("⚠ %1").arg(schedule.lastError)
-                  : (schedule.lastInfo.length > 0 ? qsTr("✓ %1").arg(schedule.lastInfo) : qsTr("就绪"))
+            text: schedule.lastError.length > 0 ? qsTr("⚠ %1").arg(schedule.lastError) : (schedule.lastInfo.length > 0 ? qsTr("✓ %1").arg(schedule.lastInfo) : qsTr("就绪"))
             color: schedule.lastError.length > 0 ? Responsive.danger : Responsive.textSecondary
         }
 
@@ -202,7 +200,6 @@ ApplicationWindow {
             }
         }
     }
-
 
     // 应用内提醒横幅：C++ 侧（UiConnector）在收到 notificationRequested 后写入
     // bannerTitle / bannerMessage，并在若干秒后清空。系统通知不可用时它是兜底展示。

@@ -73,7 +73,9 @@ Item {
                     columnSpacing: 8
                     rowSpacing: 8
 
-                    Label { text: qsTr("默认导入目录") }
+                    Label {
+                        text: qsTr("默认导入目录")
+                    }
 
                     TextField {
                         id: importDirField
@@ -91,7 +93,9 @@ Item {
                         text: qsTr("选择…")
                     }
 
-                    Label { text: qsTr("默认导出目录") }
+                    Label {
+                        text: qsTr("默认导出目录")
+                    }
 
                     TextField {
                         id: exportDirField
@@ -149,7 +153,9 @@ Item {
                     columnSpacing: 8
                     rowSpacing: 8
 
-                    Label { text: qsTr("选择节次") }
+                    Label {
+                        text: qsTr("选择节次")
+                    }
 
                     ComboBox {
                         id: slotSelector
@@ -161,9 +167,13 @@ Item {
                         model: schedule.timeSlots
                     }
 
-                    Item { Layout.fillWidth: true }
+                    Item {
+                        Layout.fillWidth: true
+                    }
 
-                    Label { text: qsTr("名称") }
+                    Label {
+                        text: qsTr("名称")
+                    }
                     TextField {
                         id: slotLabelField
 
@@ -174,7 +184,9 @@ Item {
                         placeholderText: qsTr("第 1 节")
                     }
 
-                    Label { text: qsTr("开始时间") }
+                    Label {
+                        text: qsTr("开始时间")
+                    }
                     TextField {
                         id: slotStartField
 
@@ -233,7 +245,9 @@ Item {
                         columnSpacing: 8
                         rowSpacing: 8
 
-                        Label { text: qsTr("启用提醒") }
+                        Label {
+                            text: qsTr("启用提醒")
+                        }
                         CheckBox {
                             id: reminderEnabledCheck
 
@@ -242,7 +256,9 @@ Item {
                             checked: reminders.enabled
                         }
 
-                        Label { text: qsTr("提前时间") }
+                        Label {
+                            text: qsTr("提前时间")
+                        }
                         ComboBox {
                             id: reminderMinutesSelector
 
@@ -254,7 +270,9 @@ Item {
                             currentIndex: reminders.minutesIndex
                         }
 
-                        Label { text: qsTr("通知方式") }
+                        Label {
+                            text: qsTr("通知方式")
+                        }
                         Label {
                             Layout.fillWidth: true
                             text: reminders.backendName + " · " + reminders.backendStatus
@@ -337,8 +355,7 @@ Item {
 
                     Label {
                         Layout.fillWidth: true
-                        text: qsTr("隐私说明：适配器仅在你点击“导入”时主动触发一次，不保存密码、不做后台同步；")
-                              + qsTr("登录 Cookie 只驻留内存，可随时清除。")
+                        text: qsTr("隐私说明：适配器仅在你点击“导入”时主动触发一次，不保存密码、不做后台同步；") + qsTr("登录 Cookie 只驻留内存，可随时清除。")
                         color: Responsive.warning
                         wrapMode: Text.WordWrap
                         font.pixelSize: Responsive.fontSmall
@@ -350,7 +367,9 @@ Item {
                         columnSpacing: 8
                         rowSpacing: 8
 
-                        Label { text: qsTr("适配器") }
+                        Label {
+                            text: qsTr("适配器")
+                        }
                         ComboBox {
                             id: adapterSelector
 
@@ -360,7 +379,9 @@ Item {
                             model: schedule.importExport.adapterOptions
                         }
 
-                        Label { text: qsTr("课表接口地址") }
+                        Label {
+                            text: qsTr("课表接口地址")
+                        }
                         TextField {
                             id: adapterScheduleUrlField
 
@@ -369,7 +390,9 @@ Item {
                             placeholderText: qsTr("http(s) 接口地址或本地文件路径")
                         }
 
-                        Label { text: qsTr("登录页地址") }
+                        Label {
+                            text: qsTr("登录页地址")
+                        }
                         TextField {
                             id: adapterLoginUrlField
 
@@ -378,7 +401,9 @@ Item {
                             placeholderText: qsTr("供 WebView 打开；可留空")
                         }
 
-                        Label { text: qsTr("登录 Cookie") }
+                        Label {
+                            text: qsTr("登录 Cookie")
+                        }
                         TextField {
                             id: adapterCookieField
 
@@ -436,7 +461,9 @@ Item {
                     columnSpacing: 8
                     rowSpacing: 8
 
-                    Label { text: qsTr("数据文件") }
+                    Label {
+                        text: qsTr("数据文件")
+                    }
                     Label {
                         Layout.fillWidth: true
                         text: schedule.databasePath
@@ -444,8 +471,12 @@ Item {
                         wrapMode: Text.WrapAnywhere
                     }
 
-                    Label { text: qsTr("课程数量") }
-                    Label { text: String(schedule.courseCount) }
+                    Label {
+                        text: qsTr("课程数量")
+                    }
+                    Label {
+                        text: String(schedule.courseCount)
+                    }
 
                     Item {
                         Layout.fillWidth: true
@@ -477,13 +508,14 @@ Item {
             Label {
                 Layout.margins: Responsive.margin
                 Layout.fillWidth: true
-                text: qsTr("Schedule v%1 · 本地课表应用（不做云同步 / 账号系统）\n数据仅保存在本机，导入导出可指定任意目录。")
-                          .arg(schedule.version)
+                text: qsTr("Schedule v%1 · 本地课表应用（不做云同步 / 账号系统）\n数据仅保存在本机，导入导出可指定任意目录。").arg(schedule.version)
                 color: Responsive.textMuted
                 wrapMode: Text.WordWrap
             }
 
-            Item { Layout.fillHeight: true }
+            Item {
+                Layout.fillHeight: true
+            }
         }
     }
 

@@ -56,7 +56,9 @@ Dialog {
                     columnSpacing: 8
                     rowSpacing: 8
 
-                    Label { text: qsTr("文件格式") }
+                    Label {
+                        text: qsTr("文件格式")
+                    }
                     ComboBox {
                         id: exportFormatSelector
 
@@ -66,7 +68,9 @@ Dialog {
                         currentIndex: 0
                     }
 
-                    Label { text: qsTr("目标目录") }
+                    Label {
+                        text: qsTr("目标目录")
+                    }
                     TextField {
                         id: exportDirField
 
@@ -111,9 +115,7 @@ Dialog {
 
                     Label {
                         Layout.fillWidth: true
-                        text: schedule.importExport.lastExportSummary.length > 0
-                              ? schedule.importExport.lastExportSummary
-                              : qsTr("尚未导出。文件名规则：Schedule_<学期>_<yyyyMMdd_HHmmss>.<扩展名>")
+                        text: schedule.importExport.lastExportSummary.length > 0 ? schedule.importExport.lastExportSummary : qsTr("尚未导出。文件名规则：Schedule_<学期>_<yyyyMMdd_HHmmss>.<扩展名>")
                         wrapMode: Text.WordWrap
                         color: schedule.importExport.lastExportPath.length > 0 ? Responsive.success : Responsive.textSecondary
                     }
@@ -126,7 +128,9 @@ Dialog {
                         font.bold: true
                     }
 
-                    Item { Layout.fillHeight: true }
+                    Item {
+                        Layout.fillHeight: true
+                    }
                 }
             }
 

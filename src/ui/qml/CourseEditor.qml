@@ -79,7 +79,9 @@ Dialog {
                         columnSpacing: 8
                         rowSpacing: 8
 
-                        Label { text: qsTr("课程名称 *") }
+                        Label {
+                            text: qsTr("课程名称 *")
+                        }
                         TextField {
                             id: editorNameField
 
@@ -89,7 +91,9 @@ Dialog {
                             placeholderText: qsTr("如 高等数学 A")
                         }
 
-                        Label { text: qsTr("课程代码") }
+                        Label {
+                            text: qsTr("课程代码")
+                        }
                         TextField {
                             id: editorCodeField
 
@@ -97,17 +101,25 @@ Dialog {
                             Layout.fillWidth: true
                             placeholderText: "MATH101"
                         }
-                        Label { text: qsTr("学分") }
+                        Label {
+                            text: qsTr("学分")
+                        }
                         TextField {
                             id: editorCreditsField
 
                             objectName: "editorCreditsField"
                             Layout.fillWidth: true
                             placeholderText: "4"
-                            validator: DoubleValidator { bottom: 0; top: 30; decimals: 1 }
+                            validator: DoubleValidator {
+                                bottom: 0
+                                top: 30
+                                decimals: 1
+                            }
                         }
 
-                        Label { text: qsTr("任课教师") }
+                        Label {
+                            text: qsTr("任课教师")
+                        }
                         TextField {
                             id: editorTeacherField
 
@@ -115,7 +127,9 @@ Dialog {
                             Layout.fillWidth: true
                             placeholderText: qsTr("张老师")
                         }
-                        Label { text: qsTr("上课地点") }
+                        Label {
+                            text: qsTr("上课地点")
+                        }
                         TextField {
                             id: editorLocationField
 
@@ -124,7 +138,9 @@ Dialog {
                             placeholderText: qsTr("教一 101")
                         }
 
-                        Label { text: qsTr("课卡颜色") }
+                        Label {
+                            text: qsTr("课卡颜色")
+                        }
                         TextField {
                             id: editorColorField
 
@@ -132,7 +148,9 @@ Dialog {
                             Layout.fillWidth: true
                             placeholderText: "#4C8DFF（留空自动配色）"
                         }
-                        Label { text: qsTr("备注") }
+                        Label {
+                            text: qsTr("备注")
+                        }
                         TextField {
                             id: editorNotesField
 
@@ -198,7 +216,9 @@ Dialog {
                             columnSpacing: 8
                             rowSpacing: 8
 
-                            Label { text: qsTr("星期") }
+                            Label {
+                                text: qsTr("星期")
+                            }
                             ComboBox {
                                 id: sessionDaySelector
 
@@ -210,7 +230,9 @@ Dialog {
                                 model: schedule.dayOptions.slice(1)
                             }
 
-                            Label { text: qsTr("起始节次") }
+                            Label {
+                                text: qsTr("起始节次")
+                            }
                             SpinBox {
                                 id: sessionStartSpin
 
@@ -222,7 +244,9 @@ Dialog {
                                 editable: true
                             }
 
-                            Label { text: qsTr("连续节数") }
+                            Label {
+                                text: qsTr("连续节数")
+                            }
                             SpinBox {
                                 id: sessionCountSpin
 
@@ -234,7 +258,9 @@ Dialog {
                                 editable: true
                             }
 
-                            Label { text: qsTr("周次") }
+                            Label {
+                                text: qsTr("周次")
+                            }
                             TextField {
                                 id: sessionWeeksField
 
@@ -243,7 +269,9 @@ Dialog {
                                 placeholderText: qsTr("如 1-16、1-16/2、单周")
                             }
 
-                            Label { text: qsTr("地点覆盖") }
+                            Label {
+                                text: qsTr("地点覆盖")
+                            }
                             TextField {
                                 id: sessionLocationField
 
@@ -252,7 +280,9 @@ Dialog {
                                 placeholderText: qsTr("留空沿用课程地点")
                             }
 
-                            Label { text: qsTr("教师覆盖") }
+                            Label {
+                                text: qsTr("教师覆盖")
+                            }
                             TextField {
                                 id: sessionTeacherField
 

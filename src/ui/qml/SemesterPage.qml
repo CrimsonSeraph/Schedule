@@ -56,7 +56,9 @@ Item {
                     columnSpacing: 8
                     rowSpacing: 8
 
-                    Label { text: qsTr("学期名称") }
+                    Label {
+                        text: qsTr("学期名称")
+                    }
                     TextField {
                         id: semesterNameField
 
@@ -65,7 +67,9 @@ Item {
                         placeholderText: qsTr("如 2024-2025 学年第一学期")
                     }
 
-                    Label { text: qsTr("起始日期") }
+                    Label {
+                        text: qsTr("起始日期")
+                    }
                     TextField {
                         id: semesterStartField
 
@@ -74,7 +78,9 @@ Item {
                         placeholderText: qsTr("yyyy-MM-dd（第 1 周周一）")
                     }
 
-                    Label { text: qsTr("总周数") }
+                    Label {
+                        text: qsTr("总周数")
+                    }
                     SpinBox {
                         id: semesterWeeksSpin
 
@@ -99,13 +105,7 @@ Item {
                 Label {
                     Layout.margins: Responsive.margin
                     Layout.fillWidth: true
-                    text: schedule.hasSemester
-                          ? qsTr("当前：%1\n%2 ~ %3（共 %4 周）")
-                                .arg(schedule.semesterName)
-                                .arg(schedule.semesterStartDate)
-                                .arg(schedule.semesterEndDate)
-                                .arg(schedule.totalWeeks)
-                          : qsTr("尚未创建学期")
+                    text: schedule.hasSemester ? qsTr("当前：%1\n%2 ~ %3（共 %4 周）").arg(schedule.semesterName).arg(schedule.semesterStartDate).arg(schedule.semesterEndDate).arg(schedule.totalWeeks) : qsTr("尚未创建学期")
                     color: Responsive.textSecondary
                     wrapMode: Text.WordWrap
                 }
@@ -118,7 +118,9 @@ Item {
                     wrapMode: Text.WordWrap
                 }
 
-                Item { Layout.fillHeight: true }
+                Item {
+                    Layout.fillHeight: true
+                }
             }
         }
 
@@ -227,9 +229,7 @@ Item {
 
                         Text {
                             width: parent.width
-                            text: (model.location.length > 0 ? model.location + " · " : "")
-                                  + (model.teacher.length > 0 ? model.teacher + " · " : "")
-                                  + model.weekDisplay
+                            text: (model.location.length > 0 ? model.location + " · " : "") + (model.teacher.length > 0 ? model.teacher + " · " : "") + model.weekDisplay
                             font.pixelSize: Responsive.fontSmall
                             elide: Text.ElideRight
                             color: Responsive.textMuted

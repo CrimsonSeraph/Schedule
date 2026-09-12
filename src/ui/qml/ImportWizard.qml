@@ -131,9 +131,7 @@ Dialog {
                             Label {
                                 width: parent.width
                                 visible: schedule.importExport.previewConflicts.length === 0
-                                text: schedule.importExport.hasPendingPreview
-                                      ? qsTr("没有发现新引入的冲突。")
-                                      : qsTr("选择文件后将在此显示预览结果。")
+                                text: schedule.importExport.hasPendingPreview ? qsTr("没有发现新引入的冲突。") : qsTr("选择文件后将在此显示预览结果。")
                                 color: Responsive.textMuted
                                 font.pixelSize: Responsive.fontBody
                             }
@@ -211,15 +209,7 @@ Dialog {
         objectName: "importFileDialog"
         title: qsTr("选择要导入的课表文件")
         fileMode: FileDialog.OpenFile
-        nameFilters: [
-            qsTr("全部支持的课表文件 (*.json *.csv *.ics)"),
-            qsTr("课表 JSON (*.json)"),
-            qsTr("表格 CSV (*.csv *.txt)"),
-            qsTr("日历 ICS (*.ics *.ical)"),
-            qsTr("全部文件 (*)")
-        ]
-        currentFolder: importWizard.initialDirectory.length > 0
-                       ? "file:///" + importWizard.initialDirectory.replace(/\\/g, "/")
-                       : ""
+        nameFilters: [qsTr("全部支持的课表文件 (*.json *.csv *.ics)"), qsTr("课表 JSON (*.json)"), qsTr("表格 CSV (*.csv *.txt)"), qsTr("日历 ICS (*.ics *.ical)"), qsTr("全部文件 (*)")]
+        currentFolder: importWizard.initialDirectory.length > 0 ? "file:///" + importWizard.initialDirectory.replace(/\\/g, "/") : ""
     }
 }

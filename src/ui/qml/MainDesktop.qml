@@ -60,9 +60,7 @@ ApplicationWindow {
             }
 
             Label {
-                text: schedule.hasSemester
-                      ? qsTr("%1 · 共 %2 周").arg(schedule.semesterName).arg(schedule.totalWeeks)
-                      : qsTr("尚未设置学期")
+                text: schedule.hasSemester ? qsTr("%1 · 共 %2 周").arg(schedule.semesterName).arg(schedule.totalWeeks) : qsTr("尚未设置学期")
                 color: Responsive.textSecondary
                 elide: Text.ElideRight
                 Layout.maximumWidth: 260
@@ -102,9 +100,7 @@ ApplicationWindow {
                 id: currentWeekButton
 
                 objectName: "currentWeekButton"
-                text: root.compactToolbar
-                      ? qsTr("本周")
-                      : (schedule.currentWeek > 0 ? qsTr("回到第 %1 周").arg(schedule.currentWeek) : qsTr("回到本周"))
+                text: root.compactToolbar ? qsTr("本周") : (schedule.currentWeek > 0 ? qsTr("回到第 %1 周").arg(schedule.currentWeek) : qsTr("回到本周"))
             }
 
             ToolSeparator {
@@ -147,7 +143,9 @@ ApplicationWindow {
                 checked: pageStack.currentIndex === 3
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
 
             Label {
                 id: conflictBadge
@@ -243,9 +241,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 leftPadding: 8
                 elide: Text.ElideRight
-                text: schedule.lastError.length > 0
-                      ? qsTr("⚠ %1").arg(schedule.lastError)
-                      : (schedule.lastInfo.length > 0 ? qsTr("✓ %1").arg(schedule.lastInfo) : qsTr("就绪"))
+                text: schedule.lastError.length > 0 ? qsTr("⚠ %1").arg(schedule.lastError) : (schedule.lastInfo.length > 0 ? qsTr("✓ %1").arg(schedule.lastInfo) : qsTr("就绪"))
                 color: schedule.lastError.length > 0 ? Responsive.danger : Responsive.textSecondary
             }
 
@@ -257,7 +253,6 @@ ApplicationWindow {
             }
         }
     }
-
 
     // 应用内提醒横幅：C++ 侧（UiConnector）在收到 notificationRequested 后写入
     // bannerTitle / bannerMessage，并在若干秒后清空。系统通知不可用时它是兜底展示。
