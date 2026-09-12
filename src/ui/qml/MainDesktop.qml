@@ -89,7 +89,6 @@ ApplicationWindow {
                 textRole: "label"
                 valueRole: "value"
                 model: schedule.weekOptions
-                currentIndex: Math.max(0, schedule.selectedWeek - 1)
             }
 
             ToolButton {

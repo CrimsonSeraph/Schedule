@@ -205,11 +205,40 @@ namespace Schedule {
         on_click("currentWeekButton", [this]() { m_bridge->go_to_current_week(); });
 
         on_signal("weekSelector", "currentIndexChanged()", [this]() {
-            const int week = combo_value(find("weekSelector")).toInt();
-            if (week > 0) {
-                m_bridge->select_week(week);
+            if (m_syncing_week_selector) {
+                return;
+            }
+            QObject* combo = find("weekSelector");
+            if (!combo) {
+                return;
+            }
+            const int index = combo->property("currentIndex").toInt();
+            if (index >= 0) {
+                m_bridge->select_week(index + 1);
             }
         });
+
+        connect(m_bridge, &ScheduleBridge::selectedWeekChanged, this, [this]() {
+            QObject* combo = find("weekSelector");
+            if (!combo) {
+                return;
+            }
+            const int week = m_bridge->property("selectedWeek").toInt();
+            const int index = qMax(0, week - 1);
+            if (combo->property("currentIndex").toInt() == index) {
+                return;
+            }
+            m_syncing_week_selector = true;
+            combo->setProperty("currentIndex", index);
+            m_syncing_week_selector = false;
+        });
+
+        if (QObject* combo = find("weekSelector")) {
+            const int week = m_bridge->property("selectedWeek").toInt();
+            m_syncing_week_selector = true;
+            combo->setProperty("currentIndex", qMax(0, week - 1));
+            m_syncing_week_selector = false;
+        }
 
         on_signal("daySelector", "currentIndexChanged()", [this]() {
             m_bridge->select_day(combo_value(find("daySelector")).toInt());

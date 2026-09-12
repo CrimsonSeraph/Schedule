@@ -229,6 +229,9 @@ namespace Schedule {
         /** 重新扫描是否已经排队，避免同一帧内重复排队。 */
         bool m_reconnect_pending = false;
 
+        /** 同步 weekSelector.currentIndex 时抑制信号回环。 */
+        bool m_syncing_week_selector = false;
+
         /** 已成功建立的 `clicked` 连接数量（用于启动日志与自检）。 */
         int m_connection_count = 0;
     };
