@@ -9,10 +9,12 @@ import QtQuick.Layouts
 //  - C++ 侧（app 层 UiConnector）显式连接本文件中的具名控件：
 //      * courseSaveButton / courseCancelButton
 //      * sessionAddButton / sessionUpdateButton / sessionRemoveButton
+//      * sessionRowClick（sessionList 委托内的热区）-> 写回 sessionList.currentIndex
 //      * sessionList 的 currentIndexChanged -> 把选中行回填到表单
 //  - 课程级字段由 C++ 在保存时直接读取各 TextField 的 text；
 //  - 时间段草稿保存在 `sessionDraftModel`（QML ListModel）中，C++ 通过
-//    QMetaObject::invokeMethod 调用其 append / set / remove / get。
+//    QMetaObject::invokeMethod 调用其 `appendDraft` / `updateDraft` / `rowDraft` / `removeDraft`
+//    封装函数（Qt 6 的 append / set / get / remove 直接调用不可用，原因见模型处注释）。
 //
 // 响应式策略：
 //  - 基本信息 / 时间段两个 GridLayout 不再固定 4 列：宽表单 4 列（两对“标签+输入框”
@@ -43,11 +45,47 @@ Dialog {
     height: Math.min(640, parent ? parent.height - 40 : 640)
     anchors.centerIn: parent
 
-    // 时间段草稿模型：C++ 通过 objectName "sessionDraftModel" 定位并调用其方法
+    // 时间段草稿模型：C++ 通过 objectName "sessionDraftModel" 定位并调用其方法。
+    //
+    // Qt 6 的 `QQmlListModel` 只把 `append` / `insert` / `remove` 暴露为 `QQmlV4FunctionPtr`，
+    // `set` 收 `QJSValue`、`get` 返回 `QJSValue`，C++ 侧都无法直接传 `QVariantMap` / 接 `QVariant`，
+    // 因此这里提供具名参数的封装函数供 C++ 的 `QMetaObject::invokeMethod` 调用
+    // （`clear()` 与 `count` 属性仍可直接使用，无需封装）。
     ListModel {
         id: sessionDraft
 
         objectName: "sessionDraftModel"
+
+        function appendDraft(row) {
+            sessionDraft.append(row);
+        }
+
+        function updateDraft(index, row) {
+            sessionDraft.set(index, row);
+        }
+
+        // `ListModel.get()` 返回的是对象包装（C++ 侧会拿到 QObject*，取不到字段），
+        // 因此在这里摊平成纯 JS 对象，C++ 才能拿到完整的 QVariantMap。
+        function rowDraft(index) {
+            const row = sessionDraft.get(index);
+            return {
+                sessionId: row.sessionId,
+                dayOfWeek: row.dayOfWeek,
+                dayName: row.dayName,
+                startSlot: row.startSlot,
+                slotCount: row.slotCount,
+                endSlot: row.endSlot,
+                weeks: row.weeks,
+                weeksDisplay: row.weeksDisplay,
+                location: row.location,
+                teacher: row.teacher,
+                summary: row.summary
+            };
+        }
+
+        function removeDraft(index) {
+            sessionDraft.remove(index, 1);
+        }
     }
 
     contentItem: ColumnLayout {
@@ -198,6 +236,16 @@ Dialog {
                                     elide: Text.ElideRight
                                     font.pixelSize: 13
                                     color: Responsive.textStrong
+                                }
+
+                                // 选中热区：只暴露 objectName 与行号，由 C++ 侧 UiConnector
+                                // 连接 clicked() 后写回 sessionList.currentIndex；
+                                // 委托由 ListView 动态创建，只存在于 contentItem 的可视子树下。
+                                MouseArea {
+                                    objectName: "sessionRowClick"
+
+                                    anchors.fill: parent
+                                    property int rowIndex: index
                                 }
                             }
 

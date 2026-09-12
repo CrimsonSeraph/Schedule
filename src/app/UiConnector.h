@@ -36,6 +36,7 @@ namespace Schedule {
      * | 学期 | `saveSemesterButton` | 创建或更新学期 |
      * | 设置 | `chooseImportDirButton` / `chooseExportDirButton` / `saveDirsButton` / `resetDirsButton` / `slotSelector` / `saveSlotButton` / `resetSlotsButton` / `reloadButton` / `saveNowButton` | 目录与作息表设置、数据维护 |
      * | 编辑器 | `courseSaveButton` / `courseCancelButton` / `sessionAddButton` / `sessionUpdateButton` / `sessionRemoveButton` / `sessionList` | 课程与时间段编辑 |
+     * | 时间段草稿 | `sessionRowClick`（`sessionList` 委托内的热区） | 点击草稿行设置 `sessionList.currentIndex` |
      * | 导入 | `importButton` / `importChooseFileButton` / `importFileDialog` / `importApplyButton` / `importCancelButton` | 导入向导 |
      * | 导出 | `exportButton` / `exportChooseDirButton` / `exportResetDirButton` / `exportDirDialog` / `exportConfirmButton` / `exportCancelButton` | 导出对话框 |
      * | 动态卡片 | `sessionCardClick`（周 / 日视图内由 `Repeater` 生成） | 点击课卡打开课程详情弹层 |
@@ -218,12 +219,16 @@ namespace Schedule {
         QQuickItem* root_item() const;
 
         /**
-         * @brief 扫描并连接课程列表页的列表项热区（`courseListItemClick`）。
+         * @brief 把 `ListView` 委托热区的点击转换为「把行号写回 `list.currentIndex`」。
          *
-         * `ListView` 的委托只挂在 `contentItem` 的可视子树下，不进入 `QObject::children()`，
+         * `ListView` 的委托只挂在 `contentItem` 的**可视**子树下，不进入 `QObject::children()`，
          * 因此这里遍历 `QQuickItem::childItems()`，并在可视子项变化时重扫。
+         *
+         * @param list_name      `ListView` 的 objectName
+         * @param hotspot_name   委托内热区的 objectName
+         * @param index_property 热区上保存行号的属性名
          */
-        void connect_course_list_items();
+        void connect_list_selection(const char* list_name, const char* hotspot_name, const char* index_property);
 
         /** @brief 清空已连接热区记录（对象被销毁后调用）。 */
         void prune_card_connections();

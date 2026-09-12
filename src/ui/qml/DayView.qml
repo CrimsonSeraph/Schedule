@@ -58,7 +58,9 @@ Item {
 
             Label {
                 Layout.fillWidth: true
-                text: schedule.selectedDay === 0 ? qsTr("整周共 %1 节课").arg(schedule.sessionModel.count) : qsTr("%1 共 %2 节课").arg(schedule.day_name(schedule.selectedDay)).arg(schedule.sessionModel.count)
+                // `sessionModel.count` 是 SessionListModel 的 Q_INVOKABLE 方法（不是属性），
+                // 漏掉括号会把函数对象渲染成 "function() { [native code] }"
+                text: schedule.selectedDay === 0 ? qsTr("整周共 %1 节课").arg(schedule.sessionModel.count()) : qsTr("%1 共 %2 节课").arg(schedule.day_name(schedule.selectedDay)).arg(schedule.sessionModel.count())
                 color: "#6B7A90"
                 horizontalAlignment: Text.AlignRight
                 elide: Text.ElideRight

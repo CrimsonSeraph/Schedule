@@ -123,6 +123,7 @@ schedule_bridge.import_export()->set_adapter_registry(&adapter_registry);
 
 - 动态生成的课卡（`Repeater`）与列表项（`ListView`）热区都只在可视树里（`setParentItem()` 挂载，`QObject` 父对象为空），因此沿 `QQuickItem::childItems()` 扫描；委托增删由模型 `modelReset` 或承载容器的 `childrenChanged` 触发**延迟一拍**重扫，并用 `destroyed` 信号清理映射，避免悬空指针。
 - 点击课卡先打开课程详情弹层（`courseDetailDialog`），弹层里的「编辑」（`courseDetailEditButton`）再进入 `courseEditor`；「关闭」（`courseDetailCloseButton`）只关弹层。
+- 课程编辑器的时间段草稿（`sessionDraftModel`）不能直接调 Qt 6 的 `append` / `set` / `get` / `remove`（只暴露 `QQmlV4FunctionPtr` / `QJSValue`，且 `get` 返回对象包装），改由 QML 侧提供的 `appendDraft` / `updateDraft` / `rowDraft` / `removeDraft` 封装函数间接调用。
 - 启动日志会输出已建立的连接数量，便于确认界面契约是否完整。
 
 ## 目录结构（补充）

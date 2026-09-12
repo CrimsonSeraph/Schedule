@@ -60,7 +60,7 @@ src/ui/
 | 设置 | `importDirField`、`chooseImportDirButton`、`importDirDialog`、`exportDirField`、`chooseExportDirButton`、`exportDirDialog`、`saveDirsButton`、`resetDirsButton`、`slotSelector`、`slotLabelField`、`slotStartField`、`slotEndField`、`saveSlotButton`、`resetSlotsButton`、`reloadButton`、`saveNowButton`、`testButton` |
 | 提醒 | `reminderEnabledCheck`、`reminderMinutesSelector`、`testNotificationButton`、`requestPermissionButton`、`notificationBanner` |
 | 适配器 | `adapterSelector`、`adapterScheduleUrlField`、`adapterLoginUrlField`、`adapterCookieField`、`adapterSaveUrlButton`、`adapterImportButton`、`adapterClearSessionButton` |
-| 编辑器 | `courseEditor`、`editor*Field`、`sessionDraftModel`、`sessionList`、`session*`、`sessionAddButton`、`sessionUpdateButton`、`sessionRemoveButton`、`courseSaveButton`、`courseCancelButton` |
+| 编辑器 | `courseEditor`、`editor*Field`、`sessionDraftModel`、`sessionList`、`sessionRowClick`（`sessionList` 委托内的热区）、`session*`、`sessionAddButton`、`sessionUpdateButton`、`sessionRemoveButton`、`courseSaveButton`、`courseCancelButton` |
 | 课程详情 | `courseDetailDialog`、`courseDetailName`、`courseDetailCode`、`courseDetailTeacher`、`courseDetailLocation`、`courseDetailCredits`、`courseDetailNotes`、`courseDetailSessions`、`courseDetailEditButton`、`courseDetailCloseButton` |
 | 窄屏折叠菜单 | `moreMenuButton`（触发）、`moreMenu`（菜单本体）、`addCourseMenuItem`、`importMenuItem`、`exportMenuItem` |
 | 导入 | `importWizard`、`importFileField`、`importChooseFileButton`、`importFileDialog`、`importStrategySelector`、`importApplyButton`、`importCancelButton` |

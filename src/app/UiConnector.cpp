@@ -40,6 +40,24 @@ namespace Schedule {
         }
 
         /**
+         * @return 时间段草稿行的展示文本，形如“周一 第 1-2 节 · 1-16 · 教一 101”。
+         *
+         * 表单新建的行与从课程数据回填的行共用它，保证草稿列表文本一致。
+         */
+        QString session_summary_text(const QVariantMap& row) {
+            QString summary = QStringLiteral("%1 第 %2-%3 节 · %4")
+                                  .arg(row.value(QStringLiteral("dayName")).toString())
+                                  .arg(row.value(QStringLiteral("startSlot")).toInt())
+                                  .arg(row.value(QStringLiteral("endSlot")).toInt())
+                                  .arg(row.value(QStringLiteral("weeks")).toString());
+            const QString location = row.value(QStringLiteral("location")).toString();
+            if (!location.isEmpty()) {
+                summary += QStringLiteral(" · ") + location;
+            }
+            return summary;
+        }
+
+        /**
          * @brief 递归收集可视子树中 `objectName` 匹配的节点。
          *
          * `Repeater` / `ListView` 生成的委托经 `setParentItem()` 挂进可视树，`QObject`
@@ -442,7 +460,8 @@ namespace Schedule {
             }
             const int row = list->property("currentIndex").toInt();
             if (row >= 0) {
-                QMetaObject::invokeMethod(draft, "remove", Q_ARG(int, row), Q_ARG(int, 1));
+                // QQmlListModel::remove 只接受 QQmlV4FunctionPtr，改走 QML 侧的 removeDraft(index) 封装
+                QMetaObject::invokeMethod(draft, "removeDraft", Q_ARG(QVariant, row));
             }
         });
 
@@ -658,14 +677,6 @@ namespace Schedule {
         const QString teacher = text_of("sessionTeacherField");
 
         const QString day_name = WeekCalculator::day_name(day_of_week);
-        QString summary = QStringLiteral("%1 第 %2-%3 节 · %4")
-                              .arg(day_name)
-                              .arg(start_slot)
-                              .arg(start_slot + qMax(1, slot_count) - 1)
-                              .arg(weeks);
-        if (!location.isEmpty()) {
-            summary += QStringLiteral(" · ") + location;
-        }
 
         QVariantMap row;
         row.insert(QStringLiteral("sessionId"), QString());
@@ -678,7 +689,7 @@ namespace Schedule {
         row.insert(QStringLiteral("weeksDisplay"), weeks);
         row.insert(QStringLiteral("location"), location);
         row.insert(QStringLiteral("teacher"), teacher);
-        row.insert(QStringLiteral("summary"), summary);
+        row.insert(QStringLiteral("summary"), session_summary_text(row));
         return row;
     }
 
@@ -690,7 +701,8 @@ namespace Schedule {
 
         QVariantMap data;
         QVariant result;
-        if (QMetaObject::invokeMethod(draft, "get", Q_RETURN_ARG(QVariant, result), Q_ARG(int, row))) {
+        // QQmlListModel::get 返回 QJSValue，C++ 接不了，改走 QML 侧的 rowDraft(index) 封装
+        if (QMetaObject::invokeMethod(draft, "rowDraft", Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, row))) {
             data = result.toMap();
         }
         if (data.isEmpty()) {
@@ -715,12 +727,15 @@ namespace Schedule {
         if (!draft) {
             return;
         }
-        // QML ListModel 的 append 在不同 Qt 版本中参数类型可能是 QVariantMap 或 QVariant，
-        // 这里两种签名都尝试一次，避免版本差异导致静默失败。
-        if (!QMetaObject::invokeMethod(draft, "append", Q_ARG(QVariantMap, row))) {
-            if (!QMetaObject::invokeMethod(draft, "append", Q_ARG(QVariant, QVariant(row)))) {
-                qWarning() << "[app] 无法向列表模型追加时间段草稿";
-            }
+        // 从课程数据回填的行没有 summary（那是表单侧的展示字段），补齐后列表文本才一致
+        QVariantMap entry = row;
+        if (entry.value(QStringLiteral("summary")).toString().isEmpty()) {
+            entry.insert(QStringLiteral("summary"), session_summary_text(entry));
+        }
+        // Qt 6 的 QQmlListModel::append 只接受 QQmlV4FunctionPtr，C++ 传 QVariantMap 会静默失败；
+        // 改走 QML 侧的 appendDraft(row) 封装
+        if (!QMetaObject::invokeMethod(draft, "appendDraft", Q_ARG(QVariant, QVariant(entry)))) {
+            qWarning() << "[app] 无法向列表模型追加时间段草稿";
         }
     }
 
@@ -729,10 +744,9 @@ namespace Schedule {
         if (!draft) {
             return;
         }
-        if (!QMetaObject::invokeMethod(draft, "set", Q_ARG(int, row), Q_ARG(QVariantMap, row_data))) {
-            if (!QMetaObject::invokeMethod(draft, "set", Q_ARG(int, row), Q_ARG(QVariant, QVariant(row_data)))) {
-                qWarning() << "[app] 无法更新时间段草稿";
-            }
+        // 同上：QQmlListModel::set 收 QJSValue，改走 QML 侧的 updateDraft(index, row) 封装
+        if (!QMetaObject::invokeMethod(draft, "updateDraft", Q_ARG(QVariant, row), Q_ARG(QVariant, QVariant(row_data)))) {
+            qWarning() << "[app] 无法更新时间段草稿";
         }
     }
 
@@ -767,7 +781,7 @@ namespace Schedule {
                 break;
             }
             QVariant result;
-            if (QMetaObject::invokeMethod(draft, "get", Q_RETURN_ARG(QVariant, result), Q_ARG(int, row))) {
+            if (QMetaObject::invokeMethod(draft, "rowDraft", Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, row))) {
                 sessions.append(result.toMap());
             }
         }
@@ -928,12 +942,9 @@ namespace Schedule {
         return qobject_cast<QQuickItem*>(m_root->property("contentItem").value<QObject*>());
     }
 
-    void UiConnector::connect_course_list_items() {
-        if (!m_root) {
-            return;
-        }
-
-        QObject* list = find("courseList");
+    void UiConnector::connect_list_selection(
+        const char* list_name, const char* hotspot_name, const char* index_property) {
+        QObject* list = find(list_name);
         if (!list) {
             return;
         }
@@ -944,29 +955,28 @@ namespace Schedule {
 
         // ListView 的委托由 QQmlDelegateModel 创建，只挂在 contentItem 的**可视**子树下
         // （`QQuickItem::childItems()`），并不进入 `QObject::children()`；因此
-        // `findChildren<QObject*>("courseListItemClick")` 恒为空，必须沿可视子项遍历。
+        // `findChildren<QObject*>(hotspot_name)` 恒为空，必须沿可视子项遍历。
         // 委托会随滚动 / 模型重置动态增删，故在可视子项变化时重扫一次。
         QObject::connect(content, &QQuickItem::childrenChanged,
             this, &UiConnector::schedule_card_reconnect, Qt::UniqueConnection);
 
-        prune_card_connections();
+        const QString hotspot_object_name = QString::fromLatin1(hotspot_name);
+        const QByteArray index_object_name(index_property);
+        const QPointer<QObject> target_list(list);
 
-        const QList<QQuickItem*> delegates = content->childItems();
-        for (QQuickItem* delegate : delegates) {
-            QObject* hotspot = delegate->findChild<QObject*>(QStringLiteral("courseListItemClick"));
+        for (QQuickItem* delegate : content->childItems()) {
+            QObject* hotspot = delegate->findChild<QObject*>(hotspot_object_name);
             if (!hotspot || m_connected_cards.contains(hotspot)) {
                 continue;
             }
             m_connected_cards.insert(hotspot);
 
             // 行号由 QML 从委托的 index 赋值，点击时读取即可
-            on_signal(hotspot, "clicked()", [this, hotspot]() {
-                QObject* course_list = find("courseList");
-                if (!course_list) {
+            on_signal(hotspot, "clicked()", [target_list, hotspot, index_object_name]() {
+                if (!target_list) {
                     return;
                 }
-                const int row = hotspot->property("itemIndex").toInt();
-                course_list->setProperty("currentIndex", row);
+                target_list->setProperty("currentIndex", hotspot->property(index_object_name.constData()).toInt());
             });
             // 委托被回收 / 重建时及时清理映射，避免悬空键
             QObject::connect(hotspot, &QObject::destroyed, this, [this, hotspot]() {
@@ -985,7 +995,8 @@ namespace Schedule {
         QTimer::singleShot(0, this, [this]() {
             m_reconnect_pending = false;
             connect_session_cards();
-            connect_course_list_items();
+            connect_list_selection("courseList", "courseListItemClick", "itemIndex");
+            connect_list_selection("sessionList", "sessionRowClick", "rowIndex");
         });
     }
 
