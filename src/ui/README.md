@@ -64,6 +64,7 @@ src/ui/
 | 导入 | `importWizard`、`importFileField`、`importChooseFileButton`、`importFileDialog`、`importStrategySelector`、`importApplyButton`、`importCancelButton` |
 | 导出 | `exportDialog`、`exportFormatSelector`、`exportDirField`、`exportChooseDirButton`、`exportResetDirButton`、`exportDirDialog`、`exportConfirmButton`、`exportCancelButton` |
 | 动态课卡 | `sessionCardClick`（由 `CourseCard` 提供，含 `courseId` 属性） |
+| 课程列表项 | `courseListItemClick`（由 `SemesterPage` 的 `ListView` 委托提供，含 `itemIndex` 属性） |
 
 ## 界面与数据绑定
 
@@ -143,6 +144,7 @@ cmake --build --preset windows-msvc-debug
 - 因此每个交互控件都必须有**唯一且稳定**的 `objectName`；新增交互控件时须同步更新 `UiConnector` 与本文档的表格。
 - 列表选中统一使用 `ListView` 内建的 `currentIndex` 行为（鼠标按下即更新），C++ 读取该属性，无需为每个 delegate 建立连接。
 - 周 / 日视图的课卡由 `Repeater` 动态生成，`UiConnector` 会在模型 `modelReset` 与周次 / 星期变化后延迟一拍重新扫描 `sessionCardClick` 并连接。
+- 学期页的列表项由 `ListView` 动态生成：委托只挂在 `contentItem` 的**可视**子树下，不进入 `QObject::children()`，`findChildren()` 扫不到。因此 `UiConnector` 沿 `QQuickItem::childItems()` 扫描 `courseListItemClick`，并在 `contentItem` 的可视子项变化（`childrenChanged`）时重扫，保证滚动或模型重置后新出现的行同样可点。
 
 ## 扩展点与注意事项
 

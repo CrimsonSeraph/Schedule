@@ -69,7 +69,7 @@ src/app/
     - `Q_OS_ANDROID` / `Q_OS_IOS` → `qrc:/qt/qml/Schedule/qml/MainMobile.qml`
     - 其他平台（Windows / Linux / macOS）→ `qrc:/qt/qml/Schedule/qml/MainDesktop.qml`
 7. 加载成功后在 C++ 侧显式建立信号连接（QML 不隐式连接）：
-    - `UiConnector` 统一连接**全部界面交互**（导航、周次、课程编辑、导入导出向导、设置页），以及动态生成的课卡热区 `sessionCardClick`；
+    - `UiConnector` 统一连接**全部界面交互**（导航、周次、课程编辑、导入导出向导、设置页），以及动态生成的热区 `sessionCardClick`、`courseListItemClick`；
     - 设置页 `testButton` `clicked` → `AppBridge::test_button_clicked()`；
     - `AppBridge::test_signal(message)` → 应用日志输出；
     - `ScheduleBridge::errorOccurred` / `infoMessage` → 应用日志；
@@ -112,16 +112,17 @@ schedule_bridge.import_export()->set_adapter_registry(&adapter_registry);
 `UiConnector` 是**唯一**建立 QML 交互连接的地方。之所以不在 QML 中写 `onClicked`，是因为项目规范要求“信号连接统一在 C++ 侧显式建立”。实现要点：
 
 - 每个交互控件通过 `objectName` 暴露；`UiConnector::find()` 负责定位。
-- QML 控件的信号在公开 C++ 头文件中不可见，`QObject::connect(sender, SIGNAL(...), context, lambda)` 这种重载并不存在，因此采用：
+- QML 控件的信号在公开 C++ 头文件中不可见，`QObject::connect(sender, SIGNAL(...), context, lambda)` 这种重载并不存在，因此 `on_signal()` 先从元对象解析出**真实**签名（如 `clicked()` → `clicked(QQuickMouseEvent*)`），再统一连到分发槽：
 
     ```cpp
-    m_handlers.insert(object, handler);                       // 控件 → 处理函数
-    QObject::connect(object, "2clicked()", this, SLOT(dispatch()));  // 统一分发槽
+    m_handlers.insert(object, handler);                                      // 控件 → 处理函数
+    QObject::connect(object, "2clicked(QQuickMouseEvent*)", this, SLOT(dispatch()));  // 统一分发槽
     ```
 
     `dispatch()` 用 `sender()` 查表执行对应处理函数，连接仍然全部发生在 C++ 侧。
 
 - 动态生成的课卡（`Repeater`）在模型 `modelReset`、周次 / 星期变化后**延迟一拍**重新扫描，并用 `destroyed` 信号清理映射，避免悬空指针。
+- `ListView` 的委托只挂在 `contentItem` 的**可视**子树下，不进入 `QObject::children()`，`findChildren()` 扫不到；课程列表项因此沿 `QQuickItem::childItems()` 扫描，并在 `contentItem.childrenChanged` 时重扫。
 - 启动日志会输出已建立的连接数量，便于确认界面契约是否完整。
 
 ## 目录结构（补充）

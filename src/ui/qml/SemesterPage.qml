@@ -235,6 +235,16 @@ Item {
                             color: Responsive.textMuted
                         }
                     }
+
+                    // 选中热区：只暴露 objectName 与行号，由 C++ 侧 UiConnector 连接 clicked() 后
+                    // 写回 courseList.currentIndex；QML 中不写任何信号处理器。
+                    // 委托由 ListView 动态创建，只存在于 contentItem 的可视子树下。
+                    MouseArea {
+                        objectName: "courseListItemClick"
+
+                        anchors.fill: parent
+                        property int itemIndex: index
+                    }
                 }
 
                 Label {

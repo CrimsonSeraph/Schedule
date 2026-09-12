@@ -6,7 +6,9 @@
 
 #include <QAbstractItemModel>
 #include <QDebug>
+#include <QMetaMethod>
 #include <QMetaObject>
+#include <QQuickItem>
 #include <QTimer>
 #include <QUrl>
 #include <QVariantList>
@@ -104,18 +106,46 @@ namespace Schedule {
             // 桌面端与移动端控件集不完全相同，缺失不视为错误
             return false;
         }
+        return on_signal(object, signal, std::move(handler));
+    }
+
+    bool UiConnector::on_signal(QObject* object, const char* signal, std::function<void()> handler) {
+        if (!object) {
+            return false;
+        }
 
         m_handlers.insert(object, std::move(handler));
 
-        // QML 控件的信号在公开 C++ 头文件中不可见，只能按元对象签名（"2xxx()"）连接；
-        // 连接仍然发生在 C++ 侧，QML 中不出现任何信号处理器。
-        const QByteArray signature = QByteArray("2") + signal;
-        const bool connected = QObject::connect(object, signature.constData(), this, SLOT(dispatch()));
+        const QMetaObject* meta = object->metaObject();
+        const QByteArray provided(signal);
+        int index = meta->indexOfSignal(provided.constData());
+
+        if (index < 0) {
+            const int paren = provided.indexOf('(');
+            const QByteArray bare = paren >= 0 ? provided.left(paren) : provided;
+            for (int i = 0; i < meta->methodCount(); ++i) {
+                const QMetaMethod m = meta->method(i);
+                if (m.methodType() == QMetaMethod::Signal && QByteArray(m.name()) == bare) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+
+        if (index < 0) {
+            qWarning() << "[app] 找不到信号：" << object->objectName() << signal;
+            return false;
+        }
+
+        const QMetaMethod method = meta->method(index);
+        const QByteArray actual = QByteArray("2") + method.methodSignature();
+
+        const bool connected = QObject::connect(object, actual.constData(), this, SLOT(dispatch()));
         if (connected) {
             ++m_connection_count;
         }
         else {
-            qWarning() << "[app] 无法连接信号：" << name << signature;
+            qWarning() << "[app] 无法连接信号：" << object->objectName() << actual;
         }
         return connected;
     }
@@ -814,17 +844,64 @@ namespace Schedule {
             m_connected_cards.insert(card);
 
             // 课卡的 courseId 由 QML 从当前 model 赋值，点击时读取即可
-            m_handlers.insert(card, [this, card]() {
+            on_signal(card, "clicked()", [this, card]() {
                 const QString course_id = card->property("courseId").toString();
                 if (!course_id.isEmpty()) {
                     open_course_editor(course_id);
                 }
             });
-            QObject::connect(card, SIGNAL(clicked()), this, SLOT(dispatch()));
             // 模型重置会销毁旧卡片，及时清理映射，避免悬空键
             QObject::connect(card, &QObject::destroyed, this, [this, card]() {
                 m_handlers.remove(card);
                 m_connected_cards.remove(card);
+            });
+        }
+    }
+
+    void UiConnector::connect_course_list_items() {
+        if (!m_root) {
+            return;
+        }
+
+        QObject* list = find("courseList");
+        if (!list) {
+            return;
+        }
+        auto* content = qobject_cast<QQuickItem*>(list->property("contentItem").value<QObject*>());
+        if (!content) {
+            return;
+        }
+
+        // ListView 的委托由 QQmlDelegateModel 创建，只挂在 contentItem 的**可视**子树下
+        // （`QQuickItem::childItems()`），并不进入 `QObject::children()`；因此
+        // `findChildren<QObject*>("courseListItemClick")` 恒为空，必须沿可视子项遍历。
+        // 委托会随滚动 / 模型重置动态增删，故在可视子项变化时重扫一次。
+        QObject::connect(content, &QQuickItem::childrenChanged,
+            this, &UiConnector::schedule_card_reconnect, Qt::UniqueConnection);
+
+        prune_card_connections();
+
+        const QList<QQuickItem*> delegates = content->childItems();
+        for (QQuickItem* delegate : delegates) {
+            QObject* hotspot = delegate->findChild<QObject*>(QStringLiteral("courseListItemClick"));
+            if (!hotspot || m_connected_cards.contains(hotspot)) {
+                continue;
+            }
+            m_connected_cards.insert(hotspot);
+
+            // 行号由 QML 从委托的 index 赋值，点击时读取即可
+            on_signal(hotspot, "clicked()", [this, hotspot]() {
+                QObject* course_list = find("courseList");
+                if (!course_list) {
+                    return;
+                }
+                const int row = hotspot->property("itemIndex").toInt();
+                course_list->setProperty("currentIndex", row);
+            });
+            // 委托被回收 / 重建时及时清理映射，避免悬空键
+            QObject::connect(hotspot, &QObject::destroyed, this, [this, hotspot]() {
+                m_handlers.remove(hotspot);
+                m_connected_cards.remove(hotspot);
             });
         }
     }
@@ -834,10 +911,11 @@ namespace Schedule {
             return;
         }
         m_reconnect_pending = true;
-        // 模型 reset 与 Repeater 重建不在同一拍，延后一个事件循环再扫描
+        // 模型 reset 与委托重建不在同一拍，延后一个事件循环再扫描
         QTimer::singleShot(0, this, [this]() {
             m_reconnect_pending = false;
             connect_session_cards();
+            connect_course_list_items();
         });
     }
 

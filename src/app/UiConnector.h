@@ -36,9 +36,11 @@ namespace Schedule {
      * | 导入 | `importButton` / `importChooseFileButton` / `importFileDialog` / `importApplyButton` / `importCancelButton` | 导入向导 |
      * | 导出 | `exportButton` / `exportChooseDirButton` / `exportResetDirButton` / `exportDirDialog` / `exportConfirmButton` / `exportCancelButton` | 导出对话框 |
      * | 动态卡片 | `sessionCardClick`（周 / 日视图内由 `Repeater` 生成） | 点击课卡打开对应课程的编辑器 |
+     * | 课程列表 | `courseListItemClick`（学期页 `ListView` 的委托） | 点击列表项设置 `courseList.currentIndex` |
      *
-     * 因为 `Repeater` 生成的卡片会随模型重置而重建，本类会在相关模型 reset 后
-     * 延迟一拍重新扫描并连接（见 `schedule_card_reconnect()`）。
+     * 因为 `Repeater` 生成的卡片会随模型重置而重建，`ListView` 的委托也会随滚动增删，
+     * 本类会在相关模型 reset 后、以及 `courseList` 的可视子项变化时重新扫描并连接
+     * （见 `schedule_card_reconnect()`）。
      */
     class UiConnector : public QObject {
         Q_OBJECT
@@ -108,6 +110,19 @@ namespace Schedule {
          * @return 是否连接成功
          */
         bool on_signal(const char* name, const char* signal, std::function<void()> handler);
+
+        /**
+         * @brief 与上面同义，但直接作用于一个已知对象。
+         *
+         * 供 `Repeater` / `ListView` 生成的委托热区使用：它们 objectName 相同、
+         * 数量不定，无法通过 `find(name)` 唯一定位，只能逐个对象连接。
+         *
+         * @param object  目标对象
+         * @param signal  信号签名（不含前缀）
+         * @param handler 处理函数
+         * @return 是否连接成功
+         */
+        bool on_signal(QObject* object, const char* signal, std::function<void()> handler);
 
         /** @brief 导航按钮 → 切换页面。 */
         void connect_navigation();
@@ -179,11 +194,16 @@ namespace Schedule {
 
         // ---------------------------------------------------------------- 动态卡片
 
-        /** @brief 延迟一拍重新扫描并连接课卡热区（`Repeater` 重建后调用）。 */
-        void schedule_card_reconnect();
-
         /** @brief 立即扫描并连接全部 `sessionCardClick` 热区。 */
         void connect_session_cards();
+
+        /**
+         * @brief 扫描并连接课程列表页的列表项热区（`courseListItemClick`）。
+         *
+         * `ListView` 的委托只挂在 `contentItem` 的可视子树下，不进入 `QObject::children()`，
+         * 因此这里遍历 `QQuickItem::childItems()`，并在可视子项变化时重扫。
+         */
+        void connect_course_list_items();
 
         /** @brief 清空已连接热区记录（对象被销毁后调用）。 */
         void prune_card_connections();
@@ -191,6 +211,9 @@ namespace Schedule {
     private slots:
         /** @brief 统一分发槽：按 `sender()` 找到并执行对应控件的处理函数。 */
         void dispatch();
+
+        /** @brief 延迟一拍重新扫描并连接课卡热区（`Repeater` 重建后调用）。 */
+        void schedule_card_reconnect();
 
     private:
         /** QML 根对象；仅在本对象生命周期内有效。 */
