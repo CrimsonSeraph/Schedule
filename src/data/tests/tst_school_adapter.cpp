@@ -138,6 +138,20 @@ void TestSchoolAdapter::validates_info_and_session() {
     incomplete.schedule_url = QStringLiteral("https://example.invalid/s");
     QVERIFY(incomplete.is_valid());
 
+    // 只有登录页的**浏览器直达入口**同样合法：适配器不抓数据，
+    // 由内嵌浏览器承载会话、用户在课表页上手动触发抓取。
+    AdapterInfo browser_only;
+    browser_only.id = QStringLiteral("ahpu-jwxt");
+    browser_only.name = QStringLiteral("安徽工程大学教务系统（正方 V9）");
+    browser_only.login_url = QStringLiteral("http://xjwxt.ahpu.edu.cn/ahpu/localLogin.action");
+    QVERIFY(browser_only.is_valid());
+
+    // 两个地址都为空则依然非法
+    AdapterInfo no_endpoint;
+    no_endpoint.id = QStringLiteral("x");
+    no_endpoint.name = QStringLiteral("名称");
+    QVERIFY(!no_endpoint.is_valid());
+
     AdapterSession session;
     QVERIFY(session.is_empty());
     QCOMPARE(session.age_hours(), -1.0);
@@ -228,19 +242,38 @@ void TestSchoolAdapter::requires_session_when_configured() {
 }
 
 void TestSchoolAdapter::requires_schedule_url() {
-    AdapterInfo info = make_info();
-    info.schedule_url.clear();
-    auto adapter = make_adapter(info, sample_json());
-
     Schedule::ScheduleSnapshot snapshot;
     QString error;
-    QVERIFY(!adapter->fetch_schedule(AdapterSession(), &snapshot, &error));
-    QVERIFY(error.contains(QStringLiteral("配置")));
+
+    // 情形一：只剩登录页 → 这是「浏览器直达入口」，应引导用户去内嵌浏览器抓取，
+    // 而不是报“未配置地址”（登录地址本身是有效的使用方式）。
+    {
+        AdapterInfo info = make_info();
+        info.schedule_url.clear();
+        auto adapter = make_adapter(info, sample_json());
+        QVERIFY(!adapter->fetch_schedule(AdapterSession(), &snapshot, &error));
+        QVERIFY2(error.contains(QStringLiteral("浏览器直达入口")), qPrintable(error));
+    }
+
+    // 情形二：两个地址都为空 → 元信息非法，应提示去设置里补地址
+    {
+        AdapterInfo info = make_info();
+        info.schedule_url.clear();
+        info.login_url.clear();
+        auto adapter = make_adapter(info, sample_json());
+        QVERIFY(!adapter->fetch_schedule(AdapterSession(), &snapshot, &error));
+        QVERIFY2(error.contains(QStringLiteral("配置")), qPrintable(error));
+    }
 
     // 通过 set_endpoints 补上地址后即可用
-    adapter->set_endpoints(QStringLiteral("https://example.invalid/schedule"), QString());
-    QVERIFY2(adapter->fetch_schedule(AdapterSession(), &snapshot, &error), qPrintable(error));
-    QCOMPARE(adapter->info().schedule_url, QStringLiteral("https://example.invalid/schedule"));
+    {
+        AdapterInfo info = make_info();
+        info.schedule_url.clear();
+        auto adapter = make_adapter(info, sample_json());
+        adapter->set_endpoints(QStringLiteral("https://example.invalid/schedule"), QString());
+        QVERIFY2(adapter->fetch_schedule(AdapterSession(), &snapshot, &error), qPrintable(error));
+        QCOMPARE(adapter->info().schedule_url, QStringLiteral("https://example.invalid/schedule"));
+    }
 }
 
 void TestSchoolAdapter::propagates_fetch_errors() {

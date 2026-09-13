@@ -109,6 +109,14 @@ namespace Schedule {
             return fail(error_message,
                 QStringLiteral("适配器“%1”尚未配置课表数据地址，请在设置中填写").arg(m_info.name));
         }
+        if (m_info.schedule_url.trimmed().isEmpty()) {
+            // 只配了登录页的适配器是「浏览器直达入口」：它的用法是先在内嵌浏览器里
+            // 打开页面、走到课表页，再由网页抓取导入，而不是让本方法去请求某个接口。
+            return fail(error_message,
+                QStringLiteral("适配器“%1”是浏览器直达入口：请在“从教务导入”中打开它，"
+                               "登录并进入课表页面后点“导入课表”")
+                    .arg(m_info.name));
+        }
         if (m_info.requires_session && session.is_empty()) {
             return fail(error_message,
                 QStringLiteral("适配器“%1”需要先登录：请在浏览器/WebView 中登录后把 Cookie 粘贴到设置页").arg(m_info.name));
@@ -129,7 +137,12 @@ namespace Schedule {
         // 复用已有的导入器：按内容嗅探 JSON / CSV / ICS，避免为每所学校写解析代码
         const IScheduleImporter* importer = m_import_manager.importer_for_content(body);
         if (!importer) {
-            return fail(error_message, QStringLiteral("无法识别教务系统返回的内容格式（支持 JSON / CSV / ICS）"));
+            return fail(error_message,
+                QStringLiteral("无法识别教务系统返回的内容格式（已支持 %1）")
+                    .arg(format_display_name(ScheduleFormat::Json) + QStringLiteral(" / ")
+                        + format_display_name(ScheduleFormat::Csv) + QStringLiteral(" / ")
+                        + format_display_name(ScheduleFormat::Ics) + QStringLiteral(" / ")
+                        + format_display_name(ScheduleFormat::ZhengfangHtml)));
         }
         m_last_format = format_to_string(importer->format());
 

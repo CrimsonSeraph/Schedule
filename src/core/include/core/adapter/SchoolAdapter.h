@@ -29,10 +29,15 @@ namespace Schedule {
         /** 说明文本，应包含隐私提示（例如“仅本地主动触发，不保存密码”）。 */
         QString description;
 
-        /** 课表数据来源地址：`http(s)://` 或本地文件路径。 */
+        /** 课表数据来源地址：`http(s)://` 或本地文件路径；与 `login_url` 至少填一个。 */
         QString schedule_url;
 
-        /** 需要用户先在 WebView 中登录的页面地址；为空表示无需登录。 */
+        /**
+         * 需要用户先在 WebView 中登录的页面地址；为空表示无需登录。
+         *
+         * 只填 `login_url` 的适配器是**浏览器直达入口**：适配器本身不抓取数据，
+         * 只把该地址交给内嵌浏览器，由用户在页面里走到课表页后抓取导入。
+         */
         QString login_url;
 
         /** 是否需要会话（Cookie）。 */
@@ -41,7 +46,7 @@ namespace Schedule {
         /** 是否为实验性适配器（界面应提示用户自行确认数据正确性）。 */
         bool is_experimental = true;
 
-        /** @return 元信息是否可用（至少要有 id、名称与数据地址）。 */
+        /** @return 元信息是否可用（至少要有 id、名称，以及数据地址或登录地址之一）。 */
         bool is_valid() const;
     };
 

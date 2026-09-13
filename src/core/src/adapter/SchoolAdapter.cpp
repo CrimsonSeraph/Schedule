@@ -3,7 +3,11 @@
 namespace Schedule {
 
     bool AdapterInfo::is_valid() const {
-        return !id.isEmpty() && !name.isEmpty() && !schedule_url.isEmpty();
+        // 两个地址至少要有一个：
+        //  - schedule_url 用于「抓取接口直接返回课表」的适配器；
+        //  - 只有 login_url 的适配器是**浏览器直达入口**——用户在内嵌浏览器里登录并
+        //    自己走到课表页，再由网页抓取导入（见 ImportExportBridge::browser_entries()）。
+        return !id.isEmpty() && !name.isEmpty() && (!schedule_url.isEmpty() || !login_url.isEmpty());
     }
 
     bool AdapterSession::is_empty() const {

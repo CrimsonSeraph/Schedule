@@ -101,6 +101,27 @@ int main(int argc, char* argv[]) {
     adapter_registry.register_adapter(
         std::make_unique<Schedule::GenericSchoolAdapter>(generic_adapter, schedule_fetchers));
 
+    // 安徽工程大学（正方教务 V9）。**只配登录页**：适配器不直接抓取数据，而是作为
+    // 「从教务导入」列表里的直达入口——用户在内嵌浏览器里登录后自己走到课表页，
+    // 再由网页抓取导入。课表页实测为 /ahpu/courseTableForStd!courseTable.action，
+    // 但其中带有与会话绑定的 ids 参数，交给用户在页面里自然地走一遍更稳妥。
+    //
+    // 隐私：应用不接收也不保存密码；登录会话只存在于内嵌 Web 组件里，
+    // 抓取时只带走**当前页面的 HTML**，不做后台同步。
+    Schedule::AdapterInfo ahpu_adapter;
+    ahpu_adapter.id = QStringLiteral("ahpu-jwxt");
+    ahpu_adapter.name = QStringLiteral("安徽工程大学教务系统（正方 V9）");
+    ahpu_adapter.description = QStringLiteral(
+        "点击后在内嵌浏览器中打开安徽工程大学教务系统；登录并进入“个人课表”页面后，"
+        "点“导入课表”即可抓取当前页面。不保存密码，也不读取 Cookie。");
+    ahpu_adapter.login_url = QStringLiteral("http://xjwxt.ahpu.edu.cn/ahpu/localLogin.action");
+    ahpu_adapter.schedule_url.clear();
+    // 抓取走的是内嵌浏览器的**当前页面**，不需要应用侧另行携带会话凭证
+    ahpu_adapter.requires_session = false;
+    ahpu_adapter.is_experimental = true;
+    adapter_registry.register_adapter(
+        std::make_unique<Schedule::GenericSchoolAdapter>(ahpu_adapter, schedule_fetchers));
+
     // ---------------------------------------------------------------- 桥接对象
     // 桥接对象由 C++ 侧创建并持有，以上下文属性注入 QML（QML 不再自行实例化）
     Schedule::AppBridge app_bridge;
