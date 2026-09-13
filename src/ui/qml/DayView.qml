@@ -18,7 +18,7 @@ Item {
 
     objectName: "dayView"
 
-    // 卡片高度：按可用高度与“一屏目标卡片数”推导，上下限与目标张数都在 Responsive 里
+    // 卡片高度：按可用高度与“一屏目标卡片数”推导，上下限与目标张数都在 CourseCardStyle 里
     readonly property int cardHeight: Responsive.dayCardHeight(dayView.height)
 
     // 窄屏（手机竖屏 / 分屏）：压缩选择栏
@@ -26,19 +26,19 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: Responsive.spacing
+        spacing: Metrics.spacingLg
 
         // ---------------------------------------------------------------- 星期选择
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: Responsive.margin
-            Layout.rightMargin: Responsive.margin
-            Layout.topMargin: 10
-            spacing: Responsive.spacing
+            Layout.leftMargin: Metrics.spacing2xl
+            Layout.rightMargin: Metrics.spacing2xl
+            Layout.topMargin: Metrics.spacingXl
+            spacing: Metrics.spacingLg
 
             Label {
                 text: qsTr("查看")
-                color: Responsive.textStrong
+                color: Theme.textStrong
                 // 超窄时省掉提示词，把宽度让给选择器
                 visible: !dayView.narrowBar
             }
@@ -48,7 +48,7 @@ Item {
 
                 objectName: "daySelector"
                 // 宽度随可用宽度收缩，避免在小屏上把统计文本挤出窗口
-                Layout.preferredWidth: Math.max(96, Math.min(140, Math.round(dayView.width * 0.34)))
+                Layout.preferredWidth: Responsive.daySelectorWidth(dayView.width)
                 Layout.fillWidth: dayView.narrowBar
                 textRole: "label"
                 valueRole: "value"
@@ -62,7 +62,7 @@ Item {
                 // `sessionModel.count` 是 SessionListModel 的 Q_INVOKABLE 方法（不是属性），
                 // 漏掉括号会把函数对象渲染成 "function() { [native code] }"
                 text: schedule.selectedDay === 0 ? qsTr("整周共 %1 节课").arg(schedule.sessionModel.count()) : qsTr("%1 共 %2 节课").arg(schedule.day_name(schedule.selectedDay)).arg(schedule.sessionModel.count())
-                color: "#6B7A90"
+                color: Theme.textSubtle
                 horizontalAlignment: Text.AlignRight
                 elide: Text.ElideRight
                 visible: !dayView.narrowBar
@@ -75,9 +75,9 @@ Item {
 
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.leftMargin: Responsive.margin
-            Layout.rightMargin: Responsive.margin
-            Layout.bottomMargin: 12
+            Layout.leftMargin: Metrics.spacing2xl
+            Layout.rightMargin: Metrics.spacing2xl
+            Layout.bottomMargin: Metrics.spacing2xl
             clip: true
 
             // 关闭横向滚动条并让内容宽度直接跟随 ScrollView 宽度，
@@ -86,7 +86,7 @@ Item {
 
             Column {
                 width: dayScroll.width
-                spacing: Responsive.spacing
+                spacing: Metrics.spacingLg
 
                 Repeater {
                     model: schedule.sessionModel
@@ -110,10 +110,10 @@ Item {
                     width: parent.width
                     visible: schedule.sessionModel.count === 0
                     text: qsTr("这一天还没有课程。点击顶部“新建课程”开始添加。")
-                    color: Responsive.textMuted
+                    color: Theme.textMuted
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
-                    topPadding: 24
+                    topPadding: Metrics.spacing4xl
                 }
             }
         }

@@ -47,7 +47,7 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 6
+                spacing: Metrics.spacingMd
                 // 低高度时省掉这一行，把垂直空间让给课表本体
                 visible: !root.shortHeight
 
@@ -56,20 +56,20 @@ ApplicationWindow {
                     font.bold: true
                     elide: Text.ElideRight
                     Layout.fillWidth: true
-                    leftPadding: 8
+                    leftPadding: Metrics.spacingLg
                 }
 
                 Label {
                     text: schedule.conflictSummary
-                    color: schedule.hasBlockingConflicts ? Responsive.danger : Responsive.success
-                    font.pixelSize: Responsive.fontSmall
-                    rightPadding: 8
+                    color: schedule.hasBlockingConflicts ? Theme.danger : Theme.success
+                    font.pixelSize: Typography.fontSmall
+                    rightPadding: Metrics.spacingLg
                 }
             }
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: Metrics.spacingSm
 
                 ToolButton {
                     id: prevWeekButton
@@ -117,8 +117,8 @@ ApplicationWindow {
             id: weekPage
 
             // 手机屏幕窄，压缩节次高度让整周尽量可见；横屏 / 低高度时再压一档
-            slotHeight: (root.shortHeight || root.landscape) ? 48 : 56
-            slotColumnWidth: root.narrow ? 44 : 56
+            slotHeight: (root.shortHeight || root.landscape) ? Responsive.mobileSlotHeightCompact : Responsive.mobileSlotHeight
+            slotColumnWidth: root.narrow ? Responsive.mobileSlotColumnWidthNarrow : Responsive.mobileSlotColumnWidth
         }
 
         DayView {
@@ -142,14 +142,14 @@ ApplicationWindow {
 
             objectName: "statusLabel"
             Layout.fillWidth: true
-            Layout.leftMargin: 8
-            Layout.rightMargin: 8
+            Layout.leftMargin: Metrics.spacingLg
+            Layout.rightMargin: Metrics.spacingLg
             elide: Text.ElideRight
-            font.pixelSize: Responsive.fontSmall
+            font.pixelSize: Typography.fontSmall
             // 低高度屏幕优先保证课表可见，状态信息仍可从错误提示能力之外的页面获取
             visible: !root.shortHeight
             text: schedule.lastError.length > 0 ? qsTr("⚠ %1").arg(schedule.lastError) : (schedule.lastInfo.length > 0 ? qsTr("✓ %1").arg(schedule.lastInfo) : qsTr("就绪"))
-            color: schedule.lastError.length > 0 ? Responsive.danger : Responsive.textSecondary
+            color: schedule.lastError.length > 0 ? Theme.danger : Theme.textSecondary
         }
 
         RowLayout {
@@ -212,34 +212,34 @@ ApplicationWindow {
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: root.shortHeight ? 8 : 20
+        anchors.bottomMargin: root.shortHeight ? Metrics.bannerBottomMarginShort : Metrics.bannerBottomMargin
         // 两侧留白随窗口收缩，且保证宽度不会因为极窄窗口变成负数
-        width: Math.max(160, Math.min(parent.width - 32, 460))
-        height: notificationBanner.bannerTitle.length > 0 ? 76 : 0
+        width: Responsive.bannerWidth(parent.width)
+        height: notificationBanner.bannerTitle.length > 0 ? Metrics.bannerHeight : 0
         visible: height > 0
-        radius: 10
-        color: Responsive.textPrimary
-        opacity: 0.97
+        radius: Metrics.radiusLg
+        color: Theme.textPrimary
+        opacity: Metrics.bannerOpacity
 
         Column {
             anchors.fill: parent
-            anchors.margins: 12
-            spacing: 4
+            anchors.margins: Metrics.spacing2xl
+            spacing: Metrics.spacingSm
 
             Text {
                 width: parent.width
                 text: notificationBanner.bannerTitle
-                color: "white"
+                color: Theme.bannerTitleText
                 font.bold: true
-                font.pixelSize: Responsive.fontSubheading
+                font.pixelSize: Typography.fontSubheading
                 elide: Text.ElideRight
             }
 
             Text {
                 width: parent.width
                 text: notificationBanner.bannerMessage
-                color: "#C9D6EA"
-                font.pixelSize: Responsive.fontBody
+                color: Theme.bannerSubText
+                font.pixelSize: Typography.fontBody
                 elide: Text.ElideRight
             }
         }

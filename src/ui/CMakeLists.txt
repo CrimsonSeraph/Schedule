@@ -18,10 +18,16 @@ set_target_properties(ScheduleUI
 		CXX_EXTENSIONS OFF
 )
 
-# Responsive.qml 是 QML 单例（统一断点与设计常量），必须在 qt6_add_qml_module 之前声明
-set_source_files_properties(qml/Responsive.qml
-	PROPERTIES QT_QML_SINGLETON_TYPE TRUE
-)
+# style/ 下全部是 QML 单例（统一设计令牌），必须在 qt6_add_qml_module 之前声明。
+# QT_QML_SINGLETON_TYPE 是「逐文件」属性：一次 set_source_files_properties 里写多组
+# 同名属性只会让最后一组生效（曾导致 6 个单例全部指向 Typography.qml），
+# 因此这里一个文件一条调用，且不额外设置 QT_RESOURCE_ALIAS（qmldir 会登记 style/ 子路径）。
+set_source_files_properties(style/CourseCardStyle.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(style/ListItemStyle.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(style/Metrics.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(style/Responsive.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(style/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(style/Typography.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt6_add_qml_module(
 	ScheduleUI
@@ -33,7 +39,6 @@ qt6_add_qml_module(
 	OUTPUT_DIRECTORY
 	"${CMAKE_CURRENT_BINARY_DIR}/Schedule"
 	QML_FILES
-	qml/Responsive.qml
 	qml/MainDesktop.qml
 	qml/MainMobile.qml
 	qml/WeekView.qml
@@ -45,6 +50,12 @@ qt6_add_qml_module(
 	qml/ExportDialog.qml
 	qml/SettingsPage.qml
 	qml/SemesterPage.qml
+	style/CourseCardStyle.qml
+	style/ListItemStyle.qml
+	style/Metrics.qml
+	style/Responsive.qml
+	style/Theme.qml
+	style/Typography.qml
 	RESOURCES
 	resources/assets.qrc
 )

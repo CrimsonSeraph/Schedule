@@ -17,7 +17,7 @@ import QtQuick.Dialogs
 //  - 整个内容套一层 ScrollView：低高度屏幕（横屏 / 分屏）可以整体滚动，不再被裁掉；
 //  - 预览区高度按对话框高度收紧（不再依赖 Layout.fillHeight，因为外层高度不定）；
 //  - 策略按钮行改用 Flow，窄屏自动换行；
-//  - 对话框尺寸继续用 Math.min 限制在父窗口内。
+//  - 对话框尺寸由 Responsive.dialogWidth/Height 限制在父窗口内。
 Dialog {
     id: importWizard
 
@@ -26,8 +26,8 @@ Dialog {
     title: qsTr("导入课表")
     modal: true
     closePolicy: Popup.CloseOnEscape
-    width: Math.min(680, parent ? parent.width - 40 : 680)
-    height: Math.min(620, parent ? parent.height - 40 : 620)
+    width: Responsive.dialogWidth(Responsive.importDialogWidth, parent ? parent.width : -1)
+    height: Responsive.dialogHeight(Responsive.importDialogHeight, parent ? parent.height : -1)
     anchors.centerIn: parent
 
     // C++ 侧在打开对话框前把文件对话框的初始目录写到这里
@@ -44,7 +44,7 @@ Dialog {
 
         ColumnLayout {
             width: wizardScroll.width
-            spacing: 10
+            spacing: Metrics.spacingXl
 
             // -------------------------------------------------------------- 选择文件
             GroupBox {
@@ -53,7 +53,7 @@ Dialog {
 
                 RowLayout {
                     anchors.fill: parent
-                    spacing: Responsive.spacing
+                    spacing: Metrics.spacingLg
 
                     TextField {
                         id: importFileField
@@ -77,19 +77,19 @@ Dialog {
             GroupBox {
                 Layout.fillWidth: true
                 // 外层是 ScrollView（高度不定），这里给出与对话框高度相关的有限高度
-                Layout.preferredHeight: Math.max(140, Math.min(260, Math.round(importWizard.height * 0.32)))
-                Layout.minimumHeight: 120
+                Layout.preferredHeight: Responsive.importPreviewHeight(importWizard.height)
+                Layout.minimumHeight: Responsive.importPreviewLayoutMinimum
                 title: qsTr("第 2 步：预览与冲突检查")
 
                 ColumnLayout {
                     anchors.fill: parent
-                    spacing: 6
+                    spacing: Metrics.spacingMd
 
                     Label {
                         Layout.fillWidth: true
                         text: schedule.importExport.previewSummary
                         wrapMode: Text.WordWrap
-                        color: schedule.importExport.previewConflictCount > 0 ? Responsive.danger : Responsive.success
+                        color: schedule.importExport.previewConflictCount > 0 ? Theme.danger : Theme.success
                         font.bold: true
                     }
 
@@ -98,7 +98,7 @@ Dialog {
                         visible: schedule.importExport.previewWarnings.length > 0
                         text: qsTr("提示：") + schedule.importExport.previewWarnings.join("\n提示：")
                         wrapMode: Text.WordWrap
-                        color: Responsive.warning
+                        color: Theme.warning
                     }
 
                     ScrollView {
@@ -114,7 +114,7 @@ Dialog {
 
                         Column {
                             width: conflictScroll.width
-                            spacing: 4
+                            spacing: Metrics.spacingSm
 
                             Repeater {
                                 model: schedule.importExport.previewConflicts
@@ -123,8 +123,8 @@ Dialog {
                                     width: parent.width
                                     text: "• [" + modelData.typeName + "] " + modelData.message
                                     wrapMode: Text.WordWrap
-                                    color: modelData.blocking ? Responsive.danger : Responsive.warning
-                                    font.pixelSize: Responsive.fontBody
+                                    color: modelData.blocking ? Theme.danger : Theme.warning
+                                    font.pixelSize: Typography.fontBody
                                 }
                             }
 
@@ -132,8 +132,8 @@ Dialog {
                                 width: parent.width
                                 visible: schedule.importExport.previewConflicts.length === 0
                                 text: schedule.importExport.hasPendingPreview ? qsTr("没有发现新引入的冲突。") : qsTr("选择文件后将在此显示预览结果。")
-                                color: Responsive.textMuted
-                                font.pixelSize: Responsive.fontBody
+                                color: Theme.textMuted
+                                font.pixelSize: Typography.fontBody
                             }
                         }
                     }
@@ -147,7 +147,7 @@ Dialog {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    spacing: Responsive.spacing
+                    spacing: Metrics.spacingLg
 
                     ComboBox {
                         id: importStrategySelector
@@ -161,7 +161,7 @@ Dialog {
                     // 按钮行用 Flow：窄屏自动换行，不会被裁掉
                     Flow {
                         Layout.fillWidth: true
-                        spacing: Responsive.spacing
+                        spacing: Metrics.spacingLg
 
                         Button {
                             id: importApplyButton
@@ -184,7 +184,7 @@ Dialog {
             Label {
                 Layout.fillWidth: true
                 text: schedule.importExport.lastImportSummary
-                color: Responsive.textSecondary
+                color: Theme.textSecondary
                 wrapMode: Text.WordWrap
             }
 

@@ -41,8 +41,8 @@ Dialog {
     title: courseEditor.editingCourseId.length > 0 ? qsTr("编辑课程") : qsTr("新建课程")
     modal: true
     closePolicy: Popup.CloseOnEscape
-    width: Math.min(720, parent ? parent.width - 40 : 720)
-    height: Math.min(640, parent ? parent.height - 40 : 640)
+    width: Responsive.dialogWidth(Responsive.editorDialogWidth, parent ? parent.width : -1)
+    height: Responsive.dialogHeight(Responsive.editorDialogHeight, parent ? parent.height : -1)
     anchors.centerIn: parent
 
     // 时间段草稿模型：C++ 通过 objectName "sessionDraftModel" 定位并调用其方法。
@@ -89,7 +89,7 @@ Dialog {
     }
 
     contentItem: ColumnLayout {
-        spacing: 10
+        spacing: Metrics.spacingXl
 
         ScrollView {
             id: editorScroll
@@ -104,7 +104,7 @@ Dialog {
 
             ColumnLayout {
                 width: editorScroll.width
-                spacing: 10
+                spacing: Metrics.spacingXl
 
                 // ------------------------------------------------------ 课程基本信息
                 GroupBox {
@@ -114,8 +114,8 @@ Dialog {
                     GridLayout {
                         anchors.fill: parent
                         columns: courseEditor.formColumns
-                        columnSpacing: 8
-                        rowSpacing: 8
+                        columnSpacing: Metrics.spacingLg
+                        rowSpacing: Metrics.spacingLg
 
                         Label {
                             text: qsTr("课程名称 *")
@@ -206,36 +206,36 @@ Dialog {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: Responsive.spacing
+                        spacing: Metrics.spacingLg
 
                         ListView {
                             id: sessionList
 
                             objectName: "sessionList"
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 132
+                            Layout.preferredHeight: ListItemStyle.preferredHeight
                             clip: true
-                            spacing: 4
+                            spacing: ListItemStyle.spacing
                             model: sessionDraft
 
                             delegate: Rectangle {
                                 width: sessionList.width
-                                height: 40
-                                radius: 4
-                                color: ListView.isCurrentItem ? "#E8F0FF" : "#F7F9FC"
-                                border.width: 1
-                                border.color: ListView.isCurrentItem ? "#9FBEF5" : Responsive.border
+                                height: ListItemStyle.height
+                                radius: ListItemStyle.radius
+                                color: ListView.isCurrentItem ? Theme.selectionBg : Theme.surfaceAlt
+                                border.width: ListItemStyle.borderWidth
+                                border.color: ListView.isCurrentItem ? Theme.selectionBorder : Theme.border
 
                                 Text {
                                     anchors.left: parent.left
-                                    anchors.leftMargin: 8
+                                    anchors.leftMargin: ListItemStyle.padding
                                     anchors.right: parent.right
-                                    anchors.rightMargin: 8
+                                    anchors.rightMargin: ListItemStyle.padding
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: model.summary
                                     elide: Text.ElideRight
-                                    font.pixelSize: 13
-                                    color: Responsive.textStrong
+                                    font.pixelSize: Typography.fontBodyLarge
+                                    color: Theme.textStrong
                                 }
 
                                 // 选中热区：只暴露 objectName 与行号，由 C++ 侧 UiConnector
@@ -253,7 +253,7 @@ Dialog {
                                 anchors.centerIn: parent
                                 visible: sessionDraft.count === 0
                                 text: qsTr("尚未添加时间段，请在下方填写后点击“添加时间段”")
-                                color: Responsive.textMuted
+                                color: Theme.textMuted
                             }
                         }
 
@@ -261,8 +261,8 @@ Dialog {
                             Layout.fillWidth: true
                             // 宽表单两对“标签 + 输入框”并排；中等宽度一对一行；窄屏标签在上
                             columns: courseEditor.formColumns
-                            columnSpacing: 8
-                            rowSpacing: 8
+                            columnSpacing: Metrics.spacingLg
+                            rowSpacing: Metrics.spacingLg
 
                             Label {
                                 text: qsTr("星期")
@@ -342,12 +342,12 @@ Dialog {
 
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 6
+                            spacing: Metrics.spacingMd
 
                             // 按钮行用 Flow：窄屏自动换行，不会把按钮挤出对话框
                             Flow {
                                 Layout.fillWidth: true
-                                spacing: Responsive.spacing
+                                spacing: Metrics.spacingLg
 
                                 Button {
                                     id: sessionAddButton
@@ -376,8 +376,8 @@ Dialog {
                                 // 窄屏优先保证按钮可用，操作提示省略
                                 visible: courseEditor.wideForm
                                 text: qsTr("选中列表中的行可回填到表单")
-                                color: Responsive.textMuted
-                                font.pixelSize: Responsive.fontSmall
+                                color: Theme.textMuted
+                                font.pixelSize: Typography.fontSmall
                                 elide: Text.ElideRight
                             }
                         }
@@ -388,7 +388,7 @@ Dialog {
                     Layout.fillWidth: true
                     visible: courseEditor.conflictHint.length > 0
                     text: courseEditor.conflictHint
-                    color: Responsive.danger
+                    color: Theme.danger
                     wrapMode: Text.WordWrap
                 }
             }
@@ -396,13 +396,13 @@ Dialog {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: Responsive.spacing
+            spacing: Metrics.spacingLg
 
             Label {
                 Layout.fillWidth: true
                 text: qsTr("带 * 的为必填项；保存后会自动写入本地数据库")
-                color: Responsive.textMuted
-                font.pixelSize: Responsive.fontSmall
+                color: Theme.textMuted
+                font.pixelSize: Typography.fontSmall
                 // 窄屏时可压缩到 0 宽度，保证“取消 / 保存”始终可见
                 elide: Text.ElideRight
             }

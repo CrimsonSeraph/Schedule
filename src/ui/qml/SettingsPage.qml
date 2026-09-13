@@ -34,21 +34,21 @@ Item {
 
         ColumnLayout {
             width: settingsScroll.width
-            spacing: Responsive.sectionSpacing
+            spacing: Metrics.spacing3xl
 
             // 标题行同时承载“自检”按钮：放在页面最顶部，保证任何窗口高度下都可见，
             // 便于 --selftest 通过真实鼠标点击验证 C++ 侧的连接链路。
             RowLayout {
                 Layout.fillWidth: true
-                Layout.margins: Responsive.margin
-                spacing: Responsive.spacing
+                Layout.margins: Metrics.spacing2xl
+                spacing: Metrics.spacingLg
 
                 Label {
                     Layout.fillWidth: true
                     text: qsTr("设置")
                     font.bold: true
-                    font.pixelSize: Responsive.fontTitle
-                    color: Responsive.textPrimary
+                    font.pixelSize: Typography.fontTitle
+                    color: Theme.textPrimary
                     // 窄屏时省略标题而不是把“自检”按钮挤出视口
                     elide: Text.ElideRight
                 }
@@ -64,14 +64,14 @@ Item {
             // ------------------------------------------------------------ 目录设置
             GroupBox {
                 Layout.fillWidth: true
-                Layout.margins: Responsive.margin
+                Layout.margins: Metrics.spacing2xl
                 title: qsTr("导入 / 导出目录")
 
                 GridLayout {
                     anchors.fill: parent
                     columns: settingsPage.groupColumns
-                    columnSpacing: 8
-                    rowSpacing: 8
+                    columnSpacing: Metrics.spacingLg
+                    rowSpacing: Metrics.spacingLg
 
                     Label {
                         text: qsTr("默认导入目录")
@@ -122,7 +122,7 @@ Item {
                     Flow {
                         Layout.fillWidth: true
                         Layout.columnSpan: settingsPage.wideForm ? 2 : 1
-                        spacing: Responsive.spacing
+                        spacing: Metrics.spacingLg
 
                         Button {
                             id: saveDirsButton
@@ -144,14 +144,14 @@ Item {
             // ------------------------------------------------------------ 作息时间
             GroupBox {
                 Layout.fillWidth: true
-                Layout.margins: Responsive.margin
+                Layout.margins: Metrics.spacing2xl
                 title: qsTr("作息时间（节次）")
 
                 GridLayout {
                     anchors.fill: parent
                     columns: settingsPage.groupColumns
-                    columnSpacing: 8
-                    rowSpacing: 8
+                    columnSpacing: Metrics.spacingLg
+                    rowSpacing: Metrics.spacingLg
 
                     Label {
                         text: qsTr("选择节次")
@@ -210,7 +210,7 @@ Item {
                     Flow {
                         Layout.fillWidth: true
                         Layout.columnSpan: settingsPage.wideForm ? 2 : 1
-                        spacing: Responsive.spacing
+                        spacing: Metrics.spacingLg
 
                         Button {
                             id: saveSlotButton
@@ -232,18 +232,18 @@ Item {
             // ------------------------------------------------------------ 课程提醒
             GroupBox {
                 Layout.fillWidth: true
-                Layout.margins: Responsive.margin
+                Layout.margins: Metrics.spacing2xl
                 title: qsTr("课程提醒")
 
                 ColumnLayout {
                     anchors.fill: parent
-                    spacing: Responsive.spacing
+                    spacing: Metrics.spacingLg
 
                     GridLayout {
                         Layout.fillWidth: true
                         columns: settingsPage.pairColumns
-                        columnSpacing: 8
-                        rowSpacing: 8
+                        columnSpacing: Metrics.spacingLg
+                        rowSpacing: Metrics.spacingLg
 
                         Label {
                             text: qsTr("启用提醒")
@@ -276,7 +276,7 @@ Item {
                         Label {
                             Layout.fillWidth: true
                             text: reminders.backendName + " · " + reminders.backendStatus
-                            color: Responsive.textSecondary
+                            color: Theme.textSecondary
                             wrapMode: Text.WordWrap
                         }
 
@@ -288,7 +288,7 @@ Item {
                         Flow {
                             Layout.fillWidth: true
                             Layout.columnSpan: settingsPage.wideForm ? 2 : 1
-                            spacing: Responsive.spacing
+                            spacing: Metrics.spacingLg
 
                             Button {
                                 id: testNotificationButton
@@ -309,7 +309,7 @@ Item {
                     Label {
                         Layout.fillWidth: true
                         text: qsTr("下一次：") + reminders.nextReminderText
-                        color: Responsive.accentStrong
+                        color: Theme.accentStrong
                         wrapMode: Text.WordWrap
                     }
 
@@ -318,7 +318,7 @@ Item {
                         visible: reminders.todayReminders.length > 0
                         text: qsTr("今日课程")
                         font.bold: true
-                        color: Responsive.textStrong
+                        color: Theme.textStrong
                     }
 
                     Repeater {
@@ -327,18 +327,18 @@ Item {
                         delegate: Label {
                             Layout.fillWidth: true
                             text: "• " + modelData.start + " " + modelData.courseName + " · " + modelData.message
-                            color: Responsive.textSecondary
+                            color: Theme.textSecondary
                             wrapMode: Text.WordWrap
-                            font.pixelSize: Responsive.fontBody
+                            font.pixelSize: Typography.fontBody
                         }
                     }
 
                     Label {
                         Layout.fillWidth: true
                         text: reminders.lastNotificationText
-                        color: Responsive.textMuted
+                        color: Theme.textMuted
                         wrapMode: Text.WordWrap
-                        font.pixelSize: Responsive.fontSmall
+                        font.pixelSize: Typography.fontSmall
                     }
                 }
             }
@@ -346,26 +346,26 @@ Item {
             // ------------------------------------------------------ 教务适配器（可选）
             GroupBox {
                 Layout.fillWidth: true
-                Layout.margins: Responsive.margin
+                Layout.margins: Metrics.spacing2xl
                 title: qsTr("教务适配器（可选 · 实验性）")
 
                 ColumnLayout {
                     anchors.fill: parent
-                    spacing: Responsive.spacing
+                    spacing: Metrics.spacingLg
 
                     Label {
                         Layout.fillWidth: true
                         text: qsTr("隐私说明：适配器仅在你点击“导入”时主动触发一次，不保存密码、不做后台同步；") + qsTr("登录 Cookie 只驻留内存，可随时清除。")
-                        color: Responsive.warning
+                        color: Theme.warning
                         wrapMode: Text.WordWrap
-                        font.pixelSize: Responsive.fontSmall
+                        font.pixelSize: Typography.fontSmall
                     }
 
                     GridLayout {
                         Layout.fillWidth: true
                         columns: settingsPage.pairColumns
-                        columnSpacing: 8
-                        rowSpacing: 8
+                        columnSpacing: Metrics.spacingLg
+                        rowSpacing: Metrics.spacingLg
 
                         Label {
                             text: qsTr("适配器")
@@ -416,14 +416,14 @@ Item {
                     Label {
                         Layout.fillWidth: true
                         text: schedule.importExport.adapterSessionStatus
-                        color: Responsive.textSecondary
+                        color: Theme.textSecondary
                         wrapMode: Text.WordWrap
-                        font.pixelSize: Responsive.fontSmall
+                        font.pixelSize: Typography.fontSmall
                     }
 
                     Flow {
                         Layout.fillWidth: true
-                        spacing: Responsive.spacing
+                        spacing: Metrics.spacingLg
 
                         Button {
                             id: adapterSaveUrlButton
@@ -452,14 +452,14 @@ Item {
             // ------------------------------------------------------------ 数据维护
             GroupBox {
                 Layout.fillWidth: true
-                Layout.margins: Responsive.margin
+                Layout.margins: Metrics.spacing2xl
                 title: qsTr("数据")
 
                 GridLayout {
                     anchors.fill: parent
                     columns: settingsPage.pairColumns
-                    columnSpacing: 8
-                    rowSpacing: 8
+                    columnSpacing: Metrics.spacingLg
+                    rowSpacing: Metrics.spacingLg
 
                     Label {
                         text: qsTr("数据文件")
@@ -467,7 +467,7 @@ Item {
                     Label {
                         Layout.fillWidth: true
                         text: schedule.databasePath
-                        color: Responsive.textSecondary
+                        color: Theme.textSecondary
                         wrapMode: Text.WrapAnywhere
                     }
 
@@ -486,7 +486,7 @@ Item {
                     Flow {
                         Layout.fillWidth: true
                         Layout.columnSpan: settingsPage.wideForm ? 2 : 1
-                        spacing: Responsive.spacing
+                        spacing: Metrics.spacingLg
 
                         Button {
                             id: reloadButton
@@ -506,10 +506,10 @@ Item {
             }
 
             Label {
-                Layout.margins: Responsive.margin
+                Layout.margins: Metrics.spacing2xl
                 Layout.fillWidth: true
                 text: qsTr("Schedule v%1 · 本地课表应用（不做云同步 / 账号系统）\n数据仅保存在本机，导入导出可指定任意目录。").arg(schedule.version)
-                color: Responsive.textMuted
+                color: Theme.textMuted
                 wrapMode: Text.WordWrap
             }
 

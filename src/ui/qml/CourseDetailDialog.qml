@@ -11,7 +11,7 @@ import QtQuick.Layouts
 //      * courseDetailCloseButton -> 关闭本弹层
 //
 // 响应式策略：
-//  - 尺寸沿用 Math.min 限制在父窗口内，内容由 ScrollView 承载；
+//  - 尺寸由 Responsive.dialogWidth/Height 限制在父窗口内，内容由 ScrollView 承载；
 //  - 基本信息在窄屏下由“标签 + 值”并排降为单列堆叠。
 Dialog {
     id: courseDetailDialog
@@ -29,8 +29,8 @@ Dialog {
     title: qsTr("课程详情")
     modal: true
     closePolicy: Popup.CloseOnEscape
-    width: Math.min(560, parent ? parent.width - 40 : 560)
-    height: Math.min(560, parent ? parent.height - 40 : 560)
+    width: Responsive.dialogWidth(Responsive.detailDialogWidth, parent ? parent.width : -1)
+    height: Responsive.dialogHeight(Responsive.detailDialogHeight, parent ? parent.height : -1)
     anchors.centerIn: parent
 
     /** @return 课程字段的展示文本；字段缺失或为空时返回 fallback。 */
@@ -43,7 +43,7 @@ Dialog {
     }
 
     contentItem: ColumnLayout {
-        spacing: 10
+        spacing: Metrics.spacingXl
 
         ScrollView {
             id: detailScroll
@@ -55,7 +55,7 @@ Dialog {
 
             ColumnLayout {
                 width: detailScroll.width
-                spacing: 10
+                spacing: Metrics.spacingXl
 
                 // ------------------------------------------------------ 课程基本信息
                 GroupBox {
@@ -65,8 +65,8 @@ Dialog {
                     GridLayout {
                         anchors.fill: parent
                         columns: courseDetailDialog.narrowForm ? 1 : 2
-                        columnSpacing: 8
-                        rowSpacing: 8
+                        columnSpacing: Metrics.spacingLg
+                        rowSpacing: Metrics.spacingLg
 
                         Label {
                             objectName: "courseDetailName"
@@ -74,73 +74,73 @@ Dialog {
                             Layout.columnSpan: courseDetailDialog.narrowForm ? 1 : 2
                             text: courseDetailDialog.fieldText("name", qsTr("未命名课程"))
                             font.bold: true
-                            font.pixelSize: Responsive.fontHeading
-                            color: Responsive.textPrimary
+                            font.pixelSize: Typography.fontHeading
+                            color: Theme.textPrimary
                             wrapMode: Text.WordWrap
                         }
 
                         Label {
                             text: qsTr("课程代码")
-                            color: Responsive.textSecondary
+                            color: Theme.textSecondary
                         }
 
                         Label {
                             objectName: "courseDetailCode"
                             Layout.fillWidth: true
                             text: courseDetailDialog.fieldText("code", qsTr("未填写"))
-                            color: Responsive.textPrimary
+                            color: Theme.textPrimary
                             elide: Text.ElideRight
                         }
 
                         Label {
                             text: qsTr("任课教师")
-                            color: Responsive.textSecondary
+                            color: Theme.textSecondary
                         }
 
                         Label {
                             objectName: "courseDetailTeacher"
                             Layout.fillWidth: true
                             text: courseDetailDialog.fieldText("teacher", qsTr("未填写"))
-                            color: Responsive.textPrimary
+                            color: Theme.textPrimary
                             elide: Text.ElideRight
                         }
 
                         Label {
                             text: qsTr("上课地点")
-                            color: Responsive.textSecondary
+                            color: Theme.textSecondary
                         }
 
                         Label {
                             objectName: "courseDetailLocation"
                             Layout.fillWidth: true
                             text: courseDetailDialog.fieldText("location", qsTr("未填写"))
-                            color: Responsive.textPrimary
+                            color: Theme.textPrimary
                             elide: Text.ElideRight
                         }
 
                         Label {
                             text: qsTr("学分")
-                            color: Responsive.textSecondary
+                            color: Theme.textSecondary
                         }
 
                         Label {
                             objectName: "courseDetailCredits"
                             Layout.fillWidth: true
                             text: courseDetailDialog.fieldText("credits", qsTr("未填写"))
-                            color: Responsive.textPrimary
+                            color: Theme.textPrimary
                             elide: Text.ElideRight
                         }
 
                         Label {
                             text: qsTr("备注")
-                            color: Responsive.textSecondary
+                            color: Theme.textSecondary
                         }
 
                         Label {
                             objectName: "courseDetailNotes"
                             Layout.fillWidth: true
                             text: courseDetailDialog.fieldText("notes", qsTr("未填写"))
-                            color: Responsive.textPrimary
+                            color: Theme.textPrimary
                             wrapMode: Text.WordWrap
                         }
                     }
@@ -153,37 +153,37 @@ Dialog {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: Responsive.spacing
+                        spacing: Metrics.spacingLg
 
                         ListView {
                             id: detailSessionList
 
                             objectName: "courseDetailSessions"
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 132
+                            Layout.preferredHeight: ListItemStyle.preferredHeight
                             clip: true
-                            spacing: 4
+                            spacing: ListItemStyle.spacing
                             model: courseDetailDialog.sessions
 
                             delegate: Rectangle {
                                 width: detailSessionList.width
-                                height: 40
-                                radius: 4
-                                color: "#F7F9FC"
-                                border.width: 1
-                                border.color: Responsive.border
+                                height: ListItemStyle.height
+                                radius: ListItemStyle.radius
+                                color: Theme.surfaceAlt
+                                border.width: ListItemStyle.borderWidth
+                                border.color: Theme.border
 
                                 Text {
                                     anchors.left: parent.left
-                                    anchors.leftMargin: 8
+                                    anchors.leftMargin: ListItemStyle.padding
                                     anchors.right: parent.right
-                                    anchors.rightMargin: 8
+                                    anchors.rightMargin: ListItemStyle.padding
                                     anchors.verticalCenter: parent.verticalCenter
                                     // 与学期页列表项、时间段表单保持同一展示格式
                                     text: qsTr("%1 第 %2-%3 节 · %4").arg(modelData.dayName).arg(modelData.startSlot).arg(modelData.endSlot).arg(modelData.weeksDisplay) + (modelData.location.length > 0 ? " · " + modelData.location : "") + (modelData.teacher.length > 0 ? " · " + modelData.teacher : "")
                                     elide: Text.ElideRight
-                                    font.pixelSize: 13
-                                    color: Responsive.textStrong
+                                    font.pixelSize: Typography.fontBodyLarge
+                                    color: Theme.textStrong
                                 }
                             }
 
@@ -191,7 +191,7 @@ Dialog {
                                 anchors.centerIn: parent
                                 visible: courseDetailDialog.sessions.length === 0
                                 text: qsTr("未设置上课时间")
-                                color: Responsive.textMuted
+                                color: Theme.textMuted
                             }
                         }
                     }
@@ -201,13 +201,13 @@ Dialog {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: Responsive.spacing
+            spacing: Metrics.spacingLg
 
             Label {
                 Layout.fillWidth: true
                 text: qsTr("需要调整？点击“编辑”进入课程编辑器")
-                color: Responsive.textMuted
-                font.pixelSize: Responsive.fontSmall
+                color: Theme.textMuted
+                font.pixelSize: Typography.fontSmall
                 elide: Text.ElideRight
             }
 

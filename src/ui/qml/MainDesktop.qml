@@ -48,22 +48,22 @@ ApplicationWindow {
     header: ToolBar {
         RowLayout {
             anchors.fill: parent
-            spacing: root.compactToolbar ? 2 : 8
+            spacing: root.compactToolbar ? Metrics.spacingXs : Metrics.spacingLg
 
             Label {
                 text: qsTr("课表")
                 font.bold: true
-                font.pixelSize: Responsive.fontTitle
-                leftPadding: 8
+                font.pixelSize: Typography.fontTitle
+                leftPadding: Metrics.spacingLg
                 // 超窄窗口下标题让位给导航按钮
                 visible: !root.narrow
             }
 
             Label {
                 text: schedule.hasSemester ? qsTr("%1 · 共 %2 周").arg(schedule.semesterName).arg(schedule.totalWeeks) : qsTr("尚未设置学期")
-                color: Responsive.textSecondary
+                color: Theme.textSecondary
                 elide: Text.ElideRight
-                Layout.maximumWidth: 260
+                Layout.maximumWidth: Metrics.headerEchoMaxWidth
                 // 窄窗口下先折叠学期回显：完整信息在“学期与课程”页仍可见
                 visible: !root.compactToolbar
             }
@@ -83,7 +83,7 @@ ApplicationWindow {
                 id: weekSelector
 
                 objectName: "weekSelector"
-                Layout.preferredWidth: root.compactToolbar ? 108 : 150
+                Layout.preferredWidth: root.compactToolbar ? Metrics.weekSelectorWidthCompact : Metrics.weekSelectorWidth
                 textRole: "label"
                 valueRole: "value"
                 model: schedule.weekOptions
@@ -152,7 +152,7 @@ ApplicationWindow {
 
                 objectName: "conflictBadge"
                 text: schedule.conflictSummary
-                color: schedule.hasBlockingConflicts ? Responsive.danger : Responsive.success
+                color: schedule.hasBlockingConflicts ? Theme.danger : Theme.success
                 font.bold: schedule.hasBlockingConflicts
                 // 冲突明细在“学期与课程”页与底部状态栏仍有展示，超窄时先隐藏
                 visible: !root.narrow
@@ -213,7 +213,7 @@ ApplicationWindow {
         WeekView {
             id: weekPage
             // 低高度窗口压缩节次高度，尽量让整周可见
-            slotHeight: root.shortHeight ? 52 : 64
+            slotHeight: root.shortHeight ? Responsive.desktopSlotHeightCompact : Metrics.weekSlotHeight
         }
 
         DayView {
@@ -232,22 +232,22 @@ ApplicationWindow {
     footer: ToolBar {
         RowLayout {
             anchors.fill: parent
-            spacing: Responsive.spacing
+            spacing: Metrics.spacingLg
 
             Label {
                 id: statusLabel
 
                 objectName: "statusLabel"
                 Layout.fillWidth: true
-                leftPadding: 8
+                leftPadding: Metrics.spacingLg
                 elide: Text.ElideRight
                 text: schedule.lastError.length > 0 ? qsTr("⚠ %1").arg(schedule.lastError) : (schedule.lastInfo.length > 0 ? qsTr("✓ %1").arg(schedule.lastInfo) : qsTr("就绪"))
-                color: schedule.lastError.length > 0 ? Responsive.danger : Responsive.textSecondary
+                color: schedule.lastError.length > 0 ? Theme.danger : Theme.textSecondary
             }
 
             Label {
                 text: qsTr("第 %1 周 · %2").arg(schedule.selectedWeek).arg(schedule.selectedWeekRange)
-                color: Responsive.textMuted
+                color: Theme.textMuted
                 // 超窄窗口优先保证状态行不折行
                 visible: !root.narrow
             }
@@ -265,34 +265,34 @@ ApplicationWindow {
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: root.shortHeight ? 8 : 20
+        anchors.bottomMargin: root.shortHeight ? Metrics.bannerBottomMarginShort : Metrics.bannerBottomMargin
         // 两侧留白随窗口收缩，且保证宽度不会因为极窄窗口变成负数
-        width: Math.max(160, Math.min(parent.width - 32, 460))
-        height: notificationBanner.bannerTitle.length > 0 ? 76 : 0
+        width: Responsive.bannerWidth(parent.width)
+        height: notificationBanner.bannerTitle.length > 0 ? Metrics.bannerHeight : 0
         visible: height > 0
-        radius: 10
-        color: Responsive.textPrimary
-        opacity: 0.97
+        radius: Metrics.radiusLg
+        color: Theme.textPrimary
+        opacity: Metrics.bannerOpacity
 
         Column {
             anchors.fill: parent
-            anchors.margins: 12
-            spacing: 4
+            anchors.margins: Metrics.spacing2xl
+            spacing: Metrics.spacingSm
 
             Text {
                 width: parent.width
                 text: notificationBanner.bannerTitle
-                color: "white"
+                color: Theme.bannerTitleText
                 font.bold: true
-                font.pixelSize: Responsive.fontSubheading
+                font.pixelSize: Typography.fontSubheading
                 elide: Text.ElideRight
             }
 
             Text {
                 width: parent.width
                 text: notificationBanner.bannerMessage
-                color: "#C9D6EA"
-                font.pixelSize: Responsive.fontBody
+                color: Theme.bannerSubText
+                font.pixelSize: Typography.fontBody
                 elide: Text.ElideRight
             }
         }

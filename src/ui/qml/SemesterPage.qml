@@ -31,30 +31,30 @@ Item {
         // ---------------------------------------------------------------- 学期表单
         ScrollView {
             // 宽屏时占左侧固定宽度；窄屏时改为限制纵向高度（-1 表示不参与该方向的分配）
-            SplitView.preferredWidth: semesterPage.wideLayout ? 320 : -1
-            SplitView.minimumWidth: semesterPage.wideLayout ? 260 : -1
-            SplitView.preferredHeight: semesterPage.wideLayout ? -1 : 300
-            SplitView.minimumHeight: semesterPage.wideLayout ? -1 : 200
+            SplitView.preferredWidth: semesterPage.wideLayout ? Metrics.sidePanelWidth : -1
+            SplitView.minimumWidth: semesterPage.wideLayout ? Metrics.sidePanelMinWidth : -1
+            SplitView.preferredHeight: semesterPage.wideLayout ? -1 : Metrics.stackedPanelHeight
+            SplitView.minimumHeight: semesterPage.wideLayout ? -1 : Metrics.stackedPanelMinHeight
             clip: true
 
             ColumnLayout {
                 width: parent.width
-                spacing: 10
+                spacing: Metrics.spacingXl
 
                 Label {
-                    Layout.margins: Responsive.margin
+                    Layout.margins: Metrics.spacing2xl
                     text: qsTr("学期设置")
                     font.bold: true
-                    font.pixelSize: Responsive.fontHeading
-                    color: Responsive.textPrimary
+                    font.pixelSize: Typography.fontHeading
+                    color: Theme.textPrimary
                 }
 
                 GridLayout {
-                    Layout.margins: Responsive.margin
+                    Layout.margins: Metrics.spacing2xl
                     Layout.fillWidth: true
                     columns: 2
-                    columnSpacing: 8
-                    rowSpacing: 8
+                    columnSpacing: Metrics.spacingLg
+                    rowSpacing: Metrics.spacingLg
 
                     Label {
                         text: qsTr("学期名称")
@@ -97,24 +97,24 @@ Item {
                     id: saveSemesterButton
 
                     objectName: "saveSemesterButton"
-                    Layout.margins: Responsive.margin
+                    Layout.margins: Metrics.spacing2xl
                     Layout.fillWidth: true
                     text: schedule.hasSemester ? qsTr("保存学期信息") : qsTr("创建学期")
                 }
 
                 Label {
-                    Layout.margins: Responsive.margin
+                    Layout.margins: Metrics.spacing2xl
                     Layout.fillWidth: true
                     text: schedule.hasSemester ? qsTr("当前：%1\n%2 ~ %3（共 %4 周）").arg(schedule.semesterName).arg(schedule.semesterStartDate).arg(schedule.semesterEndDate).arg(schedule.totalWeeks) : qsTr("尚未创建学期")
-                    color: Responsive.textSecondary
+                    color: Theme.textSecondary
                     wrapMode: Text.WordWrap
                 }
 
                 Label {
-                    Layout.margins: Responsive.margin
+                    Layout.margins: Metrics.spacing2xl
                     Layout.fillWidth: true
                     text: qsTr("共 %1 门课程 · %2").arg(schedule.courseCount).arg(schedule.conflictSummary)
-                    color: schedule.hasBlockingConflicts ? Responsive.danger : Responsive.success
+                    color: schedule.hasBlockingConflicts ? Theme.danger : Theme.success
                     wrapMode: Text.WordWrap
                 }
 
@@ -133,20 +133,20 @@ Item {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.margins: Responsive.margin
-                spacing: Responsive.spacing
+                Layout.margins: Metrics.spacing2xl
+                spacing: Metrics.spacingLg
 
                 Label {
                     text: qsTr("课程列表")
                     font.bold: true
-                    font.pixelSize: Responsive.fontHeading
-                    color: Responsive.textPrimary
+                    font.pixelSize: Typography.fontHeading
+                    color: Theme.textPrimary
                 }
 
                 // 用 Flow 承载操作按钮：窄屏自动换行，不会被挤出视口
                 Flow {
                     Layout.fillWidth: true
-                    spacing: Responsive.spacing
+                    spacing: Metrics.spacingLg
 
                     Button {
                         id: pageNewCourseButton
@@ -177,62 +177,62 @@ Item {
                 objectName: "courseList"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.margins: Responsive.margin
+                Layout.margins: Metrics.spacing2xl
                 clip: true
-                spacing: 6
+                spacing: ListItemStyle.spacing
                 model: schedule.courseModel
 
                 delegate: Rectangle {
                     width: courseList.width
-                    height: 62
-                    radius: 6
-                    color: ListView.isCurrentItem ? "#E8F0FF" : "#FFFFFF"
-                    border.width: 1
-                    border.color: ListView.isCurrentItem ? "#9FBEF5" : Responsive.border
+                    height: ListItemStyle.heightTall
+                    radius: ListItemStyle.radiusTall
+                    color: ListView.isCurrentItem ? Theme.selectionBg : Theme.surface
+                    border.width: ListItemStyle.borderWidth
+                    border.color: ListView.isCurrentItem ? Theme.selectionBorder : Theme.border
 
                     Rectangle {
                         id: colorBar
 
-                        width: 6
-                        height: parent.height - 16
+                        width: ListItemStyle.colorBarWidth
+                        height: parent.height - ListItemStyle.colorBarVerticalInset
                         anchors.left: parent.left
-                        anchors.leftMargin: 6
+                        anchors.leftMargin: ListItemStyle.colorBarInset
                         anchors.verticalCenter: parent.verticalCenter
-                        radius: 3
+                        radius: ListItemStyle.colorBarRadius
                         color: model.color
                     }
 
                     Column {
                         anchors.left: colorBar.right
-                        anchors.leftMargin: 10
+                        anchors.leftMargin: ListItemStyle.textInset
                         anchors.right: parent.right
-                        anchors.rightMargin: 10
+                        anchors.rightMargin: ListItemStyle.textInset
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 2
+                        spacing: ListItemStyle.textSpacing
 
                         Text {
                             width: parent.width
                             text: model.name + (model.code.length > 0 ? "（" + model.code + "）" : "")
                             font.bold: true
-                            font.pixelSize: Responsive.fontSubheading
+                            font.pixelSize: Typography.fontSubheading
                             elide: Text.ElideRight
-                            color: Responsive.textPrimary
+                            color: Theme.textPrimary
                         }
 
                         Text {
                             width: parent.width
                             text: model.daySummary.length > 0 ? model.daySummary : qsTr("未设置上课时间")
-                            font.pixelSize: Responsive.fontBody
+                            font.pixelSize: Typography.fontBody
                             elide: Text.ElideRight
-                            color: Responsive.textSecondary
+                            color: Theme.textSecondary
                         }
 
                         Text {
                             width: parent.width
                             text: (model.location.length > 0 ? model.location + " · " : "") + (model.teacher.length > 0 ? model.teacher + " · " : "") + model.weekDisplay
-                            font.pixelSize: Responsive.fontSmall
+                            font.pixelSize: Typography.fontSmall
                             elide: Text.ElideRight
-                            color: Responsive.textMuted
+                            color: Theme.textMuted
                         }
                     }
 
@@ -252,20 +252,20 @@ Item {
                     visible: schedule.courseCount === 0
                     text: qsTr("还没有课程\n点击“新建课程”开始录入")
                     horizontalAlignment: Text.AlignHCenter
-                    color: Responsive.textMuted
+                    color: Theme.textMuted
                 }
             }
 
             // 冲突列表
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.margins: Responsive.margin
-                spacing: 4
+                Layout.margins: Metrics.spacing2xl
+                spacing: Metrics.spacingSm
 
                 Label {
                     text: schedule.conflictSummary
                     font.bold: true
-                    color: schedule.hasBlockingConflicts ? Responsive.danger : Responsive.success
+                    color: schedule.hasBlockingConflicts ? Theme.danger : Theme.success
                 }
 
                 Repeater {
@@ -274,7 +274,7 @@ Item {
                     delegate: Label {
                         Layout.fillWidth: true
                         text: "• " + modelData.message
-                        color: modelData.blocking ? Responsive.danger : Responsive.warning
+                        color: modelData.blocking ? Theme.danger : Theme.warning
                         wrapMode: Text.WordWrap
                     }
                 }

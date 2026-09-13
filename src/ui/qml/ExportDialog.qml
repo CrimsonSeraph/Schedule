@@ -17,7 +17,7 @@ import QtQuick.Dialogs
 //  - 整个内容套一层 ScrollView：低高度屏幕（横屏 / 分屏）可以整体滚动；
 //  - 导出设置 GridLayout 在窄屏降为单列，输入框保持 fillWidth；
 //  - 目录按钮行与底部按钮行改用 Flow，窄屏自动换行；
-//  - 对话框尺寸继续用 Math.min 限制在父窗口内。
+//  - 对话框尺寸由 Responsive.dialogWidth/Height 限制在父窗口内。
 Dialog {
     id: exportDialog
 
@@ -26,8 +26,8 @@ Dialog {
     title: qsTr("导出课表")
     modal: true
     closePolicy: Popup.CloseOnEscape
-    width: Math.min(620, parent ? parent.width - 40 : 620)
-    height: Math.min(460, parent ? parent.height - 40 : 460)
+    width: Responsive.dialogWidth(Responsive.exportDialogWidth, parent ? parent.width : -1)
+    height: Responsive.dialogHeight(Responsive.exportDialogHeight, parent ? parent.height : -1)
     anchors.centerIn: parent
 
     // 窄表单：标签在上、输入框在下
@@ -44,7 +44,7 @@ Dialog {
 
         ColumnLayout {
             width: exportScroll.width
-            spacing: 10
+            spacing: Metrics.spacingXl
 
             GroupBox {
                 Layout.fillWidth: true
@@ -53,8 +53,8 @@ Dialog {
                 GridLayout {
                     anchors.fill: parent
                     columns: exportDialog.narrowForm ? 1 : 2
-                    columnSpacing: 8
-                    rowSpacing: 8
+                    columnSpacing: Metrics.spacingLg
+                    rowSpacing: Metrics.spacingLg
 
                     Label {
                         text: qsTr("文件格式")
@@ -84,7 +84,7 @@ Dialog {
                     Flow {
                         Layout.fillWidth: true
                         Layout.columnSpan: exportDialog.narrowForm ? 1 : 2
-                        spacing: Responsive.spacing
+                        spacing: Metrics.spacingLg
 
                         Button {
                             id: exportChooseDirButton
@@ -106,25 +106,25 @@ Dialog {
             GroupBox {
                 Layout.fillWidth: true
                 // 外层是 ScrollView（高度不定），这里给出有限的预览高度
-                Layout.preferredHeight: Math.max(120, Math.min(220, Math.round(exportDialog.height * 0.35)))
+                Layout.preferredHeight: Responsive.exportPreviewHeight(exportDialog.height)
                 title: qsTr("导出结果")
 
                 ColumnLayout {
                     anchors.fill: parent
-                    spacing: 6
+                    spacing: Metrics.spacingMd
 
                     Label {
                         Layout.fillWidth: true
                         text: schedule.importExport.lastExportSummary.length > 0 ? schedule.importExport.lastExportSummary : qsTr("尚未导出。文件名规则：Schedule_<学期>_<yyyyMMdd_HHmmss>.<扩展名>")
                         wrapMode: Text.WordWrap
-                        color: schedule.importExport.lastExportPath.length > 0 ? Responsive.success : Responsive.textSecondary
+                        color: schedule.importExport.lastExportPath.length > 0 ? Theme.success : Theme.textSecondary
                     }
 
                     Label {
                         Layout.fillWidth: true
                         text: schedule.importExport.lastExportPath
                         wrapMode: Text.WrapAnywhere
-                        color: Responsive.accentStrong
+                        color: Theme.accentStrong
                         font.bold: true
                     }
 
@@ -136,21 +136,21 @@ Dialog {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: Responsive.spacing
+                spacing: Metrics.spacingLg
 
                 Label {
                     Layout.fillWidth: true
                     text: schedule.importExport.lastError
-                    color: Responsive.danger
+                    color: Theme.danger
                     wrapMode: Text.WordWrap
-                    font.pixelSize: Responsive.fontSmall
+                    font.pixelSize: Typography.fontSmall
                 }
 
                 // Flow：窄屏时“导出 / 关闭”自动换行，不会被挤出对话框
                 Flow {
                     Layout.fillWidth: true
                     layoutDirection: Qt.RightToLeft
-                    spacing: Responsive.spacing
+                    spacing: Metrics.spacingLg
 
                     Button {
                         id: exportConfirmButton

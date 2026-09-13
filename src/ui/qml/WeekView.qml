@@ -23,16 +23,16 @@ Item {
     objectName: "weekView"
 
     // 每一节的首选高度（像素）；实际高度见 effectiveSlotHeight
-    property int slotHeight: 64
+    property int slotHeight: Metrics.weekSlotHeight
 
     // 每一节的最小高度：再矮就不再压缩，改用纵向滚动承载
-    property int minSlotHeight: 34
+    property int minSlotHeight: Metrics.weekSlotMinHeight
 
     // 左侧节次栏宽度
-    property int slotColumnWidth: 76
+    property int slotColumnWidth: Metrics.weekSlotColumnWidth
 
     // 星期表头高度
-    property int headerHeight: 38
+    property int headerHeight: Metrics.weekHeaderHeight
 
     // 单个星期列的最小可读宽度：再窄就横向滚动，不再继续压缩（常量见 Responsive）
     property int minDayWidth: Responsive.minDayWidth
@@ -67,13 +67,13 @@ Item {
         // 横向滚动提示：纯展示文本，不带任何交互（不需要 objectName 与 C++ 连接）
         Label {
             Layout.fillWidth: true
-            Layout.leftMargin: 10
-            Layout.rightMargin: 10
-            Layout.topMargin: 6
+            Layout.leftMargin: Metrics.spacingXl
+            Layout.rightMargin: Metrics.spacingXl
+            Layout.topMargin: Metrics.spacingMd
             visible: weekView.horizontallyScrollable
             text: qsTr("屏幕较窄：左右滑动查看整周，或切换到“日视图”")
-            color: Responsive.warning
-            font.pixelSize: Responsive.fontSmall
+            color: Theme.warning
+            font.pixelSize: Typography.fontSmall
             elide: Text.ElideRight
         }
 
@@ -103,9 +103,9 @@ Item {
 
                         width: weekView.dayWidth
                         height: weekView.headerHeight
-                        color: (dayHeader.dayIndex === schedule.selectedDay) ? "#D6E4FF" : "#EEF3FB"
-                        border.width: 1
-                        border.color: "#DCE3ED"
+                        color: (dayHeader.dayIndex === schedule.selectedDay) ? Theme.headerBgSelected : Theme.headerBg
+                        border.width: Metrics.borderWidth
+                        border.color: Theme.headerBorder
 
                         Column {
                             anchors.centerIn: parent
@@ -115,17 +115,17 @@ Item {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: schedule.day_name(dayHeader.dayIndex)
                                 font.bold: true
-                                font.pixelSize: weekView.dayWidth < 72 ? 11 : 13
-                                color: (dayHeader.dayIndex === schedule.selectedDay) ? Responsive.accentStrong : Responsive.textStrong
+                                font.pixelSize: weekView.dayWidth < Responsive.dayHeaderCompactWidth ? Typography.fontSmall : Typography.fontBodyLarge
+                                color: (dayHeader.dayIndex === schedule.selectedDay) ? Theme.accentStrong : Theme.textStrong
                             }
 
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 // 列太窄时隐藏日期，只留星期，避免文字互相挤压
-                                visible: weekView.dayWidth >= 52
+                                visible: weekView.dayWidth >= Responsive.dayHeaderDateWidth
                                 text: schedule.week_date_text(schedule.selectedWeek, dayHeader.dayIndex)
-                                font.pixelSize: Responsive.fontCaption
-                                color: "#6B7A90"
+                                font.pixelSize: Typography.fontCaption
+                                color: Theme.textSubtle
                             }
                         }
                     }
@@ -175,37 +175,37 @@ Item {
                         delegate: Rectangle {
                             width: weekView.slotColumnWidth
                             height: weekView.effectiveSlotHeight
-                            color: "#F7F9FC"
-                            border.width: 1
-                            border.color: Responsive.border
+                            color: Theme.surfaceAlt
+                            border.width: Metrics.borderWidth
+                            border.color: Theme.border
 
                             Column {
                                 anchors.centerIn: parent
-                                spacing: 1
+                                spacing: Metrics.spacing2xs
 
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: modelData.label
-                                    font.pixelSize: Responsive.fontSmall
+                                    font.pixelSize: Typography.fontSmall
                                     font.bold: true
-                                    color: Responsive.textStrong
+                                    color: Theme.textStrong
                                 }
 
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     // 节次高度被压缩时省略上下课时间，优先保住节次名
-                                    visible: weekView.effectiveSlotHeight >= 48 && modelData.start.length > 0
+                                    visible: weekView.effectiveSlotHeight >= Responsive.slotTimeVisibleHeight && modelData.start.length > 0
                                     text: modelData.start
-                                    font.pixelSize: 9
-                                    color: "#7A8798"
+                                    font.pixelSize: Typography.fontTiny
+                                    color: Theme.slotTimeText
                                 }
 
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    visible: weekView.effectiveSlotHeight >= 48 && modelData.end.length > 0
+                                    visible: weekView.effectiveSlotHeight >= Responsive.slotTimeVisibleHeight && modelData.end.length > 0
                                     text: modelData.end
-                                    font.pixelSize: 9
-                                    color: "#7A8798"
+                                    font.pixelSize: Typography.fontTiny
+                                    color: Theme.slotTimeText
                                 }
                             }
                         }
@@ -226,9 +226,9 @@ Item {
 
                         Rectangle {
                             anchors.fill: parent
-                            color: (dayColumn.dayIndex % 2 === 0) ? "#FBFCFE" : "#FFFFFF"
-                            border.width: 1
-                            border.color: "#EDF1F7"
+                            color: (dayColumn.dayIndex % 2 === 0) ? Theme.surfaceSubtle : Theme.surface
+                            border.width: Metrics.borderWidth
+                            border.color: Theme.divider
                         }
 
                         // 节次分隔线
@@ -237,9 +237,9 @@ Item {
 
                             delegate: Rectangle {
                                 width: parent.width
-                                height: 1
+                                height: Metrics.borderWidth
                                 y: index * weekView.effectiveSlotHeight
-                                color: "#EDF1F7"
+                                color: Theme.divider
                             }
                         }
 
@@ -249,10 +249,10 @@ Item {
 
                             delegate: CourseCard {
                                 visible: model.dayOfWeek === dayColumn.dayIndex
-                                x: 2
-                                y: (model.startSlot - 1) * weekView.effectiveSlotHeight + 2
-                                width: Math.max(24, dayColumn.width - 4)
-                                height: Math.max(24, model.rowSpan * weekView.effectiveSlotHeight - 4)
+                                x: CourseCardStyle.inset
+                                y: (model.startSlot - 1) * weekView.effectiveSlotHeight + CourseCardStyle.inset
+                                width: Math.max(CourseCardStyle.minRenderWidth, dayColumn.width - CourseCardStyle.inset * 2)
+                                height: Math.max(CourseCardStyle.minRenderHeight, model.rowSpan * weekView.effectiveSlotHeight - CourseCardStyle.inset * 2)
 
                                 courseId: model.courseId
                                 courseName: model.courseName
@@ -262,7 +262,7 @@ Item {
                                 timeText: model.startTime + "-" + model.endTime
                                 weeksText: model.weeksDisplay
                                 // 显式覆盖仅在极矮卡片时生效，其余交给 CourseCard 的尺寸自适应
-                                compact: height < 58
+                                compact: height < CourseCardStyle.compactHeight
                             }
                         }
                     }
