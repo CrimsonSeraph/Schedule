@@ -46,10 +46,57 @@ Dialog {
             width: wizardScroll.width
             spacing: Metrics.spacingXl
 
+            // ------------------------------------------------------------ 从教务导入
+            GroupBox {
+                Layout.fillWidth: true
+                title: qsTr("从教务导入")
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: Metrics.spacingLg
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("在内嵌浏览器里登录教务系统并停留在课表页面，再点「导入课表」即可直接抓取；也可在列表中选择已适配学校的直达入口。")
+                        wrapMode: Text.WordWrap
+                        color: Theme.textSecondary
+                        font.pixelSize: Typography.fontBody
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("已适配的课表类型：%1").arg(schedule.importExport.adaptedTimetableTypes.join(qsTr("；")))
+                        wrapMode: Text.WordWrap
+                        color: Theme.textMuted
+                        font.pixelSize: Typography.fontSmall
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("隐私说明：只接收登录后页面的内容，不接收也不保存密码，Cookie 仅驻留内存，不做后台同步。")
+                        wrapMode: Text.WordWrap
+                        color: Theme.warning
+                        font.pixelSize: Typography.fontSmall
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: Metrics.spacingLg
+
+                        Button {
+                            id: importFromWebButton
+
+                            objectName: "importFromWebButton"
+                            text: qsTr("从教务导入…")
+                        }
+                    }
+                }
+            }
+
             // -------------------------------------------------------------- 选择文件
             GroupBox {
                 Layout.fillWidth: true
-                title: qsTr("第 1 步：选择文件")
+                title: qsTr("或：从文件导入")
 
                 RowLayout {
                     anchors.fill: parent
@@ -79,7 +126,7 @@ Dialog {
                 // 外层是 ScrollView（高度不定），这里给出与对话框高度相关的有限高度
                 Layout.preferredHeight: Responsive.importPreviewHeight(importWizard.height)
                 Layout.minimumHeight: Responsive.importPreviewLayoutMinimum
-                title: qsTr("第 2 步：预览与冲突检查")
+                title: qsTr("预览与冲突检查")
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -143,7 +190,7 @@ Dialog {
             // ---------------------------------------------------------------- 策略
             GroupBox {
                 Layout.fillWidth: true
-                title: qsTr("第 3 步：合并策略")
+                title: qsTr("合并策略")
 
                 ColumnLayout {
                     anchors.fill: parent

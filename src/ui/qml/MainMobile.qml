@@ -281,6 +281,10 @@ ApplicationWindow {
         id: importWizard
     }
 
+    BrowserImportDialog {
+        id: browserImportDialog
+    }
+
     ExportDialog {
         id: exportDialog
     }

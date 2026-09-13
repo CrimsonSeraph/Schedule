@@ -94,6 +94,20 @@ namespace Schedule {
         return names;
     }
 
+    QStringList ImportExportBridge::adapted_timetable_types() const {
+        QStringList names;
+        for (const ScheduleFormat format : m_import_manager.supported_formats()) {
+            const IScheduleImporter* importer = m_import_manager.importer_for_format(format);
+            if (!importer) {
+                continue;
+            }
+            const QString extensions = importer->extensions().join(QLatin1Char(' '));
+            names.append(extensions.isEmpty() ? importer->display_name()
+                                              : QStringLiteral("%1 · %2").arg(importer->display_name(), extensions));
+        }
+        return names;
+    }
+
     QString ImportExportBridge::last_export_path() const {
         return m_last_export_path;
     }
@@ -144,6 +158,68 @@ namespace Schedule {
         const QString age_text = age < 0 ? QStringLiteral("刚刚获取")
                                          : QStringLiteral("已获取 %1 小时").arg(QString::number(age, 'f', 1));
         return QStringLiteral("已提供 Cookie（%1，仅内存保存）").arg(age_text);
+    }
+
+    QString ImportExportBridge::web_browser_backend() const {
+        // 后端由 CMake 在编译期判定（见根 CMakeLists 的 SCHEDULE_BROWSER_BACKEND）
+#if defined(Schedule_HAS_WEBVIEW)
+        return QStringLiteral("webview");
+#elif defined(Schedule_HAS_WEBENGINE)
+        return QStringLiteral("webengine");
+#else
+        return QStringLiteral("none");
+#endif
+    }
+
+    bool ImportExportBridge::has_embedded_browser() const {
+        return web_browser_backend() != QStringLiteral("none");
+    }
+
+    QVariantList ImportExportBridge::browser_entries() const {
+        QVariantList entries;
+
+        // 固定项：不预设地址，用户在内嵌浏览器里自行登录并走到课表页
+        QVariantMap manual;
+        manual.insert(QStringLiteral("id"), QStringLiteral("manual"));
+        manual.insert(QStringLiteral("name"), QStringLiteral("打开内置浏览器（自行前往课表页）"));
+        manual.insert(QStringLiteral("description"),
+            QStringLiteral("在应用内打开浏览器，登录教务系统后停留在课表页面，再点“导入课表”。"));
+        manual.insert(QStringLiteral("url"), QString());
+        manual.insert(QStringLiteral("adapted"), false);
+        entries.append(manual);
+
+        if (!m_adapter_registry) {
+            return entries;
+        }
+
+        for (const AdapterInfo& info : m_adapter_registry->adapters()) {
+            // 直达入口优先用登录页；没有登录页时退回数据地址
+            const QString url = !info.login_url.trimmed().isEmpty() ? info.login_url.trimmed() : info.schedule_url.trimmed();
+
+            // 只有 http(s) 才能交给浏览器：本地样本适配器的地址是文件路径，
+            // 未配置地址的实验性适配器则是空串，两者都不应出现在入口列表里。
+            if (!url.startsWith(QStringLiteral("http://"), Qt::CaseInsensitive)
+                && !url.startsWith(QStringLiteral("https://"), Qt::CaseInsensitive)) {
+                continue;
+            }
+
+            QVariantMap entry;
+            entry.insert(QStringLiteral("id"), info.id);
+            entry.insert(QStringLiteral("name"), info.name);
+            entry.insert(QStringLiteral("description"), info.description);
+            entry.insert(QStringLiteral("url"), url);
+            entry.insert(QStringLiteral("adapted"), true);
+            entries.append(entry);
+        }
+        return entries;
+    }
+
+    QString ImportExportBridge::web_capture_summary() const {
+        return m_web_capture_summary;
+    }
+
+    QString ImportExportBridge::web_capture_source() const {
+        return m_web_capture_source;
     }
 
     int ImportExportBridge::format_index_of(const QString& machine_name) const {
@@ -267,6 +343,43 @@ namespace Schedule {
     void ImportExportBridge::clear_adapter_session() {
         m_adapter_session.clear();
         emit adaptersChanged();
+    }
+
+    void ImportExportBridge::submit_web_capture(const QString& page_html, const QString& source_url) {
+        if (!m_service) {
+            report_error(QStringLiteral("课表服务尚未就绪"));
+            return;
+        }
+
+        const QByteArray data = page_html.toUtf8();
+        m_web_capture_source = source_url;
+
+        if (data.isEmpty()) {
+            m_web_capture_summary = QStringLiteral("当前页面没有可导入的内容");
+            m_pending_preview = ImportPreview();
+            emit webCaptureChanged();
+            report_error(m_web_capture_summary);
+            emit webCaptureFinished(false, m_web_capture_summary);
+            return;
+        }
+
+        set_progress(30, QStringLiteral("正在解析抓取到的页面…"));
+
+        // 复用文件导入的同一套入口：格式嗅探 → 解析 → 冲突检测 → 预览
+        const QString source = source_url.isEmpty() ? QStringLiteral("browser://current") : source_url;
+        m_pending_preview = m_import_manager.preview_data(data, source, m_service->snapshot());
+
+        set_progress(100, QStringLiteral("解析完成"));
+        m_web_capture_summary = m_pending_preview.is_valid ? m_pending_preview.summary() : m_pending_preview.error_message;
+
+        emit previewChanged();
+        emit webCaptureChanged();
+        emit importPreviewReady(m_pending_preview.is_valid, m_web_capture_summary);
+        emit webCaptureFinished(m_pending_preview.is_valid, m_web_capture_summary);
+
+        if (!m_pending_preview.is_valid) {
+            report_error(m_pending_preview.error_message);
+        }
     }
 
     void ImportExportBridge::import_from_adapter(int index, const QString& cookie_header) {

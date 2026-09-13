@@ -78,6 +78,13 @@ namespace Schedule {
         /** 全部导出格式的展示名，供 ComboBox 使用。 */
         Q_PROPERTY(QStringList formatNames READ format_names CONSTANT)
 
+        /**
+         * 已适配的课表类型（`展示名 · 扩展名`），来自已注册的导入器。
+         *
+         * 由注册表实时派生而不是在 QML 里硬编码，新增导入器后界面说明自动同步。
+         */
+        Q_PROPERTY(QStringList adaptedTimetableTypes READ adapted_timetable_types CONSTANT)
+
         /** 最近一次导出的**实际文件路径**（失败时为空）。 */
         Q_PROPERTY(QString lastExportPath READ last_export_path NOTIFY exportFinishedChanged)
 
@@ -98,6 +105,32 @@ namespace Schedule {
 
         /** 适配器会话状态文本（是否已粘贴 Cookie、凭证年龄）。 */
         Q_PROPERTY(QString adapterSessionStatus READ adapter_session_status NOTIFY adaptersChanged)
+
+        /**
+         * 内嵌浏览器后端：`webview` / `webengine` / `none`。
+         *
+         * 由 CMake 在**编译期**判定后经编译定义注入，运行期不变，故为 `CONSTANT`。
+         * QML 依据它选择对应的浏览器实现文件；`none` 时只提供“用系统浏览器打开”。
+         */
+        Q_PROPERTY(QString webBrowserBackend READ web_browser_backend CONSTANT)
+
+        /** 是否具备内嵌浏览器（`webBrowserBackend != "none"`）。 */
+        Q_PROPERTY(bool hasEmbeddedBrowser READ has_embedded_browser CONSTANT)
+
+        /**
+         * “从教务导入”的可选入口列表。
+         *
+         * 固定第一项是**打开内置浏览器**（不预设地址，由用户自行前往课表页），
+         * 其后是已注册适配器中带 http(s) 入口的项（登录页优先，退回数据地址）。
+         * 落地页（本地文件路径）与未配置地址的适配器不会出现，避免给出无效入口。
+         */
+        Q_PROPERTY(QVariantList browserEntries READ browser_entries NOTIFY adaptersChanged)
+
+        /** 最近一次网页抓取的摘要（成功为“已抓取 N 字节…”，失败为中文原因）。 */
+        Q_PROPERTY(QString webCaptureSummary READ web_capture_summary NOTIFY webCaptureChanged)
+
+        /** 最近一次抓取的来源地址（用于预览提示与导入留痕）。 */
+        Q_PROPERTY(QString webCaptureSource READ web_capture_source NOTIFY webCaptureChanged)
 
     public:
         /**
@@ -126,6 +159,7 @@ namespace Schedule {
         QVariantList preview_conflicts() const;
         QStringList strategy_names() const;
         QStringList format_names() const;
+        QStringList adapted_timetable_types() const;
         QString last_export_path() const;
         QString last_export_summary() const;
         QString last_import_summary() const;
@@ -133,6 +167,11 @@ namespace Schedule {
         int progress() const;
         QVariantList adapter_options() const;
         QString adapter_session_status() const;
+        QString web_browser_backend() const;
+        bool has_embedded_browser() const;
+        QVariantList browser_entries() const;
+        QString web_capture_summary() const;
+        QString web_capture_source() const;
 
         /** @return 由 `formatNames()` 下标解析格式；越界返回 JSON。 */
         Q_INVOKABLE int format_index_of(const QString& machine_name) const;
@@ -203,6 +242,19 @@ namespace Schedule {
         /** @brief 立即擦除内存中的适配器会话凭证。 */
         void clear_adapter_session();
 
+        /**
+         * @brief 提交内嵌浏览器抓取到的页面内容并生成导入预览。
+         *
+         * 与文件导入走**完全相同**的流程：格式嗅探（`ImportManager::preview_data`）
+         * → 冲突检测 → 预览；用户确认后再调用 `apply_import()`。
+         *
+         * @param page_html  当前页面的 HTML 原文
+         * @param source_url 页面地址，仅用于错误信息与导入留痕
+         *
+         * @note 只接收**页面内容**：不接收也不保存密码，不读取浏览器 Cookie。
+         */
+        void submit_web_capture(const QString& page_html, const QString& source_url);
+
     signals:
         /** 目录相关设置变化后发出（QML 据此刷新显示）。 */
         void directoriesChanged();
@@ -232,6 +284,16 @@ namespace Schedule {
 
         /** 适配器列表或会话状态变化后发出。 */
         void adaptersChanged();
+
+        /** 网页抓取结果变化后发出。 */
+        void webCaptureChanged();
+
+        /**
+         * @brief 网页抓取完成并已生成预览。
+         * @param success 是否成功
+         * @param message 面向用户的中文摘要（成功为预览摘要，失败为原因）
+         */
+        void webCaptureFinished(bool success, const QString& message);
 
         /**
          * @brief 导出完成。
@@ -302,6 +364,12 @@ namespace Schedule {
 
         /** 最近一次错误。 */
         QString m_last_error;
+
+        /** 最近一次网页抓取的摘要。 */
+        QString m_web_capture_summary;
+
+        /** 最近一次网页抓取的来源地址。 */
+        QString m_web_capture_source;
 
         /** 进度百分比。 */
         int m_progress = 0;

@@ -157,6 +157,18 @@ namespace Schedule {
         /** @brief 导入向导。 */
         void connect_import_wizard();
 
+        /** @brief 「从教务导入」内嵌浏览器对话框。 */
+        void connect_browser_import();
+
+        /** @brief 打开「从教务导入」对话框并导航到当前选中入口。 */
+        void open_browser_import();
+
+        /** @brief 把选中入口的地址回填到地址栏（切换入口时调用）。 */
+        void sync_browser_url_field();
+
+        /** @brief 用地址栏内容驱动内嵌浏览器导航。 */
+        void navigate_browser_to_entry();
+
         /** @brief 导出对话框。 */
         void connect_export_dialog();
 
@@ -273,6 +285,9 @@ namespace Schedule {
 
         /** 导出对话框。 */
         QPointer<QObject> m_export_dialog;
+
+        /** 「从教务导入」内嵌浏览器对话框。 */
+        QPointer<QObject> m_browser_dialog;
 
         /** 已连接课卡热区，避免重复连接。 */
         QSet<QObject*> m_connected_cards;

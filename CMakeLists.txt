@@ -42,6 +42,58 @@ find_package(Qt6 6.9.3 REQUIRED COMPONENTS Core Gui Qml Quick QuickDialogs2 Sql)
 # Qt 推荐的项目级初始化（启用 AUTOMOC/AUTOUIC/AUTORCC，采纳 Qt 策略默认值）
 qt_standard_project_setup()
 
+# ---------------------------------------------------------- 内嵌浏览器抓取（可选）
+# 用途：让用户在应用内打开教务系统页面，并直接从**当前页面**抓取课表。
+# 隐私：只用内嵌 Web 组件承载用户自己的登录会话，应用**不读取、不保存**任何 Cookie 或密码。
+#
+# 外观上是三选一，实际由**编译期**决定（QML 侧通过 schedule.importExport.webBrowserBackend 读取）：
+#   webview   → Qt WebView，复用系统原生 Web 组件（Android WebView / WKWebView 等），体积小
+#   webengine → Qt WebEngine，自带 Chromium
+#   none      → 不链接任何 Web 组件，界面只保留“系统浏览器打开 + 文件导入”的兜底路径
+option(SCHEDULE_ENABLE_EMBEDDED_BROWSER "启用内嵌浏览器抓取课表（关闭则回退系统浏览器 + 文件导入）" ON)
+
+set(SCHEDULE_BROWSER_BACKEND "none")
+
+if(SCHEDULE_ENABLE_EMBEDDED_BROWSER)
+	# 桌面平台上 Qt WebView 只是外壳，真正渲染的是 <Qt>/plugins/webview 下的后端插件
+	# （Windows 官方包为 qtwebview_webengine，Linux 为 qtwebview_qtwebengine）。
+	# 官方 MinGW 套件**不附带**该插件：照常启用的话程序启动后只会打印
+	# “No WebView plug-in found!”，WebView 完全不可用。因此必须在配置期就识别并排除，
+	# 让它直接落到 WebEngine 或 none。Android / iOS 的后端由平台自身提供，无需插件目录。
+	if(ANDROID OR IOS)
+		set(SCHEDULE_HAS_WEBVIEW_BACKEND TRUE)
+	else()
+		set(SCHEDULE_HAS_WEBVIEW_BACKEND FALSE)
+		if(Qt6_DIR)
+			# Qt6_DIR 形如 <Qt>/lib/cmake/Qt6，回退三级即安装前缀
+			get_filename_component(_schedule_qt_prefix "${Qt6_DIR}/../../.." ABSOLUTE)
+			set(_schedule_webview_plugin_dir "${_schedule_qt_prefix}/plugins/webview")
+			if(EXISTS "${_schedule_webview_plugin_dir}")
+				file(GLOB _schedule_webview_backends "${_schedule_webview_plugin_dir}/*")
+				if(_schedule_webview_backends)
+					set(SCHEDULE_HAS_WEBVIEW_BACKEND TRUE)
+				endif()
+			endif()
+		endif()
+	endif()
+
+	find_package(Qt6 6.9.3 QUIET COMPONENTS WebView WebChannel)
+	if(Qt6WebView_FOUND AND Qt6WebChannel_FOUND AND SCHEDULE_HAS_WEBVIEW_BACKEND)
+		set(SCHEDULE_BROWSER_BACKEND "webview")
+	else()
+		find_package(Qt6 6.9.3 QUIET COMPONENTS WebEngineQuick)
+		if(Qt6WebEngineQuick_FOUND)
+			set(SCHEDULE_BROWSER_BACKEND "webengine")
+		endif()
+	endif()
+endif()
+
+if(SCHEDULE_BROWSER_BACKEND STREQUAL "none")
+	message(STATUS "内嵌浏览器：未启用（回退到系统浏览器 + 文件导入）")
+else()
+	message(STATUS "内嵌浏览器后端：${SCHEDULE_BROWSER_BACKEND}")
+endif()
+
 # 子模块（按阶段逐步启用）
 # 阶段 1: 核心层，纯 C++，仅依赖 Qt6::Core
 add_subdirectory(src/core)

@@ -6,6 +6,7 @@
 
 #include <QAbstractItemModel>
 #include <QDebug>
+#include <QDesktopServices>
 #include <QMetaMethod>
 #include <QMetaObject>
 #include <QQuickItem>
@@ -218,6 +219,7 @@ namespace Schedule {
         m_course_detail = find("courseDetailDialog");
         m_import_wizard = find("importWizard");
         m_export_dialog = find("exportDialog");
+        m_browser_dialog = find("browserImportDialog");
 
         int count = 0;
         Q_UNUSED(count);
@@ -230,6 +232,7 @@ namespace Schedule {
         connect_course_editor();
         connect_course_detail();
         connect_import_wizard();
+        connect_browser_import();
         connect_export_dialog();
         connect_reminders();
         connect_school_adapters();
@@ -566,11 +569,88 @@ namespace Schedule {
             invoke(m_import_wizard, "close");
         });
 
+        on_signal("importFromWebButton", "clicked()", [this]() { open_browser_import(); });
+
         on_click("importCancelButton", [this]() {
             auto* io = import_export();
             io->cancel_import();
             invoke(m_import_wizard, "close");
         });
+    }
+
+    void UiConnector::open_browser_import() {
+        if (!m_browser_dialog) {
+            return;
+        }
+        // 打开时把选中入口的地址回填到地址栏，用户可直接改地址或换入口
+        sync_browser_url_field();
+        invoke(m_browser_dialog, "open");
+        // 首次打开即导航到当前入口，省去用户再点一次「打开此入口」
+        navigate_browser_to_entry();
+    }
+
+    void UiConnector::connect_browser_import() {
+        // 切换入口 → 回填地址栏（不自动导航，避免选中即请求）
+        on_signal("browserEntrySelector", "currentIndexChanged()", [this]() { sync_browser_url_field(); });
+
+        on_click("browserOpenEntryButton", [this]() { navigate_browser_to_entry(); });
+        on_click("browserGoButton", [this]() { navigate_browser_to_entry(); });
+
+        on_click("browserReloadButton", [this]() {
+            if (QObject* browser = find("scheduleBrowser")) {
+                QMetaObject::invokeMethod(browser, "reload");
+            }
+        });
+
+        // 系统浏览器兜底：不参与抓取，也不需要任何凭证
+        on_click("browserSystemOpenButton", [this]() {
+            const QString url = text_of("browserUrlField").trimmed();
+            if (url.isEmpty()) {
+                return;
+            }
+            QDesktopServices::openUrl(QUrl(url));
+        });
+
+        on_click("browserImportButton", [this]() {
+            if (QObject* browser = find("scheduleBrowser")) {
+                QMetaObject::invokeMethod(browser, "grabTimetable");
+            }
+        });
+
+        on_click("browserCloseButton", [this]() { invoke(m_browser_dialog, "close"); });
+
+        // 抓取完成：页面原文经属性回传（dispatch() 不携带信号参数）
+        on_signal("scheduleBrowser", "captureFinished(bool,QString)", [this]() {
+            auto* io = import_export();
+            QObject* browser = find("scheduleBrowser");
+            if (!io || !browser) {
+                return;
+            }
+            const QString html = browser->property("capturedPayload").toString();
+            const QString source = browser->property("currentUrl").toString();
+            io->submit_web_capture(html, source);
+        });
+    }
+
+    void UiConnector::sync_browser_url_field() {
+        const QVariantList entries = m_bridge->import_export()->browser_entries();
+        const int index = combo_index(find("browserEntrySelector"));
+        if (index < 0 || index >= entries.size()) {
+            return;
+        }
+        set_text("browserUrlField", entries.at(index).toMap().value(QStringLiteral("url")).toString());
+    }
+
+    void UiConnector::navigate_browser_to_entry() {
+        QObject* browser = find("scheduleBrowser");
+        if (!browser) {
+            return;
+        }
+        const QString url = text_of("browserUrlField").trimmed();
+        if (url.isEmpty()) {
+            return;
+        }
+        QMetaObject::invokeMethod(browser, "loadUrl", Q_ARG(QVariant, QVariant(url)));
     }
 
     void UiConnector::connect_export_dialog() {

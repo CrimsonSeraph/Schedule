@@ -2,6 +2,24 @@
 # QuickDialogs2 提供 FileDialog / FolderDialog（文件选择属于 UI 层职责）
 find_package(Qt6 6.9.3 REQUIRED COMPONENTS Quick Qml QuickDialogs2)
 
+# ------------------------------------------------------------------ 内嵌浏览器
+# SCHEDULE_BROWSER_BACKEND 由根 CMakeLists 在配置期判定（webview / webengine / none）。
+# 只有被选中的后端实现文件才会加进 QML 模块：未被选中的那份可能 import 了本机并不存在的
+# 模块，一旦打进模块，QML 校验 / 打包阶段就会失败，所以这里必须按后端分别列举。
+set(SCHEDULE_UI_BROWSER_QML "")
+set(SCHEDULE_UI_BROWSER_LIBS "")
+
+if(SCHEDULE_BROWSER_BACKEND STREQUAL "webview")
+	list(APPEND SCHEDULE_UI_BROWSER_QML qml/EmbeddedWebView.qml)
+	list(APPEND SCHEDULE_UI_BROWSER_LIBS Qt6::WebView Qt6::WebChannel)
+elseif(SCHEDULE_BROWSER_BACKEND STREQUAL "webengine")
+	list(APPEND SCHEDULE_UI_BROWSER_QML qml/EmbeddedWebEngine.qml)
+	list(APPEND SCHEDULE_UI_BROWSER_LIBS Qt6::WebEngineQuick)
+else()
+	# 兜底后端不依赖任何 Web 模块
+	list(APPEND SCHEDULE_UI_BROWSER_QML qml/EmbeddedFallback.qml)
+endif()
+
 # 采用 /qt/qml 作为 QML 模块默认资源前缀（qrc:/qt/qml/Schedule/...）
 qt_policy(SET QTP0001 NEW)
 # 为子目录中的 QML 文件自动生成 qmldir（工具链支持）
@@ -50,6 +68,9 @@ qt6_add_qml_module(
 	qml/ExportDialog.qml
 	qml/SettingsPage.qml
 	qml/SemesterPage.qml
+	qml/BrowserImportDialog.qml
+	qml/EmbeddedBrowser.qml
+	${SCHEDULE_UI_BROWSER_QML}
 	style/CourseCardStyle.qml
 	style/ListItemStyle.qml
 	style/Metrics.qml
@@ -66,4 +87,5 @@ target_link_libraries(ScheduleUI
 		Qt6::Quick
 		Qt6::Qml
 		Qt6::QuickDialogs2
+		${SCHEDULE_UI_BROWSER_LIBS}
 )
