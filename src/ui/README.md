@@ -39,8 +39,14 @@ src/ui/
 │   ├── ImportWizard.qml   # 导入向导（选文件 → 预览 → 策略 → 应用）
 │   ├── ExportDialog.qml   # 导出对话框（选格式与目录，展示实际路径）
 │   ├── SemesterPage.qml   # 学期设置 + 课程列表 + 冲突列表
-│   ├── SettingsPage.qml   # 目录设置 / 作息表设置 / 数据维护 / 关于
-│   └── Responsive.qml     # 【QML 单例】统一断点 / 间距 / 字号 / 卡片尺寸 / 常用颜色
+│   └── SettingsPage.qml   # 目录设置 / 作息表设置 / 数据维护 / 关于
+├── style/                 # 【QML 单例】设计令牌：页面只引用，不写字面量
+│   ├── Responsive.qml     # 断点 + 响应式尺寸 + 派生判断与派生函数
+│   ├── Metrics.qml        # 间距刻度 / 圆角 / 描边 / 通用组件尺寸
+│   ├── Theme.qml          # 颜色令牌（文字 / 主色 / 表面 / 描边 / 选中态 / 课卡 / 横幅）
+│   ├── Typography.qml     # 字号令牌
+│   ├── CourseCardStyle.qml # 课卡专属：高度推导参数 / 紧凑阈值 / 内边距 / 描边
+│   └── ListItemStyle.qml  # 列表项专属：行高 / 色条 / 内边距
 └── resources/
     └── assets.qrc         # 静态资源清单（占位）
 ```
@@ -94,7 +100,7 @@ cmake --build --preset windows-msvc-debug
 
 - 由根 `CMakeLists.txt` 通过 `add_subdirectory(src/ui)` 引入。
 - 界面自检通过 app 层 `-DBUILD_SELFTEST=ON` + `Schedule.exe --selftest` 完成（阶段 7 扩展为导入 / 导出全流程校验），依赖上表中的稳定 `objectName`。
-- QML 文件在构建期由 `qt6_add_qml_module()` 编入资源；新增页面必须同步加入 `CMakeLists.txt` 的 `QML_FILES` 列表。
+- QML 文件在构建期由 `qt6_add_qml_module()` 编入资源；新增页面必须同步加入 `CMakeLists.txt` 的 `QML_FILES` 列表；新增 `style/` 单例还须逐文件声明 `QT_QML_SINGLETON_TYPE`（详见「样式令牌」一节）。
 
 ## 与上下层交互方式
 
@@ -108,9 +114,22 @@ cmake --build --preset windows-msvc-debug
 
 - 文件选择：`ImportWizard` 使用 `FileDialog`，`ExportDialog` 与 `SettingsPage` 使用 `FolderDialog`；选中的 `QUrl` 由 C++ 侧读取后交给 `ImportExportBridge`，**数据层只接收路径**。
 
-## 响应式约定与测试矩阵
+## 样式令牌（style/ 单例）
 
-所有断点、间距、字号、卡片尺寸与常用颜色都集中在 QML 单例 **`Responsive.qml`**（CMake 里通过 `QT_QML_SINGLETON_TYPE` 注册），页面只引用常量或 `Responsive.isXxx(...)` 判断，不再各写一套魔法数字：
+颜色、字号、间距、圆角与组件尺寸全部集中在 `style/` 下的 6 个 QML 单例（CMake 中通过 `QT_QML_SINGLETON_TYPE` 注册），页面只引用令牌或 `Responsive.isXxx(...)` / `Responsive.xxx(...)` 判断，不再各写一套魔法数字。单例之间可以互相依赖（`Responsive.dayCardHeight()` 用 `CourseCardStyle`，`CourseCardStyle` / `ListItemStyle` 用 `Metrics`）：
+
+| 单例 | 职责 | 主要内容 |
+| --- | --- | --- |
+| `Responsive` | 断点与派生 | 窗口 / 学期页 / 表单 / 对话框断点；`isCompactToolbar()`、`isNarrow()`、`isShort()`、`isTiny()`、`isWideSplit()`、`isDialogNarrow()`、`editorColumns()`、`settingsColumns()`、`settingsPairColumns()`、`dialogWidth()`、`dialogHeight()`、`daySelectorWidth()`、`bannerWidth()`、`exportPreviewHeight()`、`importPreviewHeight()`、`dayCardHeight()` |
+| `Metrics` | 通用度量 | 间距刻度 `spacing2xs(1) ~ spacing4xl(24)`、圆角 `radiusXs(3) ~ radiusLg(10)`、`borderWidth`、工具栏宽度、周视图网格、侧栏 / 面板、通知横幅 |
+| `Theme` | 颜色 | 文字 `textPrimary/Strong/Secondary/Muted/Subtle`、主色 `accent/accentStrong/danger/success/warning`、表面 `surface/surfaceAlt/surfaceSubtle`、描边 `border/divider`、表头、选中态、课卡文字、横幅文字、节次时间 |
+| `Typography` | 字号 | `fontTiny(9) / fontCaption(10) / fontSmall(11) / fontBody(12) / fontBodyLarge(13) / fontSubheading(14) / fontHeading(16) / fontTitle(18)` |
+| `CourseCardStyle` | 课卡 | 高度推导参数、`dense*` / `tight*` 紧凑阈值、`inset`、内边距、行距、圆角、描边加深系数 |
+| `ListItemStyle` | 列表项 | 行高 `height(40) / heightTall(62)`、圆角、色条、文本内边距、`preferredHeight(132)` |
+
+> **注册方式**：`QT_QML_SINGLETON_TYPE` 是**逐文件**属性。一个 `set_source_files_properties()` 里写多组同名属性只有最后一组生效——曾因此让 6 个单例全部指向 `Typography.qml`。新增单例时必须一个文件一条调用（见 `src/ui/CMakeLists.txt`）。
+
+### 断点与阈值
 
 | 常量 | 值 | 用途 |
 | --- | --- | --- |
@@ -124,9 +143,13 @@ cmake --build --preset windows-msvc-debug
 | `dialogWideWidth` | 460 | 导出对话框标签并排 / 上下 |
 | `tinyWidth` | 360 | 移动端与日视图选择栏的极窄断点 |
 | `minDayWidth` | 64 | 周视图最小可读列宽，再窄改为横向滚动 |
-| `cardMinHeight` / `cardPreferredHeight` / `cardMaxHeight` | 60 / 96 / 112 | 日视图卡片高度区间 |
-| `cardDenseWidth` / `cardDenseHeight` | 104 / 96 | 课卡隐藏地点、教师的阈值 |
-| `cardTightWidth` / `cardTightHeight` | 84 / 44 | 课卡只留课程名与时间的阈值 |
+| `dayHeaderCompactWidth` / `dayHeaderDateWidth` | 72 / 52 | 周视图表头星期字号降档 / 隐藏日期的列宽 |
+| `slotTimeVisibleHeight` | 48 | 节次栏显示上下课时间的最低节次高度 |
+| `CourseCardStyle.minHeight` / `preferredHeight` / `maxHeight` | 60 / 96 / 112 | 日视图卡片高度区间 |
+| `CourseCardStyle.denseWidth` / `denseHeight` | 104 / 96 | 课卡隐藏地点、教师的阈值 |
+| `CourseCardStyle.tightWidth` / `tightHeight` | 84 / 44 | 课卡只留课程名与时间的阈值 |
+
+### 回归测试矩阵
 
 回归验证使用 `custom/tools` 的窗口截图链路（离屏烟测 + `PrintWindow` 抓图 + 空白帧检测），固定跑下面 7 档尺寸；本机屏幕缩放 125%，顺带覆盖高 DPI：
 
@@ -153,11 +176,12 @@ cmake --build --preset windows-msvc-debug
 ## 扩展点与注意事项
 
 - **新增页面**：在 `qml/` 下新增文件 → 注册到 `CMakeLists.txt` → 在 `MainDesktop` / `MainMobile` 的 `pageStack` 中追加 → 在 `UiConnector::connect_navigation()` 中补充导航连接。
+- **新增样式**：能落到现有令牌的（颜色 / 字号 / 间距 / 圆角 / 组件尺寸）直接引用对应单例；确实缺令牌时补进 `style/` 的对应文件（通用 → `Metrics`，颜色 → `Theme`，字号 → `Typography`，课卡 → `CourseCardStyle`，列表项 → `ListItemStyle`，断点或派生量 → `Responsive`），**不要**在页面里留字面量。
 - **命名约定**：QML 内部 id / 属性用 `camelCase`（符合 Qt 与 Prettier 惯例）， `objectName` 面向 C++ 连接，必须与 `UiConnector` 中的字符串常量保持一致。
 - **绑定循环**：`ScrollView` 中不要同时写 `contentWidth: availableWidth` 与依赖 `availableWidth` 的内容宽度，否则 Qt 会报 "Binding loop detected"；本项目统一关闭横向滚动条并让内容宽度直接跟随 `ScrollView.width`。
 - **移动端**：触摸目标不小于 48dp；`MainMobile.qml` 不使用悬浮窗口类控件，底部导航与桌面版共用同一批 `objectName`。
 - **应用内提醒横幅**：`notificationBanner` 在 `MainDesktop` / `MainMobile` 中各有一份；C++ 侧收到 `NotificationService::notificationRequested` 后写入 `bannerTitle` / `bannerMessage`，并在若干秒后清空（见 `UiConnector::show_banner()`）。这是系统通知不可用时的兜底展示通路。
-- **主题色**：当前使用固定浅色配色（`#1F2A44` 主文字、`#4C8DFF` 主色、`#C0392B` 告警色），深色主题留待后续在 `AppSettings::theme()` 基础上扩展。
+- **主题色**：当前使用固定浅色配色，全部集中在 `style/Theme.qml`（`#1F2A44` 主文字、`#4C8DFF` 主色、`#C0392B` 告警色）；深色主题留待后续在 `AppSettings::theme()` 基础上扩展，届时只需替换 `Theme` 单例的取值。
 
 ## 相关文档
 
