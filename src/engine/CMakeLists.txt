@@ -2,6 +2,7 @@
 add_library(ScheduleEngine STATIC
 	src/AndroidNotificationBackend.cpp
 	src/AppBridge.cpp
+	src/BrowserCaptureScript.cpp
 	src/CourseListModel.cpp
 	src/INotificationBackend.cpp
 	src/ImportExportBridge.cpp
@@ -10,6 +11,7 @@ add_library(ScheduleEngine STATIC
 	src/SessionListModel.cpp
 	include/engine/AndroidNotificationBackend.h
 	include/engine/AppBridge.h
+	include/engine/BrowserCaptureScript.h
 	include/engine/CourseListModel.h
 	include/engine/INotificationBackend.h
 	include/engine/ImportExportBridge.h

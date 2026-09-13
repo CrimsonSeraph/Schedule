@@ -100,8 +100,11 @@ Item {
     /**
      * @brief 从**当前页面**抓取课表并回传。
      *
-     * 抓取产物是页面原文（HTML），随后交给 C++ 侧走与文件导入完全相同的
-     * 「嗅探 → 解析 → 冲突检测 → 预览」流程；应用不读取任何 Cookie。
+     * 脚本由 C++ 侧提供（`schedule.importExport.webCaptureScript`）：它会取回整页 HTML
+     * （正方教务的逐周位图就在页内脚本里），并在页面右下角注入「抓取课表」悬浮按钮。
+     * 拿到原文后交给 C++ 走与文件导入完全相同的「嗅探 → 解析 → 冲突检测 → 预览」流程。
+     *
+     * **隐私**：脚本只读取 DOM 文本，不读取 Cookie、不读取 localStorage、不发网络请求。
      */
     function grabTimetable() {
         const item = backendLoader.item;
@@ -110,9 +113,20 @@ Item {
             root.captureFinished(false, qsTr("内嵌浏览器不可用"));
             return;
         }
-        item.grabTimetable(function(payload, message) {
-            root.capturedPayload = payload ? payload : "";
-            root.captureFinished(payload !== null && payload !== undefined, message);
+        item.runJavaScript(schedule.importExport.webCaptureScript, function(result) {
+            if (result === undefined || result === null) {
+                root.capturedPayload = "";
+                root.captureFinished(false, qsTr("未能读取页面内容，请确认页面已加载完成"));
+                return;
+            }
+            const payload = String(result);
+            if (payload.length === 0) {
+                root.capturedPayload = "";
+                root.captureFinished(false, qsTr("页面内容为空，请确认已打开课表页面"));
+                return;
+            }
+            root.capturedPayload = payload;
+            root.captureFinished(true, qsTr("已从当前页面抓取 %1 个字符").arg(payload.length));
         });
     }
 

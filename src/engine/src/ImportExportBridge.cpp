@@ -1,5 +1,7 @@
 #include "engine/ImportExportBridge.h"
 
+#include "engine/BrowserCaptureScript.h"
+
 #include "data/SettingsKeys.h"
 
 #include <QDir>
@@ -212,6 +214,10 @@ namespace Schedule {
             entries.append(entry);
         }
         return entries;
+    }
+
+    QString ImportExportBridge::web_capture_script() const {
+        return browser_capture_script();
     }
 
     QString ImportExportBridge::web_capture_summary() const {

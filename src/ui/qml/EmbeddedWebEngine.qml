@@ -33,20 +33,6 @@ Item {
         view.runJavaScript(script, callback);
     }
 
-    /**
-     * @brief 抓取当前页面的 HTML 原文（与 WebView 后端行为一致）。
-     */
-    function grabTimetable(callback) {
-        view.runJavaScript("document.documentElement.outerHTML", function(result) {
-            const html = result === undefined || result === null ? "" : String(result);
-            if (html.length === 0) {
-                callback(null, qsTr("页面内容为空，请确认已打开课表页面"));
-                return;
-            }
-            callback(html, qsTr("已从当前页面抓取 %1 个字符").arg(html.length));
-        });
-    }
-
     WebEngineView {
         id: view
 

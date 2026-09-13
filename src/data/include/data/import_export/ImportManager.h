@@ -112,6 +112,9 @@ namespace Schedule {
             const QString& source_name,
             const ScheduleSnapshot& current) const;
 
+        /** @return 已注册格式的展示名清单，拼成“课表 JSON / 表格 CSV / …”。 */
+        QString registered_format_names() const;
+
         /** @return 同名同代码（或同 id）的重复课程数量。 */
         static int count_duplicates(const QList<Course>& incoming, const QList<Course>& existing, bool* matched_by_id);
 

@@ -34,23 +34,6 @@ Item {
         view.runJavaScript(script, callback);
     }
 
-    /**
-     * @brief 抓取当前页面的 HTML 原文。
-     *
-     * 只取 `documentElement.outerHTML`：应用不接触 Cookie，也不需要登录凭证，
-     * 因为页面已经在用户自己的会话里渲染完成。
-     */
-    function grabTimetable(callback) {
-        view.runJavaScript("document.documentElement.outerHTML", function(result) {
-            const html = result === undefined || result === null ? "" : String(result);
-            if (html.length === 0) {
-                callback(null, qsTr("页面内容为空，请确认已打开课表页面"));
-                return;
-            }
-            callback(html, qsTr("已从当前页面抓取 %1 个字符").arg(html.length));
-        });
-    }
-
     WebView {
         id: view
 

@@ -34,12 +34,6 @@ Item {
         }
     }
 
-    /** @brief 兜底后端无法抓取，直接以失败回调告知原因。 */
-    function grabTimetable(callback) {
-        backend.lastError = qsTr("当前构建未包含内嵌浏览器，无法从页面抓取");
-        callback(null, backend.lastError);
-    }
-
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Metrics.spacing2xl

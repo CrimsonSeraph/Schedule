@@ -132,6 +132,13 @@ namespace Schedule {
         /** 最近一次抓取的来源地址（用于预览提示与导入留痕）。 */
         Q_PROPERTY(QString webCaptureSource READ web_capture_source NOTIFY webCaptureChanged)
 
+        /**
+         * 注入内嵌浏览器的抓取脚本（页面内执行的 JavaScript）。
+         *
+         * 由 QML 侧在执行 `runJavaScript` 时取用；职责与取舍见 `BrowserCaptureScript.h`。
+         */
+        Q_PROPERTY(QString webCaptureScript READ web_capture_script CONSTANT)
+
     public:
         /**
          * @param service    课表服务（不持有所有权）；导入结果会通过它加载
@@ -172,6 +179,7 @@ namespace Schedule {
         QVariantList browser_entries() const;
         QString web_capture_summary() const;
         QString web_capture_source() const;
+        QString web_capture_script() const;
 
         /** @return 由 `formatNames()` 下标解析格式；越界返回 JSON。 */
         Q_INVOKABLE int format_index_of(const QString& machine_name) const;

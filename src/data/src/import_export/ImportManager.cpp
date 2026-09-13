@@ -273,6 +273,16 @@ namespace Schedule {
         return build_preview(parsed, format, file_path, current);
     }
 
+    QString ImportManager::registered_format_names() const {
+        QStringList names;
+        for (const auto& importer : m_importers) {
+            if (importer) {
+                names.append(importer->display_name());
+            }
+        }
+        return names.join(QStringLiteral(" / "));
+    }
+
     ImportPreview ImportManager::preview_data(const QByteArray& data, const QString& source_name, const ScheduleSnapshot& current) const {
         ImportPreview preview;
         if (data.isEmpty()) {
@@ -282,7 +292,11 @@ namespace Schedule {
 
         ScheduleFormat format = format_from_content(data);
         if (format == ScheduleFormat::Unknown) {
-            preview.error_message = QStringLiteral("无法识别内容格式（支持 JSON / CSV / ICS）");
+            // 这个入口同时服务于剪贴板与内嵌浏览器抓取，因此错误信息要给出可执行的下一步：
+            // 抓取整个页面时最常见的原因是页面尚未加载完，或该页面把课表放在客户端脚本里。
+            preview.error_message = QStringLiteral("无法识别内容格式（已支持 %1）。若是从教务页面抓取，请确认课表页面已完整加载；"
+                                                   "也可在教务系统中使用“导出 / 打印”保存为文件后改用文件导入。")
+                                        .arg(registered_format_names());
             return preview;
         }
 
