@@ -17,15 +17,19 @@ namespace Schedule {
      *
      * 新增格式时只需在 `format_to_string()` / `format_from_string()` /
      * `file_extension()` 中补齐映射，并实现 `IScheduleImporter` / `IScheduleExporter`。
+     *
+     * `ZhengfangHtml` 是**只导入**格式：它是教务系统导出的页面，本应用不会生成它，
+     * 因此面向导出的 `export_file_extensions()` 会把它排除在外。
      */
     enum class ScheduleFormat {
-        Unknown, ///< 未识别
-        Json,    ///< 本应用的 JSON 文档（无损，含作息表与周次位图）
-        Csv,     ///< 表格（Excel 友好，一行一个上课时间段）
-        Ics,     ///< iCalendar（可与系统日历互操作）
+        Unknown,       ///< 未识别
+        Json,          ///< 本应用的 JSON 文档（无损，含作息表与周次位图）
+        Csv,           ///< 表格（Excel 友好，一行一个上课时间段）
+        Ics,           ///< iCalendar（可与系统日历互操作）
+        ZhengfangHtml, ///< 正方教务系统（zfn / zfsoft V9）导出的 HTML 课表页面
     };
 
-    /** @return 格式的小写机器名（`json` / `csv` / `ics`），用于设置与日志。 */
+    /** @return 格式的小写机器名（`json` / `csv` / `ics` / `zhengfang-html`），用于设置与日志。 */
     QString format_to_string(ScheduleFormat format);
 
     /** @return 由机器名解析格式；无法识别返回 `ScheduleFormat::Unknown`。 */
@@ -37,8 +41,15 @@ namespace Schedule {
     /** @return 格式的推荐扩展名（不含点），如 `json`；未识别返回空串。 */
     QString file_extension(ScheduleFormat format);
 
-    /** @return 全部支持格式的推荐扩展名（含点），用于文件对话框过滤器。 */
+    /** @return 全部**可导入**格式的推荐扩展名（含点），用于导入侧的错误提示。 */
     QStringList supported_file_extensions();
+
+    /**
+     * @return 全部**可导出**格式的推荐扩展名（含点），用于文件对话框过滤器。
+     *
+     * 与 `supported_file_extensions()` 的区别：正方教务页面等只导入格式不会出现在这里。
+     */
+    QStringList export_file_extensions();
 
     /**
      * @brief 由文件扩展名推断格式。
@@ -50,7 +61,9 @@ namespace Schedule {
      * @brief 由文件内容嗅探格式（扩展名不可信时使用）。
      *
      * 判定顺序：JSON（首个非空白字符为 `{`）→ iCalendar（含 `BEGIN:VCALENDAR`）
-     * → CSV（首行含分隔符或中文表头关键字）→ Unknown。
+     * → 正方教务 HTML（含 `manualArrangeCourseTable` / `courseTableForStd`，
+     * 或同时含 `CourseTable(` 与 `TaskActivity(`）→ CSV（首行含分隔符或中文表头关键字）
+     * → Unknown。
      */
     ScheduleFormat format_from_content(const QByteArray& data);
 

@@ -1,0 +1,261 @@
+<html xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=GBK" />
+<!--[if gte mso 9]><xml>
+    <x:ExcelWorkbook>
+        <x:ExcelWorksheets>
+            <x:ExcelWorksheet>
+                <x:Name>个人课程表</x:Name>
+            </x:ExcelWorksheet>
+        </x:ExcelWorksheets>
+    </x:ExcelWorkbook>
+</xml>
+<![endif]-->
+</head>
+
+<body>
+
+<div id="ExportA" width="100%" align="center" cellpadding="0" cellspacing="0">
+    <h1 align="center">个人课程表</h1>
+    <h3 align="center">2024-2025学年第一学期</h3>
+    <div style="text-align: left;margin-left: 15px;">
+        学号:2023000001&nbsp;&nbsp;&nbsp; 学生姓名:示例同学&nbsp;&nbsp;&nbsp;所属班级: 示例2401班&nbsp;&nbsp;&nbsp;总学分:20
+    </div>
+    <pre>课表格式说明：教师姓名 课程名称(序号) (第n周-第m周,教室)</pre>
+    <table width="100%" id="manualArrangeCourseTable" align="center" class="gridtable" style="text-align:center" border="1">
+      <thead>
+      <tr>
+          <th style="background-color:#DEEDF7;" height="10px" width="80px">节次/周次
+          </th>
+          <th style="background-color:#DEEDF7;"><font size="2px">星期一</font></th>
+          <th style="background-color:#DEEDF7;"><font size="2px">星期二</font></th>
+          <th style="background-color:#DEEDF7;"><font size="2px">星期三</font></th>
+          <th style="background-color:#DEEDF7;"><font size="2px">星期四</font></th>
+          <th style="background-color:#DEEDF7;"><font size="2px">星期五</font></th>
+          <th style="background-color:#DEEDF7;"><font size="2px">星期六</font></th>
+          <th style="background-color:#DEEDF7;"><font size="2px">星期日</font></th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+          <td id="TD0_0" rowspan="2" class="infoTitle" title="(1-16,1J101(主校区)">高等数学A(1)(00000001.01) (张演示)</td>
+          <td id="TD12_0" rowspan="2" class="infoTitle" title="(1 3 5 7 9 11,4J404(东校区)">大学物理(1)(00000006.06) (周演示)</td>
+          <td id="TD24_0" class="infoTitle" title="(2 4 6,5J505(主校区)">形势与政策(1)(00000007.07) (吴演示)</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td></td>
+          <td id="TD14_0" rowspan="2" class="infoTitle" title="(1-8 10-12,2J202(东校区)">大学英语(1)(00000002.02) (王演示,李演示)</td>
+          <td></td>
+          <td id="TD38_0" rowspan="2" class="infoTitle" title="(2 4 6 8 10 12,语言实验室-2J203(东校区)">大学英语(1)(00000002.02) (王演示,李演示)</td>
+          <td></td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td></td>
+          <td id="TD27_0" class="infoTitle" title="(2 4 6,5J505(主校区)">形势与政策(1)(00000007.07) (吴演示)</td>
+          <td></td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td id="TD40_0" rowspan="2" class="infoTitle" title="(1-18,第一运动场(主校区)">体育(1)(00000005.05) (孙演示)</td>
+          <td></td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td></td>
+          <td></td>
+          <td id="TD29_0" rowspan="4" class="infoTitle" title="(1-15,3J303(主校区)">程序设计基础(00000003.03) (赵演示)</td>
+          <td id="TD53_0" rowspan="2" class="infoTitle" title="(4-15,计算机实验室-3J304(主校区)">程序设计基础实验(00000004.04) (赵演示)</td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+      </tr>
+      </tbody>
+    </table>
+</div>
+
+<script language="JavaScript">
+	// function CourseTable in TaskActivity.js
+	var language = "zh";
+	var table0 = new CourseTable(2025,84);
+	var unitCount = 12;
+	var index=0;
+	var activity=null;
+		var teachers = [{id:100,name:"张演示",lab:false}];
+		var actTeachers = [{id:100,name:"张演示",lab:false}];
+		var actTeacherId = [];
+		var actTeacherName = [];
+		for (var i = 0; i < actTeachers.length; i++) {
+			actTeacherId.push(actTeachers[i].id);
+			actTeacherName.push(actTeachers[i].name);
+		}
+			activity = new TaskActivity(actTeacherId.join(','),actTeacherName.join(','),"900000000001.01(00000001.01)","高等数学A(1)(00000001.01)","101","1J101(主校区)","01111111111111111000000000000000000000000000000000000",null,null,"","","");
+			index =0*unitCount+0;
+			table0.activities[index][table0.activities[index].length]=activity;
+			index =0*unitCount+1;
+			table0.activities[index][table0.activities[index].length]=activity;
+		var teachers = [{id:100,name:"王演示",lab:false},{id:101,name:"李演示",lab:false}];
+		var actTeachers = [{id:100,name:"王演示",lab:false},{id:101,name:"李演示",lab:false}];
+		var actTeacherId = [];
+		var actTeacherName = [];
+		for (var i = 0; i < actTeachers.length; i++) {
+			actTeacherId.push(actTeachers[i].id);
+			actTeacherName.push(actTeachers[i].name);
+		}
+			activity = new TaskActivity(actTeacherId.join(','),actTeacherName.join(','),"900000000002.02(00000002.02)","大学英语(1)(00000002.02)","202","2J202(东校区)","01111111101110000000000000000000000000000000000000000",null,null,"","","");
+			index =1*unitCount+2;
+			table0.activities[index][table0.activities[index].length]=activity;
+			index =1*unitCount+3;
+			table0.activities[index][table0.activities[index].length]=activity;
+		var teachers = [{id:100,name:"王演示",lab:false},{id:101,name:"李演示",lab:false}];
+		var actTeachers = [{id:100,name:"王演示",lab:false},{id:101,name:"李演示",lab:false}];
+		var actTeacherId = [];
+		var actTeacherName = [];
+		for (var i = 0; i < actTeachers.length; i++) {
+			actTeacherId.push(actTeachers[i].id);
+			actTeacherName.push(actTeachers[i].name);
+		}
+			activity = new TaskActivity(actTeacherId.join(','),actTeacherName.join(','),"900000000002.02(00000002.02)","大学英语(1)(00000002.02)","203","语言实验室-2J203(东校区)","00101010101010000000000000000000000000000000000000000",null,null,"","","");
+			index =3*unitCount+2;
+			table0.activities[index][table0.activities[index].length]=activity;
+			index =3*unitCount+3;
+			table0.activities[index][table0.activities[index].length]=activity;
+		var teachers = [{id:100,name:"赵演示",lab:false}];
+		var actTeachers = [{id:100,name:"赵演示",lab:false}];
+		var actTeacherId = [];
+		var actTeacherName = [];
+		for (var i = 0; i < actTeachers.length; i++) {
+			actTeacherId.push(actTeachers[i].id);
+			actTeacherName.push(actTeachers[i].name);
+		}
+			activity = new TaskActivity(actTeacherId.join(','),actTeacherName.join(','),"900000000003.03(00000003.03)","程序设计基础(00000003.03)","303","3J303(主校区)","01111111111111110000000000000000000000000000000000000",null,null,"","","");
+			index =2*unitCount+5;
+			table0.activities[index][table0.activities[index].length]=activity;
+			index =2*unitCount+6;
+			table0.activities[index][table0.activities[index].length]=activity;
+			index =2*unitCount+7;
+			table0.activities[index][table0.activities[index].length]=activity;
+			index =2*unitCount+8;
+			table0.activities[index][table0.activities[index].length]=activity;
+		var teachers = [{id:100,name:"赵演示",lab:false}];
+		var actTeachers = [{id:100,name:"赵演示",lab:false}];
+		var actTeacherId = [];
+		var actTeacherName = [];
+		for (var i = 0; i < actTeachers.length; i++) {
+			actTeacherId.push(actTeachers[i].id);
+			actTeacherName.push(actTeachers[i].name);
+		}
+			activity = new TaskActivity(actTeacherId.join(','),actTeacherName.join(','),"900000000004.04(00000004.04)","程序设计基础实验(00000004.04)","304","计算机实验室-3J304(主校区)","00001111111111110000000000000000000000000000000000000",null,null,"","","");
+			index =4*unitCount+5;
+			table0.activities[index][table0.activities[index].length]=activity;
+			index =4*unitCount+6;
+			table0.activities[index][table0.activities[index].length]=activity;
+		var teachers = [{id:100,name:"孙演示",lab:false}];
+		var actTeachers = [{id:100,name:"孙演示",lab:false}];
+		var actTeacherId = [];
+		var actTeacherName = [];
+		for (var i = 0; i < actTeachers.length; i++) {
+			actTeacherId.push(actTeachers[i].id);
+			actTeacherName.push(actTeachers[i].name);
+		}
+			activity = new TaskActivity(actTeacherId.join(','),actTeacherName.join(','),"900000000005.05(00000005.05)","体育(1)(00000005.05)","0","第一运动场(主校区)","01111111111111111110000000000000000000000000000000000",null,null,"","","");
+			index =3*unitCount+4;
+			table0.activities[index][table0.activities[index].length]=activity;
+			index =3*unitCount+5;
+			table0.activities[index][table0.activities[index].length]=activity;
+		var teachers = [{id:100,name:"周演示",lab:false}];
+		var actTeachers = [{id:100,name:"周演示",lab:false}];
+		var actTeacherId = [];
+		var actTeacherName = [];
+		for (var i = 0; i < actTeachers.length; i++) {
+			actTeacherId.push(actTeachers[i].id);
+			actTeacherName.push(actTeachers[i].name);
+		}
+			activity = new TaskActivity(actTeacherId.join(','),actTeacherName.join(','),"900000000006.06(00000006.06)","大学物理(1)(00000006.06)","404","4J404(东校区)","01010101010100000000000000000000000000000000000000000",null,null,"","","");
+			index =1*unitCount+0;
+			table0.activities[index][table0.activities[index].length]=activity;
+			index =1*unitCount+1;
+			table0.activities[index][table0.activities[index].length]=activity;
+		var teachers = [{id:100,name:"吴演示",lab:false}];
+		var actTeachers = [{id:100,name:"吴演示",lab:false}];
+		var actTeacherId = [];
+		var actTeacherName = [];
+		for (var i = 0; i < actTeachers.length; i++) {
+			actTeacherId.push(actTeachers[i].id);
+			actTeacherName.push(actTeachers[i].name);
+		}
+			activity = new TaskActivity(actTeacherId.join(','),actTeacherName.join(','),"900000000007.07(00000007.07)","形势与政策(1)(00000007.07)","505","5J505(主校区)","00101010000000000000000000000000000000000000000000000",null,null,"","","");
+			index =2*unitCount+0;
+			table0.activities[index][table0.activities[index].length]=activity;
+			index =2*unitCount+3;
+			table0.activities[index][table0.activities[index].length]=activity;
+</script>
+
+</body>
+</html>

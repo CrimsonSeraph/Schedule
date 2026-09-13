@@ -16,3 +16,8 @@ CMakeLists.txt text charset=utf-8
 *.gif binary
 *.pdf binary
 *.docx binary
+
+# 教务系统导出的课表样本：扩展名是 .xls，内容其实是 GBK 编码的 HTML。
+# 必须按二进制存储，否则 text=auto / eol=crlf 会改写字节，
+# 样本就不再与 tools/gen_zhengfang_sample.py 的产物逐字节一致。
+*.xls binary

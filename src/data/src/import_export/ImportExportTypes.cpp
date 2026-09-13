@@ -14,13 +14,19 @@ namespace Schedule {
             const char* machine_name;
             const char* display_name;
             const char* extension;
+            /** 本应用能否导出该格式；只导入格式（正方教务页面）为 false。 */
+            bool exportable;
         };
 
         const FormatEntry FORMATS[] = {
-            {ScheduleFormat::Json, "json", "课表 JSON", "json"},
-            {ScheduleFormat::Csv, "csv", "表格 CSV", "csv"},
-            {ScheduleFormat::Ics, "ics", "日历 ICS", "ics"},
+            {ScheduleFormat::Json, "json", "课表 JSON", "json", true},
+            {ScheduleFormat::Csv, "csv", "表格 CSV", "csv", true},
+            {ScheduleFormat::Ics, "ics", "日历 ICS", "ics", true},
+            {ScheduleFormat::ZhengfangHtml, "zhengfang-html", "正方教务课表", "xls", false},
         };
+
+        /** 嗅探正方教务页面时扫描的最大字节数（标志串位于内嵌 <script>，比较靠后）。 */
+        constexpr int ZHENGFANG_SNIFF_LIMIT = 256 * 1024;
 
     } // namespace
 
@@ -69,6 +75,16 @@ namespace Schedule {
         return extensions;
     }
 
+    QStringList export_file_extensions() {
+        QStringList extensions;
+        for (const FormatEntry& entry : FORMATS) {
+            if (entry.exportable) {
+                extensions.append(QStringLiteral(".") + QLatin1String(entry.extension));
+            }
+        }
+        return extensions;
+    }
+
     ScheduleFormat format_from_extension(const QString& file_path) {
         const QString suffix = QFileInfo(file_path).suffix().toLower();
         if (suffix == QStringLiteral("json")) {
@@ -80,6 +96,10 @@ namespace Schedule {
         }
         if (suffix == QStringLiteral("ics") || suffix == QStringLiteral("ical") || suffix == QStringLiteral("ifb")) {
             return ScheduleFormat::Ics;
+        }
+        if (suffix == QStringLiteral("xls") || suffix == QStringLiteral("html") || suffix == QStringLiteral("htm")) {
+            // 教务系统「导出」的课表多半以 .xls 命名，内容其实是 HTML
+            return ScheduleFormat::ZhengfangHtml;
         }
         return ScheduleFormat::Unknown;
     }
@@ -105,6 +125,16 @@ namespace Schedule {
         const QByteArray upper = trimmed.left(4096).toUpper();
         if (upper.contains("BEGIN:VCALENDAR") || upper.contains("BEGIN:VEVENT")) {
             return ScheduleFormat::Ics;
+        }
+
+        // 正方教务：Excel 兼容的 HTML 导出页。标志串位于内嵌 <script> 中，
+        // 可能在文件偏后位置，因此在更长的前缀上做一次扫描。
+        // 判定放在 CSV 之前：HTML 首行之外的逗号不应把页面误判成表格。
+        const QByteArray sample = trimmed.left(ZHENGFANG_SNIFF_LIMIT);
+        const bool has_zhengfang_table = sample.contains("manualArrangeCourseTable") || sample.contains("courseTableForStd");
+        const bool has_zhengfang_script = sample.contains("TaskActivity(") && sample.contains("CourseTable(");
+        if (has_zhengfang_table || has_zhengfang_script) {
+            return ScheduleFormat::ZhengfangHtml;
         }
 
         // CSV：首个非空行包含分隔符或多个字段关键字

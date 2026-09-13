@@ -9,6 +9,7 @@ set(SCHEDULE_DATA_TESTS
 	tst_schedule_json
 	tst_school_adapter
 	tst_sqlite_repository
+	tst_zhengfang_timetable
 )
 
 foreach(test_name IN LISTS SCHEDULE_DATA_TESTS)

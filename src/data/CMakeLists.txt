@@ -13,6 +13,10 @@ add_library(ScheduleData STATIC
 	src/import_export/ImportExportTypes.cpp
 	src/import_export/ImportManager.cpp
 	src/import_export/JsonScheduleIo.cpp
+	# 教务课表专用适配：正方教务（zfn / zfsoft V9）页面解析
+	src/import_export/academic_affairs/CharsetUtil.cpp
+	src/import_export/academic_affairs/GbkTable.cpp
+	src/import_export/academic_affairs/ZhengfangTimetableIo.cpp
 	src/adapter/GenericSchoolAdapter.cpp
 	src/adapter/NetworkScheduleFetcher.cpp
 	include/data/AppSettings.h
@@ -29,6 +33,9 @@ add_library(ScheduleData STATIC
 	include/data/import_export/ImportExportTypes.h
 	include/data/import_export/ImportManager.h
 	include/data/import_export/JsonScheduleIo.h
+	include/data/import_export/academic_affairs/CharsetUtil.h
+	include/data/import_export/academic_affairs/GbkTable.h
+	include/data/import_export/academic_affairs/ZhengfangTimetableIo.h
 	include/data/adapter/GenericSchoolAdapter.h
 	include/data/adapter/NetworkScheduleFetcher.h
 )

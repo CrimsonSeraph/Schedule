@@ -106,7 +106,9 @@ namespace Schedule {
 
     QString ExportManager::file_dialog_filter() {
         QStringList patterns;
-        for (const QString& extension : supported_file_extensions()) {
+        // 用 export_file_extensions() 而非 supported_file_extensions()：
+        // 后者包含正方教务页面等**只导入**格式，不应出现在导出过滤器里。
+        for (const QString& extension : export_file_extensions()) {
             patterns.append(QStringLiteral("*") + extension);
         }
         return patterns.join(QLatin1Char(' '));
