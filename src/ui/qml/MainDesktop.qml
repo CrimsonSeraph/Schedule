@@ -302,6 +302,9 @@ ApplicationWindow {
     // 调用 open() 展开，QML 中不需要信号处理器。菜单项需要 C++ 侧连接 triggered()。
     Menu {
         id: moreMenu
+        parent: moreMenuButton
+        x: 0
+        y: moreMenuButton.height
 
         objectName: "moreMenu"
         title: qsTr("更多")
