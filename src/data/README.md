@@ -7,7 +7,7 @@
 - **持久化**：SQLite 数据库（建表、迁移、备份、恢复）与 JSON 序列化 / 反序列化；
 - **导入导出**：JSON / CSV / ICS 三种通用格式的解析与生成，外加**正方教务课表**（教务系统导出的 `课表.xls`，只导入）；落盘到用户指定目录；
 - **设置存储**：默认导入 / 导出目录、提醒开关、主题等键值配置；
-- **可选教务适配器**：仅本地主动触发的课表抓取（接口在 `core`，实现在本层，注册在 `app`），见 [adapter/README.md](adapter/README.md)。
+- **可选教务适配器**：仅本地主动触发的课表导入，含两条路线——接口抓取（`GenericSchoolAdapter` + `NetworkScheduleFetcher`）与网页抓取（内嵌浏览器抓当前页面，原文交给 `ImportManager`）。接口在 `core`，抓取器实现在本层，注册在 `app`；浏览器组件在 `ui`，抓取脚本在 `engine`。见 [adapter/README.md](adapter/README.md)。
 
 明确**不负责**：
 

@@ -8,11 +8,13 @@
 
 ## 依赖
 
-| 依赖                      | 类型   | 说明                                                            |
-| ------------------------- | ------ | --------------------------------------------------------------- |
-| `ScheduleEngine`          | 项目内 | 提供 `AppBridge` / `ScheduleBridge`（含 `importExport` 子对象） |
-| `Qt6::Quick` / `Qt6::Qml` | 外部   | Quick Controls 2 / Layouts                                      |
-| `Qt6::QuickDialogs2`      | 外部   | `FileDialog` / `FolderDialog`（`import QtQuick.Dialogs`）       |
+| 依赖 | 类型 | 说明 |
+| --- | --- | --- |
+| `ScheduleEngine` | 项目内 | 提供 `AppBridge` / `ScheduleBridge`（含 `importExport` 子对象） |
+| `Qt6::Quick` / `Qt6::Qml` | 外部 | Quick Controls 2 / Layouts |
+| `Qt6::QuickDialogs2` | 外部 | `FileDialog` / `FolderDialog`（`import QtQuick.Dialogs`） |
+| `Qt6::WebView` / `Qt6::WebChannel` | 外部（**可选**） | 内嵌浏览器后端之一（`EmbeddedWebView.qml`） |
+| `Qt6::WebEngineQuick` | 外部（**可选**） | 内嵌浏览器后端之一（`EmbeddedWebEngine.qml`） |
 
 - 允许依赖：`engine`
 - 禁止依赖：`data`（不得直接调用仓库或导入导出实现）、`core`、`app`
@@ -36,10 +38,15 @@ src/ui/
 │   ├── CourseCard.qml     # 课程卡片（周 / 日视图复用）
 │   ├── CourseEditor.qml   # 课程编辑对话框（含时间段草稿列表）
 │   ├── CourseDetailDialog.qml # 课程详情弹层（点击课卡后展示，可进入编辑器）
-│   ├── ImportWizard.qml   # 导入向导（选文件 → 预览 → 策略 → 应用）
+│   ├── ImportWizard.qml   # 导入向导（从教务导入 / 选文件 → 预览 → 策略 → 应用）
 │   ├── ExportDialog.qml   # 导出对话框（选格式与目录，展示实际路径）
+│   ├── BrowserImportDialog.qml # 从教务导入：入口列表 + 内嵌浏览器 + 导入课表
+│   ├── EmbeddedBrowser.qml     # 内嵌浏览器统一外壳（按编译期后端挑实现）
+│   ├── EmbeddedWebView.qml     # 后端：Qt WebView（仅被选中时才会打进模块）
+│   ├── EmbeddedWebEngine.qml   # 后端：Qt WebEngine（仅被选中时才会打进模块）
+│   ├── EmbeddedFallback.qml    # 后端：不可用时的兜底说明页
 │   ├── SemesterPage.qml   # 学期设置 + 课程列表 + 冲突列表
-│   └── SettingsPage.qml   # 目录设置 / 作息表设置 / 数据维护 / 关于
+│   └── SettingsPage.qml   # 目录设置 / 作息表设置 / 从教务导入 / 数据维护 / 关于
 ├── style/                 # 【QML 单例】设计令牌：页面只引用，不写字面量
 │   ├── Responsive.qml     # 断点 + 响应式尺寸 + 派生判断与派生函数
 │   ├── Metrics.qml        # 间距刻度 / 圆角 / 描边 / 通用组件尺寸
@@ -65,11 +72,13 @@ src/ui/
 | 学期 | `semesterNameField`、`semesterStartField`、`semesterWeeksSpin`、`saveSemesterButton` |
 | 设置 | `importDirField`、`chooseImportDirButton`、`importDirDialog`、`exportDirField`、`chooseExportDirButton`、`exportDirDialog`、`saveDirsButton`、`resetDirsButton`、`slotSelector`、`slotLabelField`、`slotStartField`、`slotEndField`、`saveSlotButton`、`resetSlotsButton`、`reloadButton`、`saveNowButton`、`testButton` |
 | 提醒 | `reminderEnabledCheck`、`reminderMinutesSelector`、`testNotificationButton`、`requestPermissionButton`、`notificationBanner` |
-| 适配器 | `adapterSelector`、`adapterScheduleUrlField`、`adapterLoginUrlField`、`adapterCookieField`、`adapterSaveUrlButton`、`adapterImportButton`、`adapterClearSessionButton` |
+| 从教务导入（设置页） | `settingsAdapterSelector`、`settingsAdapterImportButton`、`settingsAdapterSystemOpenButton`、`adapterAdvancedCheck`、`adapterAdvancedPanel` |
+| 从教务导入（浏览器对话框） | `browserImportDialog`、`browserEntrySelector`、`browserUrlField`、`browserOpenEntryButton`、`browserGoButton`、`browserReloadButton`、`browserSystemOpenButton`、`browserImportButton`、`browserCloseButton`、`scheduleBrowser` |
+| 适配器高级选项 | `adapterSelector`、`adapterScheduleUrlField`、`adapterLoginUrlField`、`adapterCookieField`、`adapterSaveUrlButton`、`adapterImportButton`、`adapterClearSessionButton` |
 | 编辑器 | `courseEditor`、`editor*Field`、`sessionDraftModel`、`sessionList`、`sessionRowClick`（`sessionList` 委托内的热区）、`session*`、`sessionAddButton`、`sessionUpdateButton`、`sessionRemoveButton`、`courseSaveButton`、`courseCancelButton` |
 | 课程详情 | `courseDetailDialog`、`courseDetailName`、`courseDetailCode`、`courseDetailTeacher`、`courseDetailLocation`、`courseDetailCredits`、`courseDetailNotes`、`courseDetailSessions`、`courseDetailEditButton`、`courseDetailCloseButton` |
 | 窄屏折叠菜单 | `moreMenuButton`（触发）、`moreMenu`（菜单本体）、`addCourseMenuItem`、`importMenuItem`、`exportMenuItem` |
-| 导入 | `importWizard`、`importFileField`、`importChooseFileButton`、`importFileDialog`、`importStrategySelector`、`importApplyButton`、`importCancelButton` |
+| 导入 | `importWizard`、`importFromWebButton`、`importFileField`、`importChooseFileButton`、`importFileDialog`、`importStrategySelector`、`importApplyButton`、`importCancelButton` |
 | 导出 | `exportDialog`、`exportFormatSelector`、`exportDirField`、`exportChooseDirButton`、`exportResetDirButton`、`exportDirDialog`、`exportConfirmButton`、`exportCancelButton` |
 | 动态课卡 | `sessionCardClick`（由 `CourseCard` 提供，含 `courseId` 属性） |
 | 课程列表项 | `courseListItemClick`（由 `SemesterPage` 的 `ListView` 委托提供，含 `itemIndex` 属性） |
@@ -88,7 +97,8 @@ src/ui/
 | 导出对话框 | `schedule.importExport.defaultExportDir` / `lastExportSummary` / **`lastExportPath`** |
 | 状态栏 | `schedule.lastError` / `schedule.lastInfo` |
 | 提醒设置 | `reminders.enabled` / `minutesIndex` / `backendName` / `backendStatus` / `nextReminderText` / `todayReminders` / `lastNotificationText` |
-| 适配器设置 | `schedule.importExport.adapterOptions` / `adapterSessionStatus` |
+| 适配器设置（高级） | `schedule.importExport.adapterOptions` / `adapterSessionStatus` |
+| 从教务导入 | `schedule.importExport.browserEntries` / `adaptedTimetableTypes` / `hasEmbeddedBrowser` / `webBrowserBackend` / `webCaptureSummary` |
 
 ## 构建与测试方式
 
@@ -113,6 +123,25 @@ cmake --build --preset windows-msvc-debug
 ```
 
 - 文件选择：`ImportWizard` 使用 `FileDialog`，`ExportDialog` 与 `SettingsPage` 使用 `FolderDialog`；选中的 `QUrl` 由 C++ 侧读取后交给 `ImportExportBridge`，**数据层只接收路径**。
+- 网页抓取：`BrowserImportDialog` 里的 `EmbeddedBrowser` 通过 `schedule.importExport.webCaptureScript` 取注入脚本，用 `runJavaScript` 拉取当前页面原文，再把结果经 `captureFinished` 交给 C++。QML 侧不判断“哪些学校可用”，入口列表完全由 `schedule.importExport.browserEntries` 提供。
+
+## 内嵌浏览器（Embedded*.qml）
+
+「从教务导入」需要把教务页面嵌进应用，但 Qt 的 Web 组件在不同套件里差别很大，因此这里用**一个外壳 + 三个后端实现**把它挡住：
+
+| 文件 | 角色 |
+| --- | --- |
+| `EmbeddedBrowser.qml` | 统一外壳。对外只暴露 `loadUrl()` / `reload()` / `runJavaScript()` / `grabTimetable()` 与 `currentUrl` / `pageTitle` / `pageLoading` / `lastError`；根据 `schedule.importExport.webBrowserBackend` 选择后端 |
+| `EmbeddedWebView.qml` | 后端：Qt WebView，包一层 `WebView` 并把 `title` / `loading` / `url` 绑定回统一接口 |
+| `EmbeddedWebEngine.qml` | 后端：Qt WebEngine，包一层 `WebEngineView`，接口与上面完全一致 |
+| `EmbeddedFallback.qml` | 后端：不可用时显示说明，引导用户改用系统浏览器 + 文件导入；**不提供任何交互控件**，避免同一个动作出现两套入口 |
+
+两个要点：
+
+- **用 `Loader.source`（字符串）而不是内联 `Component`**：未选中的后端文件可能 `import` 本机并不存在的模块，内联组件会让 QML 在解析外壳时就要求该类型存在；`Loader.source` 是延迟的，只有真正选中的那份文件会被加载与解析。CMake 也据此**只把选中的后端加进 QML 模块**。
+- **QML 仍然不写信号处理器**：后端只做「属性绑定回灌 + 函数转发」，注入脚本、抓取触发与结果处理都在 C++ 侧（`UiConnector` + `BrowserCaptureScript`）。
+
+后端探测逻辑与「为什么优先 WebView、为什么必须检查插件目录」见 [../data/adapter/README.md](../data/adapter/README.md) 的「内嵌浏览器后端」一节。
 
 ## 样式令牌（style/ 单例）
 

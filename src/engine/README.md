@@ -111,10 +111,26 @@ engine.rootContext()->setContextProperty("schedule", &schedule_bridge);
 | `previewWarnings` / `previewConflicts` | 预览提示与冲突明细 |
 | `strategyNames` / `formatNames` | 下拉框选项文本（`CONSTANT`） |
 | `lastExportPath` / `lastExportSummary` / `lastImportSummary` / `lastError` / `progress` | 结果与进度 |
+| `adaptedTimetableTypes` | 已适配的课表类型（`展示名 · 扩展名`），由已注册导入器派生，导入向导据此显示说明 |
+| `adapterOptions` / `adapterSessionStatus` | 已注册适配器元信息 / 会话状态文本 |
+| `webBrowserBackend` / `hasEmbeddedBrowser` | 内嵌浏览器后端（`webview` / `webengine` / `none`，编译期决定，`CONSTANT`） |
+| `browserEntries` | 「从教务导入」入口列表：固定首项为“打开内置浏览器”，其后是带 http(s) 入口的适配器 |
+| `webCaptureScript` | 注入内嵌浏览器的抓取脚本（`BrowserCaptureScript`，`CONSTANT`） |
+| `webCaptureSummary` / `webCaptureSource` | 最近一次网页抓取的结果摘要与来源地址 |
 
-槽：`preview_import(QUrl)`、`apply_import(strategyIndex)`、`cancel_import()`、 `export_schedule(formatIndex, QUrl)`、`set_default_import_dir(QUrl)`、 `set_default_export_dir(QUrl)`、`reset_default_directories()`、`refresh_directories()`。
+槽：`preview_import(QUrl)`、`apply_import(strategyIndex)`、`cancel_import()`、 `export_schedule(formatIndex, QUrl)`、`set_default_import_dir(QUrl)`、 `set_default_export_dir(QUrl)`、`reset_default_directories()`、`refresh_directories()`、 `set_adapter_registry(registry)`、`save_adapter_endpoints(index, scheduleUrl, loginUrl)`、 `import_from_adapter(index, cookie)`、`clear_adapter_session()`、 `submit_web_capture(pageHtml, sourceUrl)`。
 
-信号：`importPreviewReady(bool, QString)`、`importFinished(bool, QString)`、 `exportFinished(bool, QString, QString)`、`progressChanged(int, QString)`、 `errorOccurred(QString)`、`directoriesChanged()`、`previewChanged()`、 `importFinishedChanged()`、`exportFinishedChanged()`。
+信号：`importPreviewReady(bool, QString)`、`importFinished(bool, QString)`、 `exportFinished(bool, QString, QString)`、`progressChanged(int, QString)`、 `errorOccurred(QString)`、`directoriesChanged()`、`previewChanged()`、 `importFinishedChanged()`、`exportFinishedChanged()`、`adaptersChanged()`、 `webCaptureChanged()`、`webCaptureFinished(bool, QString)`。
+
+### `BrowserCaptureScript`（网页抓取脚本）
+
+| 项                         | 说明                                                                                |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| `browser_capture_script()` | 返回注入教务页面的 JavaScript；由 `ImportExportBridge::webCaptureScript` 暴露给 QML |
+
+脚本只做两件事：把当前页面的 HTML 原文回传，并在页面右下角注入一个幂等的「抓取课表」悬浮按钮。 它**不读 Cookie、不读 localStorage、不发网络请求**。
+
+> 为什么必须抓整页 HTML，以及为什么用 `runJavaScript` 拉取而不是 QWebChannel 推送， 见 [../data/adapter/README.md](../data/adapter/README.md) 的「内嵌浏览器」两节。
 
 > **文件对话框在 UI 层**：QML 使用 `QtQuick.Dialogs` 的 `FileDialog` / `FolderDialog`，C++ 侧连接其 `accepted` 信号后读取 `selectedFile` / `selectedFolder` 再调用上述槽。
 

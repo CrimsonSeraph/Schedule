@@ -80,6 +80,7 @@ Schedule/
 - CMake ≥ 3.20
 - 支持 C++20 的编译器（MSVC / GCC 11+ / Clang 14+）
 - Qt **6.9.3**，组件：`Core`、`Gui`、`Qml`、`Quick`、`QuickDialogs2`、`Sql`、`Test`（测试）、 `Widgets`（仅桌面，用于系统托盘通知）、`LinguistTools`（国际化，可选）
+- 内嵌浏览器（**可选**，缺失时自动回退为系统浏览器 + 文件导入）：`WebView` + `WebChannel`（首选，桌面还需 `<Qt>/plugins/webview` 后端插件），或 `WebEngineQuick`（次选）
 - Android 交叉编译：NDK + Ninja，工具链取自 `$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake`
 
 ---
@@ -116,10 +117,11 @@ cmake --build build/android --target apk        # 打 APK（--target aab 出 Goo
 
 ### 构建选项
 
-| 选项             | 默认  | 说明                                                      |
-| ---------------- | ----- | --------------------------------------------------------- |
-| `BUILD_TESTS`    | `OFF` | 构建 QTest 单元测试（11 个目标）并启用 CTest              |
+| 选项 | 默认 | 说明 |
+| --- | --- | --- |
+| `BUILD_TESTS` | `OFF` | 构建 QTest 单元测试（11 个目标）并启用 CTest |
 | `BUILD_SELFTEST` | `OFF` | 构建 `Schedule.exe --selftest` 端到端自检（仅桌面开发用） |
+| `SCHEDULE_ENABLE_EMBEDDED_BROWSER` | `ON` | 启用内嵌浏览器抓取课表；关闭后不链接任何 Web 模块，只保留系统浏览器 + 文件导入 |
 
 发布的正式包应当**同时关闭**这两个选项。
 
@@ -180,10 +182,19 @@ cmake --build --preset windows-msvc-debug
 
 分层约定：**接口在 `core`（`core/adapter/SchoolAdapter.h`），实现在 `data`，注册在 `app`**。
 
-- 只在用户点击“从适配器导入”时发起**一次**请求；不做定时轮询、不做后台同步、不做增量合并；
-- **不接收也不保存明文密码**：凭证只来自 WebView / 浏览器登录后的 Cookie，且仅驻留内存，可在设置页一键清除；
-- 适配器只负责“拿到字节”，解析复用已有的 JSON / CSV / ICS 导入器与同一套预览 / 冲突检测流程；
-- 内置两个示例：`local-sample`（离线读取 `samples/schedule_sample.json`）与 `generic-jwgl`（实验性，地址与 Cookie 由用户在设置页填写）。
+支持两条导入路线，用户只需在「从教务导入」列表里选一个入口：
+
+1. **网页抓取（推荐）**：在应用内的浏览器中登录教务系统、停在课表页面，点「导入课表」即可抓取**当前页面**并导入。安徽工程大学即走这条路。
+2. **接口抓取**：少数教务系统的课表接口能直接返回 JSON / CSV / ICS / 正方页面，在设置页「高级选项」里填地址与 Cookie 即可。
+
+约束与隐私：
+
+- 只在用户点击「导入课表 / 从适配器导入」时触发**一次**；不做定时轮询、不做后台同步、不做增量合并；
+- **不接收也不保存明文密码**；网页抓取路线**连 Cookie 都不读取**——会话留在内嵌 Web 组件内部，应用只接收当前页面的 HTML；接口抓取路线的 Cookie 仅驻留内存，可在设置页一键清除；
+- 抓到的内容交给已有的导入器解析，与文件导入共用同一套预览 / 冲突检测 / 合并策略；
+- 内置入口：`local-sample`（离线读取样本）、`generic-jwgl`（地址与 Cookie 由用户填写）、 `ahpu-jwxt`（安徽工程大学教务系统，正方 V9，浏览器直达）。
+
+内嵌浏览器按 **Qt WebView → Qt WebEngine → 系统浏览器兜底** 的顺序在配置期自动选择：Qt WebView 在桌面需要 `<Qt>/plugins/webview` 后端插件（官方 Windows 包基于 Qt WebEngine），官方 MinGW 套件没有该插件，会直接回退到「系统浏览器打开 + 教务系统导出后文件导入」， **不影响构建，也不影响其它功能**。可用 `-DSCHEDULE_ENABLE_EMBEDDED_BROWSER=OFF` 整体关闭。
 
 详见 [src/data/adapter/README.md](src/data/adapter/README.md)。
 

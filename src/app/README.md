@@ -80,12 +80,15 @@ src/app/
 
 ## 教务适配器的注册（阶段 9）
 
-按分层约定，适配器**接口在 `core`、实现在 `data`、注册在 `app`**。`main.cpp` 中注册了两个：
+按分层约定，适配器**接口在 `core`、实现在 `data`、注册在 `app`**。`main.cpp` 中注册了三个：
 
 | id | 名称 | 说明 |
 | --- | --- | --- |
 | `local-sample` | 本地样本适配器 | 指向 `<exe>/samples/schedule_sample.json`，**离线可用**，用于验证适配器全链路 |
-| `generic-jwgl` | 通用教务适配器（实验性） | 地址从设置读取；需要用户在浏览器 / WebView 登录后粘贴 Cookie |
+| `generic-jwgl` | 通用教务适配器（实验性） | 地址从设置读取；需要用户在内嵌浏览器登录后粘贴 Cookie（或直接走网页抓取） |
+| `ahpu-jwxt` | 安徽工程大学教务系统（正方 V9） | **只配登录页**：作为「从教务导入」的直达入口，用户登录并进入课表页后抓取当前页面 |
+
+注册安徽工程大学时用的是 `GenericSchoolAdapter`，但**不设置** `schedule_url`： `AdapterInfo::is_valid()` 允许“只有登录页”的适配器，这类适配器是**浏览器直达入口**，其数据由内嵌浏览器抓取（见 `ImportExportBridge::submit_web_capture()`），而不是由 `fetch_schedule()` 去请求某个接口。对该类适配器调用“从适配器导入”会得到明确的引导信息，而不是发出无效请求。
 
 ```cpp
 std::vector<std::shared_ptr<Schedule::IScheduleFetcher>> schedule_fetchers = {
@@ -103,7 +106,8 @@ schedule_bridge.import_export()->set_adapter_registry(&adapter_registry);
 
 - 适配器**只接收 Cookie**，不接收也不保存密码；
 - Cookie 只存在于 `AdapterSession` 内存对象里，可随时通过设置页的“清除凭证”擦除；
-- 只在用户点击“从适配器导入”时发起一次请求，**不做后台同步与定时轮询**。
+- **网页抓取路线连 Cookie 都不读**：会话留在内嵌 Web 组件内部，应用只接收当前页面的 HTML；
+- 只在用户点击“从适配器导入 / 导入课表”时触发一次，**不做后台同步与定时轮询**。
 
 详见 [../data/adapter/README.md](../data/adapter/README.md)。
 
@@ -168,6 +172,25 @@ Test button clicked!
 
 - 向下：实例化 `data` 层仓库与导入导出管理器（阶段 2/3 起）、`engine` 层桥接对象；通过 `setContextProperty` 注入 QML。
 - 向上：无。
+
+### 「从教务导入」的连线
+
+网页抓取跨越 QML 与 C++，但**全部连线仍集中在 `UiConnector::connect_browser_import()`**：
+
+| 控件（objectName） | 行为 |
+| --- | --- |
+| `importFromWebButton` / `settingsAdapterImportButton` | 打开 `browserImportDialog`，并用所选入口同步 `browserEntrySelector` 后导航 |
+| `browserEntrySelector` | `currentIndexChanged` → 把该入口的地址回填 `browserUrlField` |
+| `browserOpenEntryButton` / `browserGoButton` | 用 `browserUrlField` 的内容调用 `EmbeddedBrowser::loadUrl()` |
+| `browserReloadButton` | 调用 `EmbeddedBrowser::reload()` |
+| `browserSystemOpenButton` / `settingsAdapterSystemOpenButton` | `QDesktopServices::openUrl()`，不参与抓取 |
+| `browserImportButton` | 调用 `EmbeddedBrowser::grabTimetable()`（注入 `schedule.importExport.webCaptureScript`） |
+| `scheduleBrowser` | `captureFinished(bool, QString)` → 读回 `capturedPayload` / `currentUrl`，调用 `submit_web_capture()` |
+
+两点实现约束：
+
+- `UiConnector::on_signal()` 的处理函数**不携带信号参数**（统一分发槽只认 `sender()`），因此抓取结果经 QML 属性 `capturedPayload` / `currentUrl` 回传；
+- 同一个对象的**多个信号只能接一个处理函数**（`m_handlers` 按对象索引），所以浏览器只对外发一个 `captureFinished`，加载错误通过 `lastError` 属性在 QML 内展示。
 
 ## 信号连接约定
 
