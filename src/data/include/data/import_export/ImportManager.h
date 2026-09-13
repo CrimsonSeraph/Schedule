@@ -16,12 +16,13 @@ namespace Schedule {
      *  2. `preview()` 解析并生成 `ImportPreview`（含冲突、重复统计、提示），此时**不落库**；
      *  3. 用户确认策略后调用 `apply()`，得到 `ImportResult`，再由上层写入仓库。
      *
-     * 内置 JSON / CSV / ICS 三种导入器；新增来源（剪贴板分享码、教务适配器）
-     * 只需实现 `IScheduleImporter` 并调用 `register_importer()` 注册。
+     * 内置 JSON / CSV / ICS 三种通用格式，以及正方教务系统导出的 HTML 课表
+     * （`ZhengfangHtml`，教务系统通常命名为 `课表.xls`）；新增来源（剪贴板分享码、
+     * 教务适配器）只需实现 `IScheduleImporter` 并调用 `register_importer()` 注册。
      */
     class ImportManager {
     public:
-        /** 构造并注册内置的 JSON / CSV / ICS 导入器。 */
+        /** 构造并注册内置的 JSON / CSV / ICS / 正方教务课表导入器。 */
         ImportManager();
 
         ~ImportManager();

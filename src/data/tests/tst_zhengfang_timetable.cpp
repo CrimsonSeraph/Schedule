@@ -119,6 +119,9 @@ private slots:
 
     /** 只导入格式不出现在导出过滤器里。 */
     void export_filter_excludes_zhengfang();
+
+    /** 导入器已注册，经 ImportManager 走通「预览」流程。 */
+    void import_manager_previews_sample();
 };
 
 void TestZhengfangTimetable::sample_file_exists() {
@@ -348,6 +351,35 @@ void TestZhengfangTimetable::export_filter_excludes_zhengfang() {
     QVERIFY(Schedule::export_file_extensions().contains(QStringLiteral(".json")));
     QVERIFY(Schedule::export_file_extensions().contains(QStringLiteral(".csv")));
     QVERIFY(Schedule::export_file_extensions().contains(QStringLiteral(".ics")));
+}
+
+void TestZhengfangTimetable::import_manager_previews_sample() {
+    // ImportManager 必须内置注册正方导入器，用户直接选 .xls 即可导入
+    ImportManager manager;
+    QVERIFY(manager.supported_formats().contains(ScheduleFormat::ZhengfangHtml));
+
+    const ScheduleSnapshot empty;
+    const ImportPreview preview = manager.preview(sample_path(), empty);
+
+    QVERIFY2(preview.is_valid, qPrintable(preview.error_message));
+    QCOMPARE(preview.format, ScheduleFormat::ZhengfangHtml);
+    QCOMPARE(preview.courses.size(), 7);
+    QCOMPARE(preview.new_course_count, 7);
+    QCOMPARE(preview.duplicate_count, 0);
+
+    // 样本内部无冲突：同一天的安排要么节次不相交，要么周次不相交
+    QCOMPARE(preview.conflicts.size(), 0);
+    QVERIFY(preview.summary().contains(QStringLiteral("正方教务课表")));
+
+    // 扩展名不可信时（内容仍是正方页面）也应能正确识别
+    QFile file(sample_path());
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    const QByteArray raw = file.readAll();
+    file.close();
+
+    const ImportPreview by_content = manager.preview_data(raw, QStringLiteral("clipboard://课表"), empty);
+    QVERIFY2(by_content.is_valid, qPrintable(by_content.error_message));
+    QCOMPARE(by_content.format, ScheduleFormat::ZhengfangHtml);
 }
 
 QTEST_GUILESS_MAIN(TestZhengfangTimetable)

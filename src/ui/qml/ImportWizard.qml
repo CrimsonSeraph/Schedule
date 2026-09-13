@@ -61,7 +61,7 @@ Dialog {
                         objectName: "importFileField"
                         Layout.fillWidth: true
                         readOnly: true
-                        placeholderText: qsTr("支持 JSON / CSV / ICS")
+                        placeholderText: qsTr("支持 JSON / CSV / ICS / 教务系统导出的课表文件")
                     }
 
                     Button {
@@ -209,7 +209,7 @@ Dialog {
         objectName: "importFileDialog"
         title: qsTr("选择要导入的课表文件")
         fileMode: FileDialog.OpenFile
-        nameFilters: [qsTr("全部支持的课表文件 (*.json *.csv *.ics)"), qsTr("课表 JSON (*.json)"), qsTr("表格 CSV (*.csv *.txt)"), qsTr("日历 ICS (*.ics *.ical)"), qsTr("全部文件 (*)")]
+        nameFilters: [qsTr("全部支持的课表文件 (*.json *.csv *.ics *.xls *.html *.htm)"), qsTr("课表 JSON (*.json)"), qsTr("表格 CSV (*.csv *.txt)"), qsTr("日历 ICS (*.ics *.ical)"), qsTr("教务系统课表页 (*.xls *.html *.htm)"), qsTr("全部文件 (*)")]
         currentFolder: importWizard.initialDirectory.length > 0 ? "file:///" + importWizard.initialDirectory.replace(/\\/g, "/") : ""
     }
 }
