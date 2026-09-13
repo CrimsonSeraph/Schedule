@@ -163,6 +163,12 @@ namespace Schedule {
         /** @brief 打开「从教务导入」对话框并导航到当前选中入口。 */
         void open_browser_import();
 
+        /**
+         * @brief 打开「从教务导入」对话框，并可先切换到指定入口。
+         * @param entry_index `browserEntries` 的下标；< 0 表示沿用对话框当前选择
+         */
+        void open_browser_import_at(int entry_index);
+
         /** @brief 把选中入口的地址回填到地址栏（切换入口时调用）。 */
         void sync_browser_url_field();
 

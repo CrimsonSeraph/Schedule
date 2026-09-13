@@ -347,7 +347,7 @@ Item {
             GroupBox {
                 Layout.fillWidth: true
                 Layout.margins: Metrics.spacing2xl
-                title: qsTr("教务适配器（可选 · 实验性）")
+                title: qsTr("从教务导入")
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -355,12 +355,13 @@ Item {
 
                     Label {
                         Layout.fillWidth: true
-                        text: qsTr("隐私说明：适配器仅在你点击“导入”时主动触发一次，不保存密码、不做后台同步；") + qsTr("登录 Cookie 只驻留内存，可随时清除。")
+                        text: qsTr("隐私说明：只在你点击“导入课表”时抓取一次当前页面的内容，不保存密码、不做后台同步；不读取也不保存 Cookie。")
                         color: Theme.warning
                         wrapMode: Text.WordWrap
                         font.pixelSize: Typography.fontSmall
                     }
 
+                    // 与导入向导里的入口列表完全一致（含固定的“打开内置浏览器”）
                     GridLayout {
                         Layout.fillWidth: true
                         columns: settingsPage.pairColumns
@@ -368,56 +369,37 @@ Item {
                         rowSpacing: Metrics.spacingLg
 
                         Label {
-                            text: qsTr("适配器")
+                            text: qsTr("教务入口")
                         }
                         ComboBox {
-                            id: adapterSelector
+                            id: settingsAdapterSelector
 
-                            objectName: "adapterSelector"
+                            objectName: "settingsAdapterSelector"
                             Layout.fillWidth: true
                             textRole: "name"
-                            model: schedule.importExport.adapterOptions
-                        }
-
-                        Label {
-                            text: qsTr("课表接口地址")
-                        }
-                        TextField {
-                            id: adapterScheduleUrlField
-
-                            objectName: "adapterScheduleUrlField"
-                            Layout.fillWidth: true
-                            placeholderText: qsTr("http(s) 接口地址或本地文件路径")
-                        }
-
-                        Label {
-                            text: qsTr("登录页地址")
-                        }
-                        TextField {
-                            id: adapterLoginUrlField
-
-                            objectName: "adapterLoginUrlField"
-                            Layout.fillWidth: true
-                            placeholderText: qsTr("供 WebView 打开；可留空")
-                        }
-
-                        Label {
-                            text: qsTr("登录 Cookie")
-                        }
-                        TextField {
-                            id: adapterCookieField
-
-                            objectName: "adapterCookieField"
-                            Layout.fillWidth: true
-                            placeholderText: qsTr("从浏览器开发者工具复制 Cookie 请求头")
+                            model: schedule.importExport.browserEntries
                         }
                     }
 
                     Label {
                         Layout.fillWidth: true
-                        text: schedule.importExport.adapterSessionStatus
-                        color: Theme.textSecondary
+                        text: {
+                            const entries = schedule.importExport.browserEntries;
+                            if (settingsAdapterSelector.currentIndex < 0 || settingsAdapterSelector.currentIndex >= entries.length) {
+                                return "";
+                            }
+                            return entries[settingsAdapterSelector.currentIndex].description;
+                        }
                         wrapMode: Text.WordWrap
+                        color: Theme.textMuted
+                        font.pixelSize: Typography.fontSmall
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("已适配的课表类型：%1").arg(schedule.importExport.adaptedTimetableTypes.join(qsTr("；")))
+                        wrapMode: Text.WordWrap
+                        color: Theme.textMuted
                         font.pixelSize: Typography.fontSmall
                     }
 
@@ -426,24 +408,139 @@ Item {
                         spacing: Metrics.spacingLg
 
                         Button {
-                            id: adapterSaveUrlButton
+                            id: settingsAdapterImportButton
 
-                            objectName: "adapterSaveUrlButton"
-                            text: qsTr("保存接口地址")
+                            objectName: "settingsAdapterImportButton"
+                            text: qsTr("从教务导入…")
                         }
 
                         Button {
-                            id: adapterImportButton
+                            id: settingsAdapterSystemOpenButton
 
-                            objectName: "adapterImportButton"
-                            text: qsTr("从适配器导入")
+                            objectName: "settingsAdapterSystemOpenButton"
+                            text: qsTr("用系统浏览器打开")
+                        }
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: schedule.importExport.webCaptureSummary.length > 0
+                        text: schedule.importExport.webCaptureSummary
+                        wrapMode: Text.WordWrap
+                        color: schedule.importExport.hasPendingPreview ? Theme.success : Theme.danger
+                        font.pixelSize: Typography.fontSmall
+                    }
+
+                    // ------------------------------------------------ 高级选项（默认隐藏）
+                    // 接口地址与 Cookie 只服务于“课表接口直接返回 JSON / CSV / ICS”的少数场景，
+                    // 对绝大多数用户是噪音，因此默认折叠，勾选后才展开。
+                    CheckBox {
+                        id: adapterAdvancedCheck
+
+                        objectName: "adapterAdvancedCheck"
+                        text: qsTr("显示高级选项（接口地址与登录凭证）")
+                    }
+
+                    ColumnLayout {
+                        id: adapterAdvancedPanel
+
+                        objectName: "adapterAdvancedPanel"
+                        Layout.fillWidth: true
+                        visible: adapterAdvancedCheck.checked
+                        spacing: Metrics.spacingLg
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: qsTr("仅当教务系统的课表接口能直接返回 JSON / CSV / ICS 时才需要填写；地址会写入本机设置，Cookie 只驻留内存。")
+                            wrapMode: Text.WordWrap
+                            color: Theme.textMuted
+                            font.pixelSize: Typography.fontSmall
                         }
 
-                        Button {
-                            id: adapterClearSessionButton
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: settingsPage.pairColumns
+                            columnSpacing: Metrics.spacingLg
+                            rowSpacing: Metrics.spacingLg
 
-                            objectName: "adapterClearSessionButton"
-                            text: qsTr("清除凭证")
+                            Label {
+                                text: qsTr("适配器")
+                            }
+                            ComboBox {
+                                id: adapterSelector
+
+                                objectName: "adapterSelector"
+                                Layout.fillWidth: true
+                                textRole: "name"
+                                model: schedule.importExport.adapterOptions
+                            }
+
+                            Label {
+                                text: qsTr("课表接口地址")
+                            }
+                            TextField {
+                                id: adapterScheduleUrlField
+
+                                objectName: "adapterScheduleUrlField"
+                                Layout.fillWidth: true
+                                placeholderText: qsTr("http(s) 接口地址或本地文件路径")
+                            }
+
+                            Label {
+                                text: qsTr("登录页地址")
+                            }
+                            TextField {
+                                id: adapterLoginUrlField
+
+                                objectName: "adapterLoginUrlField"
+                                Layout.fillWidth: true
+                                placeholderText: qsTr("供内嵌浏览器打开；可留空")
+                            }
+
+                            Label {
+                                text: qsTr("登录 Cookie")
+                            }
+                            TextField {
+                                id: adapterCookieField
+
+                                objectName: "adapterCookieField"
+                                Layout.fillWidth: true
+                                placeholderText: qsTr("从浏览器开发者工具复制 Cookie 请求头")
+                            }
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: schedule.importExport.adapterSessionStatus
+                            color: Theme.textSecondary
+                            wrapMode: Text.WordWrap
+                            font.pixelSize: Typography.fontSmall
+                        }
+
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Metrics.spacingLg
+
+                            Button {
+                                id: adapterSaveUrlButton
+
+                                objectName: "adapterSaveUrlButton"
+                                text: qsTr("保存接口地址")
+                            }
+
+                            Button {
+                                id: adapterImportButton
+
+                                objectName: "adapterImportButton"
+                                text: qsTr("从适配器导入")
+                            }
+
+                            Button {
+                                id: adapterClearSessionButton
+
+                                objectName: "adapterClearSessionButton"
+                                text: qsTr("清除凭证")
+                            }
                         }
                     }
                 }

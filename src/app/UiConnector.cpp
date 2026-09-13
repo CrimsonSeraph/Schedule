@@ -579,13 +579,21 @@ namespace Schedule {
     }
 
     void UiConnector::open_browser_import() {
+        open_browser_import_at(-1);
+    }
+
+    void UiConnector::open_browser_import_at(int entry_index) {
         if (!m_browser_dialog) {
             return;
         }
-        // 打开时把选中入口的地址回填到地址栏，用户可直接改地址或换入口
+        // 入口下标有效时先同步到对话框的选择器（会触发 currentIndexChanged 回填地址栏），
+        // 这样从设置页进入时能直接落在用户选中的那个教务入口上。
+        if (entry_index >= 0) {
+            set_property(find("browserEntrySelector"), "currentIndex", entry_index);
+        }
         sync_browser_url_field();
         invoke(m_browser_dialog, "open");
-        // 首次打开即导航到当前入口，省去用户再点一次「打开此入口」
+        // 打开即导航到当前入口，省去用户再点一次「打开此入口」
         navigate_browser_to_entry();
     }
 
@@ -618,6 +626,23 @@ namespace Schedule {
         });
 
         on_click("browserCloseButton", [this]() { invoke(m_browser_dialog, "close"); });
+
+        // 设置页的简化入口：与导入向导共用同一个对话框，只是先同步选中的教务入口
+        on_click("settingsAdapterImportButton", [this]() {
+            open_browser_import_at(combo_index(find("settingsAdapterSelector")));
+        });
+
+        on_click("settingsAdapterSystemOpenButton", [this]() {
+            const QVariantList entries = m_bridge->import_export()->browser_entries();
+            const int index = combo_index(find("settingsAdapterSelector"));
+            if (index < 0 || index >= entries.size()) {
+                return;
+            }
+            const QString url = entries.at(index).toMap().value(QStringLiteral("url")).toString();
+            if (!url.isEmpty()) {
+                QDesktopServices::openUrl(QUrl(url));
+            }
+        });
 
         // 抓取完成：页面原文经属性回传（dispatch() 不携带信号参数）
         on_signal("scheduleBrowser", "captureFinished(bool,QString)", [this]() {
