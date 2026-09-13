@@ -4,7 +4,7 @@
 
 - 课表领域模型：学期、课程、上课时间段、节次、周次表达式、冲突检测、当前周计算；
 - 本地持久化：SQLite（建表 / 迁移 / 备份 / 恢复）与 JSON 序列化；
-- **导入导出到指定目录**：JSON / CSV / ICS 三种格式，支持预览、冲突检测、合并 / 去重 / 覆盖；
+- **导入导出到指定目录**：JSON / CSV / ICS 三种通用格式，外加**正方教务课表**（教务系统导出的 `课表.xls`，只导入）；支持预览、冲突检测、合并 / 去重 / 覆盖；
 - QML 界面：周视图、日视图、课程编辑、导入导出向导、学期与设置页，桌面 / 移动两套布局；
 - 本地提醒：上课前 5 / 10 / 15 分钟系统通知（桌面托盘 / Android 本地通知 / 应用内横幅兜底）；
 - 可选教务适配器：仅本地主动触发，只接收 Cookie、不保存密码，不做后台同步。
@@ -60,7 +60,11 @@ Schedule/
 │   ├── README.md
 │   ├── schedule_sample.json    # 三种内容等价的课表样本
 │   ├── schedule_sample.csv
-│   └── schedule_sample.ics
+│   ├── schedule_sample.ics
+│   └── schedule_sample_zhengfang.xls  # 正方教务导出页样本（GBK，虚构数据）
+├── tools/                      # 开发期生成脚本（产物入库，脚本用于复现）
+│   ├── gen_gbk_table.py        # 生成 GBK→Unicode 码表
+│   └── gen_zhengfang_sample.py # 生成正方教务样本
 └── src/
     ├── core/                   # 领域模型 + 核心服务（+ tests/）
     ├── data/                   # 持久化 + 导入导出（+ tests/、import_export/README.md）
@@ -114,7 +118,7 @@ cmake --build build/android --target apk        # 打 APK（--target aab 出 Goo
 
 | 选项             | 默认  | 说明                                                      |
 | ---------------- | ----- | --------------------------------------------------------- |
-| `BUILD_TESTS`    | `OFF` | 构建 QTest 单元测试（9 个目标）并启用 CTest               |
+| `BUILD_TESTS`    | `OFF` | 构建 QTest 单元测试（11 个目标）并启用 CTest              |
 | `BUILD_SELFTEST` | `OFF` | 构建 `Schedule.exe --selftest` 端到端自检（仅桌面开发用） |
 
 发布的正式包应当**同时关闭**这两个选项。
@@ -161,13 +165,14 @@ cmake --build --preset windows-msvc-debug
 - **导入流程**：选择文件 → 预览（格式 / 新增数 / 重复数 / **本次新引入的冲突** / 提示）→ 选择策略（合并 / 去重合并 / 覆盖）→ 应用并落库；
 - **数据层只接收路径或 `QUrl`**，文件与目录选择对话框在 UI 层（`QtQuick.Dialogs` 的 `FileDialog` / `FolderDialog`）。
 
-三种格式的映射细节见 [src/data/import_export/README.md](src/data/import_export/README.md)：
+四种格式的映射细节见 [src/data/import_export/README.md](src/data/import_export/README.md)：
 
-| 格式 | 特点                                                                                                          |
-| ---- | ------------------------------------------------------------------------------------------------------------- |
-| JSON | **无损**：含作息表、周次位图、颜色、学分、时间段级地点 / 教师覆盖                                             |
-| CSV  | Excel 友好，一行一个上课时间段；导出为 UTF-8 with BOM，列名支持中英文别名                                     |
-| ICS  | 与系统日历互操作；等差周次用 `RRULE`（含 `INTERVAL`），非等差用 `RDATE`；扩展属性 `X-SCHEDULE-*` 保证往返无损 |
+| 格式 | 特点 |
+| --- | --- |
+| JSON | **无损**：含作息表、周次位图、颜色、学分、时间段级地点 / 教师覆盖 |
+| CSV | Excel 友好，一行一个上课时间段；导出为 UTF-8 with BOM，列名支持中英文别名 |
+| ICS | 与系统日历互操作；等差周次用 `RRULE`（含 `INTERVAL`），非等差用 `RDATE`；扩展属性 `X-SCHEDULE-*` 保证往返无损 |
+| 正方教务课表 | **只导入**：教务系统导出的 `课表.xls`（实为 GBK 编码的 HTML），自动解析课程 / 教师 / 教室 / 周次 / 节次；支持本地文件导入与内嵌浏览器抓取 |
 
 ---
 

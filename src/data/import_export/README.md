@@ -7,7 +7,7 @@
 - 定义导入 / 导出接口（`IScheduleImporter` / `IScheduleExporter`）；
 - 编排导入流程（`ImportManager`）：格式识别 → 解析 → **预览** → 冲突检测 → 合并 / 覆盖；
 - 编排导出流程（`ExportManager`）：生成文件名 → 创建目录 → 原子写入 → 返回**实际路径**；
-- 提供 JSON / CSV / ICS 三种内置实现。
+- 提供 JSON / CSV / ICS 三种通用实现，以及正方教务系统导出的 HTML 课表导入器。
 
 明确**不负责**：
 
@@ -40,15 +40,23 @@ src/data/
 │   ├── CsvScheduleIo.h         # CSV 实现（Excel 友好）
 │   ├── IcsScheduleIo.h         # iCalendar 实现（可与系统日历互操作）
 │   ├── ImportManager.h         # 导入编排
-│   └── ExportManager.h         # 导出编排
+│   ├── ExportManager.h         # 导出编排
+│   └── academic_affairs/       # 各校教务系统专用解析（只导入）
+│       ├── ZhengfangTimetableIo.h  # 正方教务（zfn / zfsoft V9）课表页解析
+│       ├── CharsetUtil.h           # 字符集嗅探与 GBK 解码
+│       └── GbkTable.h              # GBK→Unicode 码表声明（实现为生成文件）
 └── src/import_export/          # 与 include/ 同构的实现文件
+    └── academic_affairs/
+        ├── ZhengfangTimetableIo.cpp
+        ├── CharsetUtil.cpp
+        └── GbkTable.cpp            # 由 tools/gen_gbk_table.py 生成，勿手工修改
 ```
 
 ## 公开接口与关键类型
 
 | 类型 | 说明 |
 | --- | --- |
-| `ScheduleFormat` | 格式枚举：`Json` / `Csv` / `Ics` / `Unknown`；配套 `format_to_string()`、`format_from_extension()`、`format_from_content()` |
+| `ScheduleFormat` | 格式枚举：`Json` / `Csv` / `Ics` / `ZhengfangHtml` / `Unknown`；配套 `format_to_string()`、`format_from_extension()`、`format_from_content()` |
 | `ImportStrategy` | `Merge`（同 id 更新，其余新增）/ `SkipDuplicates`（重复跳过）/ `Overwrite`（清空后写入） |
 | `ImportPreview` | 只读预览：格式、学期、作息表、课程、**新引入的冲突**、重复数、新增数、提示、错误 |
 | `ImportResult` | 导入统计：新增 / 更新 / 跳过数量、导入后的冲突、摘要文本 |
@@ -57,8 +65,12 @@ src/data/
 | `IScheduleExporter` | 导出器契约：`format()` / `extension()` / `serialize()` / `write()` |
 | `ImportManager` | 注册表 + 预览 + 应用策略；`register_importer()` 为扩展点 |
 | `ExportManager` | 注册表 + 文件名规则 + 目录导出；`suggested_file_name()` / `sanitize_file_component()` |
+| `supported_file_extensions()` | **全部可导入**格式的扩展名（含 `.xls`），用于导入侧提示 |
+| `export_file_extensions()` | **仅可导出**格式的扩展名（不含 `.xls`），用于文件对话框过滤器 |
 
-## 三种格式的映射要点
+> `supported_file_extensions()` 与 `export_file_extensions()` 的分工是必要的：正方教务页面只能导入不能导出，若共用一份列表，导出对话框会给出无法生成的 `.xls` 过滤器。
+
+## 四种格式的映射要点
 
 ### JSON（无损）
 
@@ -75,8 +87,30 @@ src/data/
 
 - 必需列：课程名称、星期、开始节次、周次；
 - 导出为 **UTF-8 with BOM**（Excel 双击可正确识别中文）；
-- 导入时若非 UTF-8（如 GBK），会给出“请另存为 UTF-8”的明确提示—— Qt 6 默认不再内置 GBK 编解码器；
+- 导入时若非 UTF-8（如 GBK），会给出“请另存为 UTF-8”的明确提示——Qt 6 默认不再内置 GBK 编解码器，CSV 路径有意不做猜测（见下方「编码策略」）；
 - CSV 不含学期信息，导入时按内容合成一个不早于 20 周的学期，由 `ImportManager` 在存在“当前学期”时替换为真实学期。
+
+### 正方教务课表（只导入）
+
+教务系统「导出 / 打印」出的课表文件通常命名为 `课表.xls`，但内容**不是** Excel 二进制，而是 Excel 兼容的 HTML 页面：外层是可打印表格（`<table id="manualArrangeCourseTable">`），内层 `<script>` 是页面数据源。识别标志串为 `manualArrangeCourseTable` / `courseTableForStd`，或同时出现 `CourseTable(` 与 `TaskActivity(`。
+
+解析以 `<script>` 中的 `TaskActivity` 为准（只有它带逐周位图），关键约定：
+
+| 约定 | 说明 |
+| --- | --- |
+| 单元格下标 | `index = 星期 * unitCount + 节次`；**星期从 0 开始**（0=周一），**节次从 0 开始** |
+| 周次位图 | 第 i 个字符为 `1` 表示第 i 周有课（下标 0 不使用，第 1 周对应下标 1） |
+| 连续节次 | 一个活动可挂在多个 `index` 上：同一天且节次连续→合并为一段，否则拆成多段 |
+| 教师名 | 不在 `TaskActivity` 参数里，取自紧邻其上的 `actTeachers = [{name:"…"}]` |
+| 课程代码 | 形如 `19626(04311190.02)`，取括号内的 `04311190.02`，括号外为教学班序号 |
+| 聚合 | 同一课程代码的多个活动合并为一门课程的多段时间段 |
+| 学期 | 取页面 `<h3>` 标题（如 `2025-2026学年第二学期`）；起始日期页面未提供，先按本周一合成，再由 `ImportManager` 换成当前学期 |
+| 作息表 | 页面不含上课时间，按 `unitCount` 生成 1..N 节，已有默认作息时间的节次直接带入 |
+| 条件字段 | 课程级教师 / 地点取第一个时间段的值，与之相同的时间段不再重复存储（留空表示沿用课程级值） |
+
+`.xls` / `.html` / `.htm` 三种扩展名都会映射到本格式。**该格式只导入**：本应用不会生成教务页面，因此它出现在 `supported_file_extensions()` 而不在 `export_file_extensions()` 中。
+
+> 样本与回归测试见 [`samples/schedule_sample_zhengfang.xls`](../../../samples/README.md) 与 [`../tests/tst_zhengfang_timetable.cpp`](../tests/tst_zhengfang_timetable.cpp)。样本是**虚构数据**，由 `tools/gen_zhengfang_sample.py` 生成，结构与真实导出页一致。
 
 ### ICS（iCalendar）
 
@@ -99,6 +133,19 @@ src/data/
 - 导出完成后，`ExportResult::file_path` 是**实际写入的绝对路径**，界面必须原样提示用户。
 - 导入时从指定目录选择文件：**文件对话框在 UI 层**，数据层只接收路径。
 
+## 编码策略
+
+Qt 6 的 `QStringConverter` 只覆盖 UTF / Latin-1 / System，**不含 GBK**；`Qt6Core5Compat` （提供 `QTextCodec`）也不在本项目的依赖清单里。而正方教务系统的导出页一律声明 `<meta charset="GBK">`，课程名 / 教师名 / 教室名都是 GBK 汉字，不解码就无法使用。
+
+因此 `academic_affairs/CharsetUtil.*` 自带一条最小解码链路：
+
+- `GbkTable.cpp` 是由 `tools/gen_gbk_table.py` 生成的 23940 项 GBK→Unicode（BMP）码表，重新生成用 `python3 tools/gen_gbk_table.py`，校验用 `--check`；
+- `gbk_to_unicode()` 处理 ASCII 与双字节序列，非法 / 未定义码位映射为 `U+FFFD`，不抛错；
+- `sniff_declared_charset()` 读取 `<meta charset=…>`；
+- `decode_html_bytes()` 按「声明优先、内容兜底」决策：声明 UTF 系列时先校验字节是否真是合法 UTF-8（部分教务系统声称 UTF-8 实际输出 GBK），不合法则退回 GBK；未声明时合法 UTF-8 按 UTF-8，否则按 GBK。
+
+支持范围是 ASCII + GBK 双字节区（覆盖 GB2312 / GBK 常用汉字）；GB18030 的四字节扩展区不在范围内。该解码链路**只服务于教务页面导入**，CSV / ICS 仍严格要求 UTF-8：通用格式不做编码猜测，才能避免把乱码静默写进课表。
+
 ## 构建与测试方式
 
 ```bash
@@ -107,12 +154,15 @@ cmake --build --preset windows-msvc-debug
 ctest --preset windows-msvc -C Debug
 ```
 
-测试实现位于 [`../tests/tst_import_export.cpp`](../tests/tst_import_export.cpp)，覆盖格式识别、文件名规则、三种格式往返、预览与冲突、三种合并策略、错误路径与内存导入。
+测试实现：
+
+- [`../tests/tst_import_export.cpp`](../tests/tst_import_export.cpp) — 格式识别、文件名规则、三种通用格式往返、预览与冲突、三种合并策略、错误路径与内存导入；
+- [`../tests/tst_zhengfang_timetable.cpp`](../tests/tst_zhengfang_timetable.cpp) — GBK 解码、格式嗅探、连续节次合并、不连续节次拆分、同课程多活动聚合、周次位图还原、导出过滤器不含 `.xls`，以及经 `ImportManager` 的完整预览流程。
 
 ## 与上下层交互方式
 
 - 向下：使用 `core` 的模型与 `ConflictDetector`、`data` 的 `ScheduleJson` / `AppSettings`。
-- 向上：被 `engine` 直接调用（阶段 4 起由 `ImportExportBridge` 暴露给 QML）。典型调用链：
+- 向上：被 `engine` 直接调用（由 `ImportExportBridge` 暴露给 QML）。典型调用链：
 
 ```cpp
 // 1) 预览（UI 层提供文件路径）
@@ -123,19 +173,30 @@ ImportResult result = import_manager.apply(preview, ImportStrategy::Merge, &snap
 repository->save_snapshot(snapshot, &error);
 ```
 
+教务适配器与内嵌浏览器抓取到的是**已解析或已抓到的原文**，因此走另外两个入口，但复用同一套冲突检测与合并逻辑：
+
+```cpp
+// 适配器已解析成快照
+ImportPreview preview = import_manager.preview_snapshot(parsed, format, adapter_name, current);
+// 网页抓取到的页面原文（字节），按内容嗅探格式
+ImportPreview preview = import_manager.preview_data(page_html, "browser://课表", current);
+```
+
 ## 信号连接约定
 
 本子系统不产生 QObject 信号（纯同步 API，便于单元测试）。进度 / 结果信号由 `engine` 层的 `ImportExportBridge` 包装后以全小写 + 下划线的命名暴露给 QML（如 `import_finished(bool, QString)`）。
 
 ## 扩展点与注意事项
 
-- **新增格式**：实现 `IScheduleImporter` / `IScheduleExporter`，在 `ImportManager` / `ExportManager` 构造函数中 `register_*`，并在 `ImportExportTypes.cpp` 的 `FORMATS` 表补一行即可（扩展名、显示名、机器名）。
-- **非文件来源**（剪贴板、分享码、教务适配器）：实现 `IScheduleImporter` 并通过 `ImportManager::preview_data(data, "clipboard://", current)` 调用，无需新增抽象。
+- **新增格式**：实现 `IScheduleImporter` / `IScheduleExporter`，在 `ImportManager` / `ExportManager` 构造函数中 `register_*`，并在 `ImportExportTypes.cpp` 的 `FORMATS` 表补一行（机器名、显示名、扩展名、`exportable`）。`exportable = false` 表示只导入格式，它不会进入导出过滤器。
+- **新增学校**：若能拿到结构化数据，优先让教务系统导出通用格式；若只能拿到页面，在 `include/data/import_export/academic_affairs/` 下新增导入器，与 `ZhengfangTimetableIo` 同级。
+- **非文件来源**（剪贴板、分享码、教务适配器、网页抓取）：不必新增抽象——`preview_data()` 负责原始字节， `preview_snapshot()` 负责已解析快照。
 - **预览的冲突语义**：预览报告的是**本次导入新引入的冲突** （导入后冲突集合 − 导入前冲突集合），避免把历史问题重复报给用户。
 - **覆盖策略**：`Overwrite` 会清空当前课程后写入文件内容；作息表仅在文件提供时才被替换。
-- **重复判定**：有 id 时按 id；无 id（CSV / ICS）时按“课程名称 + 课程代码”。
-- **编码**：CSV 支持 UTF-8（含 BOM）；ICS 按 RFC 必须为 UTF-8；非 UTF-8 输入会明确报错而不是静默产生乱码。
+- **重复判定**：有 id 时按 id；无 id（CSV / ICS / 正方教务）时按“课程名称 + 课程代码”。
+- **编码**：CSV 支持 UTF-8（含 BOM）；ICS 按 RFC 必须为 UTF-8；正方教务页面由 `CharsetUtil` 嗅探并支持 GBK。详见上文「编码策略」。
 - **安全**：所有写入都使用 `QSaveFile` 原子替换；文件名经过清洗，不会突破用户选择的目录。
+- **隐私**：导入过程只读文件，**不访问网络、不读取任何凭证**；正方导入器只取课程 / 教师 / 教室 / 周次 / 节次，**不保存学号、姓名、班级**等页面上的个人信息。
 
 ## 相关文档
 
