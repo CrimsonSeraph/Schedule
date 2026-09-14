@@ -122,6 +122,21 @@ int main(int argc, char* argv[]) {
     adapter_registry.register_adapter(
         std::make_unique<Schedule::GenericSchoolAdapter>(ahpu_adapter, schedule_fetchers));
 
+    // 华东交通大学（教务综合管理系统）。与安徽工程大学一样是**浏览器直达入口**：
+    // 课表页要在登录会话内才有，交给用户在内嵌浏览器里自然地走一遍，比在应用里猜地址稳。
+    Schedule::AdapterInfo ecjtu_jwzhglxt;
+    ecjtu_jwzhglxt.id = QStringLiteral("ecjtu-jwzhglxt");
+    ecjtu_jwzhglxt.name = QStringLiteral("华东交通大学教务综合管理系统");
+    ecjtu_jwzhglxt.description = QStringLiteral(
+        "点击后在内嵌浏览器中打开华东交通大学教务综合管理系统；登录并进入课表页面后，"
+        "点“导入课表”即可抓取当前页面。不保存密码，也不读取 Cookie。");
+    ecjtu_jwzhglxt.login_url = QStringLiteral("https://jwxt.ecjtu.edu.cn");
+    ecjtu_jwzhglxt.schedule_url.clear();
+    ecjtu_jwzhglxt.requires_session = false;
+    ecjtu_jwzhglxt.is_experimental = true;
+    adapter_registry.register_adapter(
+        std::make_unique<Schedule::GenericSchoolAdapter>(ecjtu_jwzhglxt, schedule_fetchers));
+
     // ---------------------------------------------------------------- 桥接对象
     // 桥接对象由 C++ 侧创建并持有，以上下文属性注入 QML（QML 不再自行实例化）
     Schedule::AppBridge app_bridge;
