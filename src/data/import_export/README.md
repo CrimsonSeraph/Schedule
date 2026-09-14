@@ -43,12 +43,16 @@ src/data/
 │   ├── ExportManager.h         # 导出编排
 │   └── academic_affairs/       # 各校教务系统专用解析（只导入）
 │       ├── ZhengfangTimetableIo.h  # 正方教务（zfn / zfsoft V9）课表页解析
+│       ├── EcjtuTimetableIo.h      # 华东交大教务综合管理系统 Word 表格课表解析
+│       ├── WordTableReader.h       # 读 Word 表格（.docx 的 document.xml 与 Word 版式 HTML）
 │       ├── DocConvertUtil.h        # 旧版 .doc → .docx 转换（Word / LibreOffice）
 │       ├── CharsetUtil.h           # 字符集嗅探与 GBK 解码
 │       └── GbkTable.h              # GBK→Unicode 码表声明（实现为生成文件）
 └── src/import_export/          # 与 include/ 同构的实现文件
     └── academic_affairs/
         ├── ZhengfangTimetableIo.cpp
+        ├── EcjtuTimetableIo.cpp
+        ├── WordTableReader.cpp
         ├── DocConvertUtil.cpp
         ├── CharsetUtil.cpp
         └── GbkTable.cpp            # 由 tools/gen_gbk_table.py 生成，勿手工修改
@@ -58,7 +62,7 @@ src/data/
 
 | 类型 | 说明 |
 | --- | --- |
-| `ScheduleFormat` | 格式枚举：`Json` / `Csv` / `Ics` / `ZhengfangHtml` / `Unknown`；配套 `format_to_string()`、`format_from_extension()`、`format_from_content()` |
+| `ScheduleFormat` | 格式枚举：`Json` / `Csv` / `Ics` / `ZhengfangHtml` / `EcjtuTimetable` / `Unknown`；配套 `format_to_string()`、`format_from_extension()`、`format_from_content()` |
 | `ImportStrategy` | `Merge`（同 id 更新，其余新增）/ `SkipDuplicates`（重复跳过）/ `Overwrite`（清空后写入） |
 | `ImportPreview` | 只读预览：格式、学期、作息表、课程、**新引入的冲突**、重复数、新增数、提示、错误 |
 | `ImportResult` | 导入统计：新增 / 更新 / 跳过数量、导入后的冲突、摘要文本 |
@@ -68,6 +72,8 @@ src/data/
 | `ImportManager` | 注册表 + 预览 + 应用策略；`register_importer()` 为扩展点 |
 | `ExportManager` | 注册表 + 文件名规则 + 目录导出；`suggested_file_name()` / `sanitize_file_component()` |
 | `DocConvertUtil` | 旧版 `.doc` → `.docx` 转换；后端可插拔（Word / LibreOffice），失败不静默 |
+| `WordTableReader` | 把 `.docx` 的 `word/document.xml` 或 Word 版式 HTML 读成**规范化网格**（合并单元格已展开） |
+| `EcjtuTimetableIo` | 华东交大教务综合管理系统课表解析：`节次/星期` 表头、`课程名 → 教师 @教室 → 周次 节次` |
 | `supported_file_extensions()` | **全部可导入**格式的扩展名（含 `.xls`），用于导入侧提示 |
 | `export_file_extensions()` | **仅可导出**格式的扩展名（不含 `.xls`），用于文件对话框过滤器 |
 
@@ -110,7 +116,7 @@ src/data/
 `set_backends()` 可以在测试里注入假后端，因此「回退链」「全部不可用」这些分支无需真装
 Word / LibreOffice 就能覆盖。**`set_backends()` 仅供测试**，用毕需 `reset_backends()`。
 
-## 四种格式的映射要点
+## 五种格式的映射要点
 
 ### JSON（无损）
 
@@ -165,6 +171,46 @@ Word / LibreOffice 就能覆盖。**`set_backends()` 仅供测试**，用毕需 
 
 扩展属性让本应用导出的 ICS 能**无损往返**；来自其它日历应用的 ICS 则回退到“按 `DTSTART` 推导星期与节次、按 `RRULE` / `RDATE` 推导周次”，并用出现过的上课时间合成作息表。输出严格使用 `CRLF` 并按 RFC 5545 的 75 字节规则折行（不会切断多字节字符）。
 
+### 华东交大教务课表（只导入）
+
+华东交通大学教务综合管理系统「导出」的课表是一张 **Word 表格**，三种落地形态都支持：
+
+| 形态 | 判断依据 | 处理 |
+| --- | --- | --- |
+| Word 版式 HTML（最常见，扩展名常是 `.doc`） | 有 `MsoNormalTable` 与 Word 命名空间 | 直接按 HTML 表格解析 |
+| 真正的 `.docx`（OOXML 包） | zip 魔数 `PK` + `03 04` | 解出 `word/document.xml` 解析 |
+| Word 97-2003 二进制 `.doc`（OLE 复合文档） | `D0 CF 11 E0` | 先经 `DocConvertUtil` 转成 `.docx` 再解析 |
+
+解析约定（已用真实导出文件逐格核对）：
+
+| 约定 | 说明 |
+| ---- | ---- |
+| 表头 | `节次` + `星期一`~`星期日`；表头之上可能还有一行 `gridSpan=8` 的标题，按非数据行跳过 |
+| 单元格内顺序 | **课程名 → 教师 @教室 → 周次 节次**（与正方相反：正方没有 `@教室` 这一行） |
+| 第三行的两个字段 | 第一个是**周次**（`4-19`、`1-16周(单)`、`1-8,10-16`），第二个是该活动实际占用的**节次列表** |
+| 节次列表是权威 | 一个跨节次的活动会出现在它覆盖的每一行里（`1,2,3` 同时出现在 `1-2节` 与 `3-4节` 行；OOXML 形态里是一格 `vMerge`）。按内容去重，避免重复计课 |
+| 连续节次合并 | 节次列表里连续的一段合并为一个时间段，不连续则拆开 |
+| 课程聚合 | 导出**不含课程代码**，因此按课程名聚合；团队授课的不同教师保留在各自时间段上 |
+| 学期 | 取**正文**（表格之前、已去掉 `<head>`）里的 `20xx-20xx [学年]第X学期`；导出的 `<title>` 常是模板残留，不可信 |
+| 合并单元格 | `gridSpan` 展开为等宽列；`vMerge` 的延续行**继承起始行内容** |
+
+`WordTableReader` 负责把合并单元格规范化：横向合并的内容记在第一列、其余列为空；纵向合并的
+延续行继承起始行文本。让延续行“继承”而不是留空，是因为合并格在语义上就是一个格子——把跨节次的
+课当成“只有第一行有课”会直接丢课。调用方（`EcjtuTimetableIo`）再按内容去重即可得到正确结果。
+
+**失败不静默**：单元格里出现无法识别的周次 / 节次时，导入会**整体失败**并指出具体位置
+（形如 `第 N 行 第 M 列：课程“X”的周次“Y”无法识别`），而不是悄悄丢掉那门课。
+
+样本与回归测试见 `samples/schedule_sample_ecjtu.doc`（Word 版式 HTML）与
+`samples/schedule_sample_ecjtu.docx`（OOXML）。两者由 `tools/gen_ecjtu_sample.py` 生成、
+**内容等价**，因此 `tst_ecjtu_timetable` 可以断言两条解析路径的结果完全一致。
+
+> `WordTableReader` 读 `.docx` 用到了 Qt 的**私有头** `private/qzipreader_p.h`
+> （构建上表现为依赖 `Qt6::CorePrivate`）。原因：`.docx` 就是一个 zip，而 Qt 6 没有公开的
+> zip 读取 API；自己写 ZIP 目录解析 + DEFLATE 解压需要三百行精细代码，风险远高于依赖
+> Qt 自带、多年未变、且被 Qt 自己的工具使用的实现。若将来 Qt 移除它，唯一需要改的地方是
+> `WordTableReader.cpp` 的 `read_document_xml()`。
+
 ## 指定目录约定（硬性要求）
 
 - 默认目录：`QStandardPaths::DocumentsLocation + "/Schedule"` （见 `AppSettings::fallback_directory()`）；用户可在设置页修改，修改后写入 `settings` 表的 `io/default_export_dir` / `io/default_import_dir`。
@@ -197,6 +243,7 @@ ctest --preset windows-msvc -C Debug
 测试实现：
 
 - [`../tests/tst_doc_convert.cpp`](../tests/tst_doc_convert.cpp) — `.doc` → `.docx` 的后端优先级与回退链、入参校验、无后端时的可执行提示、OOXML 识别；
+- [`../tests/tst_ecjtu_timetable.cpp`](../tests/tst_ecjtu_timetable.cpp) — 华东交大课表：`.doc` 与 `.docx` 两条路径结果等价、`gridSpan` / `vMerge`、跨节次活动去重、周次区间 / 缺口 / 单周、失败不静默；
 - [`../tests/tst_import_export.cpp`](../tests/tst_import_export.cpp) — 格式识别、文件名规则、三种通用格式往返、预览与冲突、三种合并策略、错误路径与内存导入；
 - [`../tests/tst_zhengfang_timetable.cpp`](../tests/tst_zhengfang_timetable.cpp) — GBK 解码、格式嗅探、连续节次合并、不连续节次拆分、同课程多活动聚合、周次位图还原、导出过滤器不含 `.xls`，以及经 `ImportManager` 的完整预览流程。
 

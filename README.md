@@ -4,7 +4,7 @@
 
 - 课表领域模型：学期、课程、上课时间段、节次、周次表达式、冲突检测、当前周计算；
 - 本地持久化：SQLite（建表 / 迁移 / 备份 / 恢复）与 JSON 序列化；
-- **导入导出到指定目录**：JSON / CSV / ICS 三种通用格式，外加**正方教务课表**（教务系统导出的 `课表.xls`，只导入）；支持预览、冲突检测、合并 / 去重 / 覆盖；
+- **导入导出到指定目录**：JSON / CSV / ICS 三种通用格式，外加**正方教务课表**（`课表.xls`）与**华东交大教务课表**（`.doc` / `.docx`）两种只导入格式；支持预览、冲突检测、合并 / 去重 / 覆盖；
 - QML 界面：周视图、日视图、课程编辑、导入导出向导、学期与设置页，桌面 / 移动两套布局；
 - 本地提醒：上课前 5 / 10 / 15 分钟系统通知（桌面托盘 / Android 本地通知 / 应用内横幅兜底）；
 - 可选教务适配器：仅本地主动触发，只接收 Cookie、不保存密码，不做后台同步。
@@ -61,10 +61,12 @@ Schedule/
 │   ├── schedule_sample.json    # 三种内容等价的课表样本
 │   ├── schedule_sample.csv
 │   ├── schedule_sample.ics
-│   └── schedule_sample_zhengfang.xls  # 正方教务导出页样本（GBK，虚构数据）
+│   ├── schedule_sample_zhengfang.xls  # 正方教务导出页样本（GBK，虚构数据）
+│   └── schedule_sample_ecjtu.doc/.docx # 华东交大教务课表样本（虚构数据，两种容器形态）
 ├── tools/                      # 开发期生成脚本（产物入库，脚本用于复现）
 │   ├── gen_gbk_table.py        # 生成 GBK→Unicode 码表
-│   └── gen_zhengfang_sample.py # 生成正方教务样本
+│   ├── gen_zhengfang_sample.py # 生成正方教务样本
+│   └── gen_ecjtu_sample.py     # 生成华东交大教务课表样本（.doc 与 .docx）
 └── src/
     ├── core/                   # 领域模型 + 核心服务（+ tests/）
     ├── data/                   # 持久化 + 导入导出（+ tests/、import_export/README.md）
@@ -168,7 +170,7 @@ cmake --build --preset windows-msvc-debug
 - **导入流程**：选择文件 → 预览（格式 / 新增数 / 重复数 / **本次新引入的冲突** / 提示）→ 选择策略（合并 / 去重合并 / 覆盖）→ 应用并落库；
 - **数据层只接收路径或 `QUrl`**，文件与目录选择对话框在 UI 层（`QtQuick.Dialogs` 的 `FileDialog` / `FolderDialog`）。
 
-四种格式的映射细节见 [src/data/import_export/README.md](src/data/import_export/README.md)：
+五种格式的映射细节见 [src/data/import_export/README.md](src/data/import_export/README.md)：
 
 | 格式 | 特点 |
 | --- | --- |
@@ -176,6 +178,7 @@ cmake --build --preset windows-msvc-debug
 | CSV | Excel 友好，一行一个上课时间段；导出为 UTF-8 with BOM，列名支持中英文别名 |
 | ICS | 与系统日历互操作；等差周次用 `RRULE`（含 `INTERVAL`），非等差用 `RDATE`；扩展属性 `X-SCHEDULE-*` 保证往返无损 |
 | 正方教务课表 | **只导入**：教务系统导出的 `课表.xls`（实为 GBK 编码的 HTML），自动解析课程 / 教师 / 教室 / 周次 / 节次；支持本地文件导入与内嵌浏览器抓取 |
+| 华东交大教务课表 | **只导入**：华东交大教务综合管理系统导出的 Word 表格（`.doc` / `.docx`；二进制 `.doc` 会自动转成 `.docx`），支持本地文件导入与内嵌浏览器抓取 |
 
 ---
 
@@ -193,7 +196,7 @@ cmake --build --preset windows-msvc-debug
 - 只在用户点击「导入课表 / 从适配器导入」时触发**一次**；不做定时轮询、不做后台同步、不做增量合并；
 - **不接收也不保存明文密码**；网页抓取路线**连 Cookie 都不读取**——会话留在内嵌 Web 组件内部，应用只接收当前页面的 HTML；接口抓取路线的 Cookie 仅驻留内存，可在设置页一键清除；
 - 抓到的内容交给已有的导入器解析，与文件导入共用同一套预览 / 冲突检测 / 合并策略；
-- 内置入口：`local-sample`（离线读取样本）、`generic-jwgl`（地址与 Cookie 由用户填写）、 `ahpu-jwxt`（安徽工程大学教务系统，正方 V9，浏览器直达）。
+- 内置入口：`local-sample`（离线读取样本）、`generic-jwgl`（地址与 Cookie 由用户填写）、 `ahpu-jwxt`（安徽工程大学教务系统，正方 V9，浏览器直达）、`ecjtu-jwzhglxt`（华东交通大学教务综合管理系统，浏览器直达）。
 
 内嵌浏览器按 **Qt WebView → Qt WebEngine → 系统浏览器兜底** 的顺序在配置期自动选择：Qt WebView 在桌面需要 `<Qt>/plugins/webview` 后端插件（官方 Windows 包基于 Qt WebEngine），官方 MinGW 套件没有该插件，会直接回退到「系统浏览器打开 + 教务系统导出后文件导入」， **不影响构建，也不影响其它功能**。可用 `-DSCHEDULE_ENABLE_EMBEDDED_BROWSER=OFF` 整体关闭。
 

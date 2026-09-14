@@ -6,6 +6,7 @@
 
 - 单元测试（`tst_sample_files`）验证 JSON / CSV / ICS 三个导入器解析出同一份课程数据；
 - 单元测试（`tst_zhengfang_timetable`）验证正方教务课表页的解析规则；
+- 单元测试（`tst_ecjtu_timetable`）验证华东交大教务课表的解析规则（Word 版式 HTML 与 `.docx` 两条路径）；
 - 应用自检（`Schedule.exe --selftest`）自动导入样本、导出并校验导出文件存在；
 - 手工验证导入向导：直接选择这些文件即可。
 
@@ -17,6 +18,8 @@
 | `schedule_sample.csv`           | CSV（UTF-8 with BOM）      | 一行一个上课时间段，Excel 可直接打开           |
 | `schedule_sample.ics`           | iCalendar                  | 含 `X-SCHEDULE-*` 扩展属性，可与系统日历互操作 |
 | `schedule_sample_zhengfang.xls` | 正方教务课表页（GBK HTML） | 教务系统「导出」出的页面，**只导入**格式       |
+| `schedule_sample_ecjtu.doc` | 华东交大教务课表（Word 版式 HTML，GBK） | 教务系统「导出」出的 Word 表格，**只导入**格式 |
+| `schedule_sample_ecjtu.docx` | 华东交大教务课表（OOXML 包） | 与上一份**内容等价**，用于验证 `word/document.xml` 路径 |
 
 ## 样本内容
 

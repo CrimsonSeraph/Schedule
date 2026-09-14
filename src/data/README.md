@@ -5,7 +5,7 @@
 `data` 层是课表应用的**基础设施层**，负责把 `core` 层的纯业务模型落到真实介质上：
 
 - **持久化**：SQLite 数据库（建表、迁移、备份、恢复）与 JSON 序列化 / 反序列化；
-- **导入导出**：JSON / CSV / ICS 三种通用格式的解析与生成，外加**正方教务课表**（教务系统导出的 `课表.xls`，只导入）；落盘到用户指定目录；
+- **导入导出**：JSON / CSV / ICS 三种通用格式的解析与生成，外加**正方教务课表**（`课表.xls`）与**华东交大教务课表**（`.doc` / `.docx`）两种只导入格式；落盘到用户指定目录；
 - **设置存储**：默认导入 / 导出目录、提醒开关、主题等键值配置；
 - **可选教务适配器**：仅本地主动触发的课表导入，含两条路线——接口抓取（`GenericSchoolAdapter` + `NetworkScheduleFetcher`）与网页抓取（内嵌浏览器抓当前页面，原文交给 `ImportManager`）。接口在 `core`，抓取器实现在本层，注册在 `app`；浏览器组件在 `ui`，抓取脚本在 `engine`。见 [adapter/README.md](adapter/README.md)。
 
@@ -68,6 +68,7 @@ src/data/
     ├── CMakeLists.txt
     ├── README.md
     ├── tst_doc_convert.cpp
+    ├── tst_ecjtu_timetable.cpp
     ├── tst_import_export.cpp
     ├── tst_school_adapter.cpp
     ├── tst_schedule_json.cpp
@@ -165,7 +166,7 @@ ctest --preset windows-msvc -C Debug
 | 阶段    | 内容                                                                                                |
 | ------- | --------------------------------------------------------------------------------------------------- |
 | 阶段 3  | ✅ 已完成：`import_export/` 子目录（JSON / CSV / ICS 导入导出、预览、冲突检测、合并策略、指定目录） |
-| 阶段 3+ | ✅ 已完成：`import_export/academic_affairs/` 教务课表解析（正方教务导出页，含 GBK 解码）            |
+| 阶段 3+ | ✅ 已完成：`import_export/academic_affairs/` 教务课表解析（正方教务导出页 + 华东交大教务 Word 表格，含 GBK 解码） |
 | 阶段 7  | 补充数据库迁移与导入导出样本文件测试                                                                |
 | 阶段 9  | ✅ 已完成：教务适配器（接口在 `core`，实现在 `data/adapter`，注册在 `app`）                         |
 

@@ -15,11 +15,12 @@
 
 ## 产物
 
-`BUILD_TESTS=ON` 时生成 7 个测试可执行文件，并注册到 CTest：
+`BUILD_TESTS=ON` 时生成 8 个测试可执行文件，并注册到 CTest：
 
 | 测试目标 | 覆盖内容 |
 | --- | --- |
 | `tst_doc_convert` | **[教务课表]** `.doc` → `.docx` 的后端优先级与回退链、入参校验（源文件缺失 / 未给输出目录）、全部后端不可用时的可执行提示、OOXML 包识别、`set_backends()` 假后端注入；本机装了 Word / LibreOffice 时额外做一次**真实转换**，否则 `QSKIP` |
+| `tst_ecjtu_timetable` | **[教务课表]** 华东交大课表：`.doc` / `.docx` 的内容嗅探与扩展名映射、`gridSpan` 展开、`vMerge` 延续行继承、GBK Word 版式 HTML 解码、`课程名 → 教师 @教室 → 周次 节次` 字段顺序、跨节次活动去重（只算一段课）、周次区间 / 缺口 / 单周、**`.doc` 与 `.docx` 两条路径结果等价**、非课表内容拒绝、无法识别的周次整体失败并指出位置、导出过滤器不含 `.docx`、经 `ImportManager` 的完整预览流程（含抓取字节走 `preview_data`） |
 | `tst_import_export` | 格式识别（扩展名 / 内容嗅探）、导出文件名规则与清洗、导出到指定目录（自动建目录、返回实际路径）、JSON / CSV / ICS 三种格式往返、ICS 的 `RRULE` 与 `RDATE`、预览的重复统计与提示、**只报告新引入的冲突**、合并 / 去重 / 覆盖三种策略、错误路径（文件不存在、内容无法识别、非 UTF-8、缺列）、内存导入入口 |
 | `tst_sample_files` | **[样本回归]** `samples/` 下 JSON / CSV / ICS 三个样本必须解析出**内容等价**的课表（课程名 → 时间段签名集合完全一致），同时覆盖单周 `RRULE;INTERVAL=2` 与非连续周次 `RDATE` 两条易错路径 |
 | `tst_school_adapter` | 适配器注册表（注册 / 覆盖 / 查找 / 越界）、`AdapterInfo` 校验、`AdapterSession` 擦除与凭证年龄、本地文件抓取器、通用适配器的格式嗅探与 JSON / CSV / ICS 解析、`requires_session` 缺会话时报错、网络抓取器的 URL 判定与失败路径 |
@@ -34,6 +35,7 @@ src/data/tests/
 ├── CMakeLists.txt
 ├── README.md
 ├── tst_doc_convert.cpp
+├── tst_ecjtu_timetable.cpp
 ├── tst_import_export.cpp
 ├── tst_sample_files.cpp
 ├── tst_schedule_json.cpp
