@@ -79,12 +79,18 @@ ImportManager::preview_data(html, source, current)  ← 与文件导入同一条
 | `local-sample` | 本地样本适配器 | 数据地址 = `samples/schedule_sample.json` | 离线演示与测试，走接口抓取 |
 | `generic-jwgl` | 通用教务适配器（实验性） | 地址由用户填写 | 走接口抓取，需要用户提供 Cookie |
 | `ahpu-jwxt` | 安徽工程大学教务系统（正方 V9） | 仅登录页 `http://xjwxt.ahpu.edu.cn/ahpu/localLogin.action` | **浏览器直达入口**，走网页抓取 |
+| `ecjtu-jwzhglxt` | 华东交通大学教务综合管理系统 | 仅登录页 `https://jwxt.ecjtu.edu.cn` | **浏览器直达入口**，走网页抓取 |
 
 ### 安徽工程大学（`ahpu-jwxt`）
 
 - 只配置 `login_url`，**不配置** `schedule_url`：课表页实测为 `/ahpu/courseTableForStd!courseTable.action`，但其 `ids` 参数与会话绑定，交给用户在内嵌浏览器里自然地走一遍（登录 → 个人课表）比在应用里猜地址更稳；
 - 页面是**正方教务 V9** 的标准课表页，导出的 `课表.xls` 与它同构，因此抓到的原文由 `ZhengfangTimetableIo` 直接解析（见 `../import_export/README.md`）；
 - 由于没有 `schedule_url`，对它的“从适配器导入”会给出明确引导而不是发出无效请求。
+
+### 华东交通大学（`ecjtu-jwzhglxt`）
+
+- 同样只配置 `login_url`（`https://jwxt.ecjtu.edu.cn`），理由与安徽工程大学一致：课表页要在登录会话内才有；
+- 该校使用的**不是**正方教务，页面结构不同，因此另行实现了 `EcjtuTimetableIo`（见 `../import_export/README.md`）；
 
 `AdapterInfo::is_valid()` 因此放宽为：**`schedule_url` 与 `login_url` 至少填一个**。只有登录页的适配器是合法的“浏览器直达入口”，而不是配置错误。
 

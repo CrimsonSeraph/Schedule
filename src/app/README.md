@@ -80,15 +80,16 @@ src/app/
 
 ## 教务适配器的注册（阶段 9）
 
-按分层约定，适配器**接口在 `core`、实现在 `data`、注册在 `app`**。`main.cpp` 中注册了三个：
+按分层约定，适配器**接口在 `core`、实现在 `data`、注册在 `app`**。`main.cpp` 中注册了四个：
 
 | id | 名称 | 说明 |
 | --- | --- | --- |
 | `local-sample` | 本地样本适配器 | 指向 `<exe>/samples/schedule_sample.json`，**离线可用**，用于验证适配器全链路 |
 | `generic-jwgl` | 通用教务适配器（实验性） | 地址从设置读取；需要用户在内嵌浏览器登录后粘贴 Cookie（或直接走网页抓取） |
 | `ahpu-jwxt` | 安徽工程大学教务系统（正方 V9） | **只配登录页**：作为「从教务导入」的直达入口，用户登录并进入课表页后抓取当前页面 |
+| `ecjtu-jwzhglxt` | 华东交通大学教务综合管理系统 | **只配登录页** `https://jwxt.ecjtu.edu.cn`：同样作为直达入口，登录后在课表页抓取 |
 
-注册安徽工程大学时用的是 `GenericSchoolAdapter`，但**不设置** `schedule_url`： `AdapterInfo::is_valid()` 允许“只有登录页”的适配器，这类适配器是**浏览器直达入口**，其数据由内嵌浏览器抓取（见 `ImportExportBridge::submit_web_capture()`），而不是由 `fetch_schedule()` 去请求某个接口。对该类适配器调用“从适配器导入”会得到明确的引导信息，而不是发出无效请求。
+注册安徽工程大学与华东交通大学时用的都是 `GenericSchoolAdapter`，但**不设置** `schedule_url`： `AdapterInfo::is_valid()` 允许“只有登录页”的适配器，这类适配器是**浏览器直达入口**，其数据由内嵌浏览器抓取（见 `ImportExportBridge::submit_web_capture()`），而不是由 `fetch_schedule()` 去请求某个接口。对该类适配器调用“从适配器导入”会得到明确的引导信息，而不是发出无效请求。
 
 ```cpp
 std::vector<std::shared_ptr<Schedule::IScheduleFetcher>> schedule_fetchers = {
