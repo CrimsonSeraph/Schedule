@@ -213,7 +213,7 @@ namespace Schedule {
             if (!simulated.semester.id.isEmpty()) {
                 normalised.semester_id = simulated.semester.id;
             }
-            const int index = simulated.index_of_course(normalised.id);
+            const int index = find_existing_course(simulated, normalised);
             if (index >= 0) {
                 simulated.courses[index] = normalised;
             }
@@ -364,16 +364,7 @@ namespace Schedule {
                 assign_semester(&normalised);
                 normalised.ensure_session_ids();
 
-                int index = snapshot.index_of_course(normalised.id);
-                if (index < 0 && strategy == ImportStrategy::SkipDuplicates && !normalised.name.isEmpty()) {
-                    // 无 id（CSV / ICS）时按“名称 + 代码”判定重复
-                    for (int i = 0; i < snapshot.courses.size(); ++i) {
-                        if (snapshot.courses.at(i).name == normalised.name && snapshot.courses.at(i).code == normalised.code) {
-                            index = i;
-                            break;
-                        }
-                    }
-                }
+                const int index = find_existing_course(snapshot, normalised);
 
                 if (index >= 0) {
                     if (strategy == ImportStrategy::SkipDuplicates) {
@@ -400,6 +391,24 @@ namespace Schedule {
         result.semester = snapshot.semester;
         result.conflicts = ConflictDetector::detect(snapshot.courses, snapshot.semester, snapshot.time_slots, m_options);
         return result;
+    }
+
+    int ImportManager::find_existing_course(const ScheduleSnapshot& snapshot, const Course& course) const {
+        if (!course.id.isEmpty()) {
+            const int by_id = snapshot.index_of_course(course.id);
+            if (by_id >= 0) {
+                return by_id;
+            }
+        }
+        if (course.name.isEmpty()) {
+            return -1;
+        }
+        for (int i = 0; i < snapshot.courses.size(); ++i) {
+            if (snapshot.courses.at(i).name == course.name && snapshot.courses.at(i).code == course.code) {
+                return i;
+            }
+        }
+        return -1;
     }
 
 } // namespace Schedule
