@@ -6,7 +6,7 @@
 
 - 单元测试（`tst_sample_files`）验证 JSON / CSV / ICS 三个导入器解析出同一份课程数据；
 - 单元测试（`tst_zhengfang_timetable`）验证正方教务课表页的解析规则；
-- 单元测试（`tst_ecjtu_timetable`）验证华东交大教务课表的解析规则（Word 版式 HTML 与 `.docx` 两条路径）；
+- 单元测试（`tst_ecjtu_timetable`）验证华东交大教务课表的解析规则（Word 版式 HTML / `.docx` / 抓取页面三条路径）；
 - 应用自检（`Schedule.exe --selftest`）自动导入样本、导出并校验导出文件存在；
 - 手工验证导入向导：直接选择这些文件即可。
 
@@ -19,7 +19,8 @@
 | `schedule_sample.ics`           | iCalendar                  | 含 `X-SCHEDULE-*` 扩展属性，可与系统日历互操作 |
 | `schedule_sample_zhengfang.xls` | 正方教务课表页（GBK HTML） | 教务系统「导出」出的页面，**只导入**格式       |
 | `schedule_sample_ecjtu.doc` | 华东交大教务课表（Word 版式 HTML，GBK） | 教务系统「导出」出的 Word 表格，**只导入**格式 |
-| `schedule_sample_ecjtu.docx` | 华东交大教务课表（OOXML 包） | 与上一份**内容等价**，用于验证 `word/document.xml` 路径 |
+| `schedule_sample_ecjtu.docx` | 华东交大教务课表（OOXML 包） | 与第一份**内容等价**，用于验证 `word/document.xml` 路径 |
+| `schedule_sample_ecjtu.html` | 华东交大教务课表（内嵌浏览器抓取形态） | **UTF-8 字节但页面自称 gb2312**，课表前还有一张布局表 |
 
 ## 样本内容
 
@@ -66,6 +67,9 @@ cmake --preset windows-msvc -DBUILD_SELFTEST=ON
 cmake --build --preset windows-msvc-debug
 ./build/windows-msvc/Debug/Schedule.exe --selftest
 
+# 重新生成华东交大教务课表样本（.doc / .docx / .html 三份）
+python tools/gen_ecjtu_sample.py
+
 # 重新生成正方教务样本（修改脚本后执行）
 python3 tools/gen_zhengfang_sample.py
 ```
@@ -74,6 +78,8 @@ python3 tools/gen_zhengfang_sample.py
 
 - **前三个文件必须保持内容等价**：修改任意一个都要同步其余两个，否则 `tst_sample_files` 会失败（这正是它存在的意义）。
 - 正方教务样本**独立于**上述等价性约束，它覆盖的是教务页面解析，不参与三格式比对。
+- 华东交大的三份样本由 `tools/gen_ecjtu_sample.py` 生成，**逐字节可复现**（zip 条目使用固定时间戳），
+  其中 `.doc` 与 `.html` 在 `.gitattributes` 里按二进制存储，避免行尾转换改写字节。
 - 样本中的日期固定为 `2024-09-02` 起始，**不要**改成相对当前日期的值，否则测试结果会随运行日期漂移。
 - 样本文件通过 `src/app/CMakeLists.txt` 的 `copy_directory` 复制到构建输出目录，因此 `--selftest` 无需知道仓库路径。
 - 正则中的 `.xls` 是教务系统的命名习惯，内容其实是 HTML：**不要**用 Excel 打开后另存，那样会把页面结构丢掉，解析器将无法识别。

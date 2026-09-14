@@ -90,7 +90,33 @@ ImportManager::preview_data(html, source, current)  ← 与文件导入同一条
 ### 华东交通大学（`ecjtu-jwzhglxt`）
 
 - 同样只配置 `login_url`（`https://jwxt.ecjtu.edu.cn`），理由与安徽工程大学一致：课表页要在登录会话内才有；
-- 该校使用的**不是**正方教务，页面结构不同，因此另行实现了 `EcjtuTimetableIo`（见 `../import_export/README.md`）；
+- 该校用的**不是**正方教务，课表字段顺序也不同（多一行 `教师 @教室`），因此另行实现了
+  `EcjtuTimetableIo`（见 [`../import_export/README.md`](../import_export/README.md)）；
+- `requires_session = false`：抓取走内嵌浏览器的**当前页面**，应用侧不携带任何凭证。
+
+#### 两条路线与各自的验证程度
+
+| 路线 | 触发方式 | 验证程度 |
+| --- | --- | --- |
+| **文件导入** | 在该系统里「导出」课表（Word 表格 `.doc` / `.docx`）后从导入向导选择文件 | **已用真实导出文件逐格核对**：课程、教师、教室、周次（含单双周与缺口）、节次全部对得上；二进制 `.doc` 会自动转成 `.docx` |
+| **网页抓取** | 从「从教务导入」列表进入，登录并停在课表页后点「导入课表」 | 解析逻辑已用**与真实页面同构的抓取样本**验证（`samples/schedule_sample_ecjtu.html`：UTF-8 字节但页面自称 gb2312，且课表前还有一张布局表）。**未经真实站点联调** |
+
+> 该站点需要校园网账号登录，本仓库的回归测试无法访问它，因此网页抓取这条路线**没有做过真实联调**。
+> 若课表页的表格是脚本在客户端拼出来的，`outerHTML` 里就不会有表格，抓取会明确报错
+> （「不是华东交大教务课表（未找到“节次 + 星期一~星期日”表头）」）而不是静默写入空课表；
+> 此时请改用「导出 → 文件导入」，那条路线是核对过的。
+
+#### 抓取形态与编码
+
+内嵌浏览器抓取时，`ImportExportBridge::submit_web_capture()` 把页面的
+`document.documentElement.outerHTML` 按 `toUtf8()` 交给解析器。这一步有两个后果，
+都在解析侧处理掉了：
+
+- **字节是 UTF-8，页面却仍写着 `<meta charset="gb2312">`**：`decode_html_bytes()`
+  在声明为 GB 系列时，会先看字节本身是否为合法且含非 ASCII 的 UTF-8，是则按 UTF-8 解。
+  否则整页中文会变成替换字符，连格式嗅探都认不出来；
+- **页面里可能有多张表**（导航 / 布局）：「`WordTableReader`」优先挑包含「节次 + 星期」
+  的那一张，没有匹配才退回第一张。
 
 `AdapterInfo::is_valid()` 因此放宽为：**`schedule_url` 与 `login_url` 至少填一个**。只有登录页的适配器是合法的“浏览器直达入口”，而不是配置错误。
 

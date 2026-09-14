@@ -205,6 +205,18 @@ Word / LibreOffice 就能覆盖。**`set_backends()` 仅供测试**，用毕需 
 `samples/schedule_sample_ecjtu.docx`（OOXML）。两者由 `tools/gen_ecjtu_sample.py` 生成、
 **内容等价**，因此 `tst_ecjtu_timetable` 可以断言两条解析路径的结果完全一致。
 
+#### 内嵌浏览器抓取（`preview_data` 路线）
+
+网页抓取不经过文件，而是把页面的 `outerHTML` 按 `toUtf8()` 交给
+`ImportManager::preview_data()`，因此走的是**内容嗅探**而不是扩展名。两处需要留意：
+
+- **编码**：字节是 UTF-8，但 `outerHTML` 里保留的 `<meta charset="gb2312">` 还是原来那个。
+  `decode_html_bytes()` 对 GB 系列声明会先验字节（合法且含非 ASCII 的 UTF-8 优先），
+  否则抓回来的中文会整页乱码、格式也认不出来。`samples/schedule_sample_ecjtu.html`
+  就是这种形态的样本；
+- **选表**：抓到的页面里常有导航 / 布局表格。`WordTableReader` 优先挑包含「节次 + 星期」
+  的那张表，都不匹配时才用第一张。
+
 > `WordTableReader` 读 `.docx` 用到了 Qt 的**私有头** `private/qzipreader_p.h`
 > （构建上表现为依赖 `Qt6::CorePrivate`）。原因：`.docx` 就是一个 zip，而 Qt 6 没有公开的
 > zip 读取 API；自己写 ZIP 目录解析 + DEFLATE 解压需要三百行精细代码，风险远高于依赖

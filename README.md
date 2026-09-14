@@ -62,7 +62,7 @@ Schedule/
 │   ├── schedule_sample.csv
 │   ├── schedule_sample.ics
 │   ├── schedule_sample_zhengfang.xls  # 正方教务导出页样本（GBK，虚构数据）
-│   └── schedule_sample_ecjtu.doc/.docx # 华东交大教务课表样本（虚构数据，两种容器形态）
+│   └── schedule_sample_ecjtu.doc/.docx/.html # 华东交大教务课表样本（虚构数据，导出与抓取形态）
 ├── tools/                      # 开发期生成脚本（产物入库，脚本用于复现）
 │   ├── gen_gbk_table.py        # 生成 GBK→Unicode 码表
 │   ├── gen_zhengfang_sample.py # 生成正方教务样本
@@ -188,7 +188,7 @@ cmake --build --preset windows-msvc-debug
 
 支持两条导入路线，用户只需在「从教务导入」列表里选一个入口：
 
-1. **网页抓取（推荐）**：在应用内的浏览器中登录教务系统、停在课表页面，点「导入课表」即可抓取**当前页面**并导入。安徽工程大学即走这条路。
+1. **网页抓取（推荐）**：在应用内的浏览器中登录教务系统、停在课表页面，点「导入课表」即可抓取**当前页面**并导入。安徽工程大学、华东交通大学走这条路。抓到的页面走**内容嗅探**，因此同一个适配器既能吃教务页面，也能吃导出的文件。
 2. **接口抓取**：少数教务系统的课表接口能直接返回 JSON / CSV / ICS / 正方页面，在设置页「高级选项」里填地址与 Cookie 即可。
 
 约束与隐私：
@@ -197,6 +197,7 @@ cmake --build --preset windows-msvc-debug
 - **不接收也不保存明文密码**；网页抓取路线**连 Cookie 都不读取**——会话留在内嵌 Web 组件内部，应用只接收当前页面的 HTML；接口抓取路线的 Cookie 仅驻留内存，可在设置页一键清除；
 - 抓到的内容交给已有的导入器解析，与文件导入共用同一套预览 / 冲突检测 / 合并策略；
 - 内置入口：`local-sample`（离线读取样本）、`generic-jwgl`（地址与 Cookie 由用户填写）、 `ahpu-jwxt`（安徽工程大学教务系统，正方 V9，浏览器直达）、`ecjtu-jwzhglxt`（华东交通大学教务综合管理系统，浏览器直达）。
+- **验证程度**：华东交大的**文件导入**已用真实导出文件逐格核对；**网页抓取**的解析逻辑用与真实页面同构的抓取样本回归（含「UTF-8 字节却自称 gb2312」与「课表前有布局表」两种真实陷阱），但该站点需要校园网账号，**未做真实联调**。抓不到表格时会明确报错并提示改用「导出 → 文件导入」。
 
 内嵌浏览器按 **Qt WebView → Qt WebEngine → 系统浏览器兜底** 的顺序在配置期自动选择：Qt WebView 在桌面需要 `<Qt>/plugins/webview` 后端插件（官方 Windows 包基于 Qt WebEngine），官方 MinGW 套件没有该插件，会直接回退到「系统浏览器打开 + 教务系统导出后文件导入」， **不影响构建，也不影响其它功能**。可用 `-DSCHEDULE_ENABLE_EMBEDDED_BROWSER=OFF` 整体关闭。
 
