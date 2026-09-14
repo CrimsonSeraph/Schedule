@@ -67,6 +67,7 @@ src/data/
 └── tests/                            # QTest 单元测试（BUILD_TESTS=ON 时构建）
     ├── CMakeLists.txt
     ├── README.md
+    ├── tst_doc_convert.cpp
     ├── tst_import_export.cpp
     ├── tst_school_adapter.cpp
     ├── tst_schedule_json.cpp

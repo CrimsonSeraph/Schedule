@@ -43,11 +43,13 @@ src/data/
 │   ├── ExportManager.h         # 导出编排
 │   └── academic_affairs/       # 各校教务系统专用解析（只导入）
 │       ├── ZhengfangTimetableIo.h  # 正方教务（zfn / zfsoft V9）课表页解析
+│       ├── DocConvertUtil.h        # 旧版 .doc → .docx 转换（Word / LibreOffice）
 │       ├── CharsetUtil.h           # 字符集嗅探与 GBK 解码
 │       └── GbkTable.h              # GBK→Unicode 码表声明（实现为生成文件）
 └── src/import_export/          # 与 include/ 同构的实现文件
     └── academic_affairs/
         ├── ZhengfangTimetableIo.cpp
+        ├── DocConvertUtil.cpp
         ├── CharsetUtil.cpp
         └── GbkTable.cpp            # 由 tools/gen_gbk_table.py 生成，勿手工修改
 ```
@@ -65,10 +67,48 @@ src/data/
 | `IScheduleExporter` | 导出器契约：`format()` / `extension()` / `serialize()` / `write()` |
 | `ImportManager` | 注册表 + 预览 + 应用策略；`register_importer()` 为扩展点 |
 | `ExportManager` | 注册表 + 文件名规则 + 目录导出；`suggested_file_name()` / `sanitize_file_component()` |
+| `DocConvertUtil` | 旧版 `.doc` → `.docx` 转换；后端可插拔（Word / LibreOffice），失败不静默 |
 | `supported_file_extensions()` | **全部可导入**格式的扩展名（含 `.xls`），用于导入侧提示 |
 | `export_file_extensions()` | **仅可导出**格式的扩展名（不含 `.xls`），用于文件对话框过滤器 |
 
 > `supported_file_extensions()` 与 `export_file_extensions()` 的分工是必要的：正方教务页面只能导入不能导出，若共用一份列表，导出对话框会给出无法生成的 `.xls` 过滤器。
+
+## `.doc` → `.docx` 转换（`DocConvertUtil`）
+
+教务系统「导出」的课表有两个时代：老的 Word 97-2003 `.doc`，和新的 Word 表格（`.doc` 的
+「另存为网页」形态或真正的 `.docx`）。`.doc` 是 OLE 复合文档，没有可用的开源解析路径；
+`.docx` 只是一个 zip，其中的 `word/document.xml` 可以直接读。`DocConvertUtil` 负责把前者
+变成后者，让解析器只需要面对一种结构。
+
+### 后端
+
+| 机器名 | 平台 | 做法 |
+| --- | --- | --- |
+| `microsoft-word` | Windows | `QProcess` 起 `cscript`，执行一段 VBScript 调用本机 Word 的 COM 接口 `SaveAs(..., 12)` |
+| `libreoffice` | 全平台 | `soffice --headless --convert-to docx --outdir <dir> <file>` |
+
+按 `microsoft-word` → `libreoffice` 的顺序取第一个**可用**的后端；某个后端装了但这次转换失败，
+会继续尝试下一个，并把两者失败的原因都累积进最终错误信息。
+
+`available_backend_names()` 给出当前可用的后端中文名，供界面提示。
+
+### 关键取舍
+
+- **Word 后端不用 `QAxObject`**：本仓库使用的 Qt 套件（官方 MinGW / MSVC 安装包）不含 ActiveQt
+  （`Qt6::AxContainer`），`QAxObject` 链接不上。改用 `QProcess` + `cscript` 同样走 Word 的 COM 接口，
+  却不引入额外 Qt 模块，且与 LibreOffice 后端共用同一套「起进程 → 等退出 → 校验产物」逻辑。
+  将来若换用自带 ActiveQt 的套件，通过 `set_backends()` 追加一个 `QAxObject` 版本即可，本类其余部分不用动。
+- **`output_dir` 是必填参数**：产物路径必须活得比函数调用久，这件事只能由调用方保证
+  （典型做法是调用方自己持有一个 `QTemporaryDir`），因此不提供「默认写到临时目录」的重载。
+- **转换后有校验**：两个后端都会用 `is_ooxml_package()` 确认产物真的是 zip 包，
+  避免把「改了扩展名的 HTML」当成转换成功。
+- **失败不静默**：两个后端都不可用时，错误信息会说明缺什么、以及「装 LibreOffice 或改用 .docx」。
+
+### 后端可插拔
+
+`default_backends()` 返回的是数据（`Backend{name, display_name, available, convert}`）而不是硬编码分支，
+`set_backends()` 可以在测试里注入假后端，因此「回退链」「全部不可用」这些分支无需真装
+Word / LibreOffice 就能覆盖。**`set_backends()` 仅供测试**，用毕需 `reset_backends()`。
 
 ## 四种格式的映射要点
 
@@ -156,6 +196,7 @@ ctest --preset windows-msvc -C Debug
 
 测试实现：
 
+- [`../tests/tst_doc_convert.cpp`](../tests/tst_doc_convert.cpp) — `.doc` → `.docx` 的后端优先级与回退链、入参校验、无后端时的可执行提示、OOXML 识别；
 - [`../tests/tst_import_export.cpp`](../tests/tst_import_export.cpp) — 格式识别、文件名规则、三种通用格式往返、预览与冲突、三种合并策略、错误路径与内存导入；
 - [`../tests/tst_zhengfang_timetable.cpp`](../tests/tst_zhengfang_timetable.cpp) — GBK 解码、格式嗅探、连续节次合并、不连续节次拆分、同课程多活动聚合、周次位图还原、导出过滤器不含 `.xls`，以及经 `ImportManager` 的完整预览流程。
 

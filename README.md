@@ -145,6 +145,7 @@ ctest --preset windows-msvc -C Debug
 | `tst_reminder_scheduler` | `src/core/tests` | 提前分钟数、每日提醒排序、单双周过滤、时间窗口、到点判定、下一次提醒 |
 | `tst_schedule_json` | `src/data/tests` | JSON 往返、信封字段校验、字段兼容与回退、原子写文件 |
 | `tst_sqlite_repository` | `src/data/tests` | 六表齐备、空库迁移、版本过高拒绝、快照往返、当前学期唯一性、设置、备份恢复 |
+| `tst_doc_convert` | `src/data/tests` | `.doc` → `.docx` 后端优先级与回退、入参校验、无后端时的可执行提示、OOXML 识别、（有 Word/LibreOffice 时）真实转换 |
 | `tst_import_export` | `src/data/tests` | 格式识别、文件名规则、三格式往返、预览与新引入冲突、三种合并策略、错误路径 |
 | `tst_sample_files` | `src/data/tests` | `samples/` 三格式解析结果必须**内容等价**（含 RRULE/RDATE 两条路径） |
 
