@@ -25,8 +25,9 @@
     python3 tools/gen_ecjtu_sample.py
 
 输出：
-    samples/schedule_sample_ecjtu.doc
-    samples/schedule_sample_ecjtu.docx
+    samples/schedule_sample_ecjtu.doc   导出得到的 Word 版式 HTML（GBK）
+    samples/schedule_sample_ecjtu.docx  同一个表格的 OOXML 形态
+    samples/schedule_sample_ecjtu.html  内嵌浏览器抓取到的页面（UTF-8 字节，但页面声明 gb2312）
 """
 
 import os
@@ -36,6 +37,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SAMPLES_DIR = os.path.join(REPO_ROOT, "samples")
 DOC_OUTPUT = os.path.join(SAMPLES_DIR, "schedule_sample_ecjtu.doc")
 DOCX_OUTPUT = os.path.join(SAMPLES_DIR, "schedule_sample_ecjtu.docx")
+HTML_OUTPUT = os.path.join(SAMPLES_DIR, "schedule_sample_ecjtu.html")
 
 SEMESTER = "2024-2025 第一学期"
 STUDENT = "示例同学"
@@ -299,11 +301,55 @@ def build_docx():
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("[Content_Types].xml", CONTENT_TYPES)
-        archive.writestr("_rels/.rels", ROOT_RELS)
-        archive.writestr("word/document.xml", build_document_xml())
-        archive.writestr("word/_rels/document.xml.rels", DOCUMENT_RELS)
+        for name, content in [
+            ("[Content_Types].xml", CONTENT_TYPES),
+            ("_rels/.rels", ROOT_RELS),
+            ("word/document.xml", build_document_xml()),
+            ("word/_rels/document.xml.rels", DOCUMENT_RELS),
+        ]:
+            # 固定时间戳：zip 条目默认写当前时间，同样的内容每次生成都会得到不同的字节，
+            # 样本就没法逐字节复现（回归 diff 里会混进无意义的二进制变更）
+            info = zipfile.ZipInfo(name, date_time=(2024, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(info, content)
     return buffer.getvalue()
+
+
+def build_captured_page():
+    """@return 内嵌浏览器抓到的课表页（UTF-8 字节，但页面自己声明 gb2312）。
+
+    这是**刻意的**：`ImportExportBridge::submit_web_capture()` 把页面的
+    `document.documentElement.outerHTML` 按 `toUtf8()` 交给解析器，而 outerHTML 里
+    保留了原始页面的 `<meta charset="gb2312">`。真实抓取结果就是这个样子，
+    解析器必须以字节为准、不能盲信声明。
+
+    页面里还放了一张**排在课表之前**的布局表格，用来验证解析器挑的是课表那张表。
+    """
+    page = (
+        "<!DOCTYPE html>\n<html><head>\n"
+        '<meta http-equiv="Content-Type" content="text/html; charset=gb2312">\n'
+        "<title>教务综合管理系统 - 学生课表</title>\n"
+        "<style>body{font-family:sans-serif}</style>\n"
+        "</head><body>\n"
+        '<div id="header"><table><tr><td>导航</td><td><a href="#">首页</a></td></tr></table></div>\n'
+        '<h2>%s %s 课表</h2>\n'
+        "<p>打印日期：%s</p>\n"
+    ) % (SEMESTER, STUDENT, PRINT_DATE)
+
+    page += "<table border=1>\n"
+    page += "<tr>%s</tr>\n" % "".join(
+        "<td>%s</td>" % name for name in ["节次"] + DAY_NAMES
+    )
+    for row_label, _slots in SLOT_ROWS:
+        cells = ["<td>%s</td>" % row_label]
+        for day_name in DAY_NAMES:
+            lines = row_entries(row_label, day_name)
+            cells.append("<td>%s</td>" % "<br>".join(lines or []))
+        page += "<tr>%s</tr>\n" % "".join(cells)
+    page += "</table>\n</body></html>\n"
+
+    # 抓取结果是 UTF-8 字节；页面里的 charset 声明仍是 gb2312
+    return page.encode("utf-8")
 
 
 def main():
@@ -317,6 +363,10 @@ def main():
     with open(DOCX_OUTPUT, "wb") as handle:
         handle.write(build_docx())
     print("已写入 %s（%d 字节，OOXML）" % (DOCX_OUTPUT, os.path.getsize(DOCX_OUTPUT)))
+
+    with open(HTML_OUTPUT, "wb") as handle:
+        handle.write(build_captured_page())
+    print("已写入 %s（%d 字节，UTF-8 但声明 gb2312）" % (HTML_OUTPUT, os.path.getsize(HTML_OUTPUT)))
 
 
 if __name__ == "__main__":

@@ -124,14 +124,24 @@ int main(int argc, char* argv[]) {
 
     // 华东交通大学（教务综合管理系统）。与安徽工程大学一样是**浏览器直达入口**：
     // 课表页要在登录会话内才有，交给用户在内嵌浏览器里自然地走一遍，比在应用里猜地址稳。
+    //
+    // 该校用的是自研/第三方的“教务综合管理系统”，**不是**正方系，页面结构与课表字段
+    // 顺序都不同，因此解析由 EcjtuTimetableIo 承担（见 data/import_export/academic_affairs/）。
+    // 两条路线共用同一个解析器：
+    //   - 网页抓取：登录后停在课表页，点“导入课表”抓当前页面（页面的 outerHTML）；
+    //   - 文件导入：在该系统里“导出”课表（得到 .doc / .docx 的 Word 表格）后走文件导入。
+    // 前者依赖课表表格出现在页面 HTML 里；若该页面是纯脚本渲染，抓到的 HTML 里没有表格，
+    // 解析会明确报错并提示改用后者——导出文件的解析是逐格核对过的。
     Schedule::AdapterInfo ecjtu_jwzhglxt;
     ecjtu_jwzhglxt.id = QStringLiteral("ecjtu-jwzhglxt");
     ecjtu_jwzhglxt.name = QStringLiteral("华东交通大学教务综合管理系统");
     ecjtu_jwzhglxt.description = QStringLiteral(
         "点击后在内嵌浏览器中打开华东交通大学教务综合管理系统；登录并进入课表页面后，"
-        "点“导入课表”即可抓取当前页面。不保存密码，也不读取 Cookie。");
+        "点“导入课表”即可抓取当前页面。若抓不到表格，可改用该系统“导出”的课表文件导入。"
+        "不保存密码，也不读取 Cookie。");
     ecjtu_jwzhglxt.login_url = QStringLiteral("https://jwxt.ecjtu.edu.cn");
     ecjtu_jwzhglxt.schedule_url.clear();
+    // 抓取走的是内嵌浏览器的**当前页面**，不需要应用侧另行携带会话凭证
     ecjtu_jwzhglxt.requires_session = false;
     ecjtu_jwzhglxt.is_experimental = true;
     adapter_registry.register_adapter(

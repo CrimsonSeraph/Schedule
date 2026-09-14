@@ -22,8 +22,17 @@ namespace Schedule {
         /** CP936 中单字节 0x80 表示欧元符号。 */
         constexpr ushort CP936_EURO = 0x20AC;
 
-        /**
-         * @brief 把尾字节映射为 0..189 的紧凑下标。
+        /** @return 字节串里是否含有非 ASCII 字节（>= 0x80）。 */
+        bool contains_non_ascii(const QByteArray& data) {
+            for (const char byte : data) {
+                if (static_cast<unsigned char>(byte) >= 0x80) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /** @brief 把尾字节映射为 0..189 的紧凑下标。
          * @return 非法尾字节返回 -1
          */
         int trail_offset(int trail) {
@@ -134,6 +143,15 @@ namespace Schedule {
         const bool declares_utf = declared.startsWith(QStringLiteral("utf"));
 
         if (declares_gbk) {
+            // 声明不可全信的另一面：内嵌浏览器抓到的页面是 JS 字符串转成的 **UTF-8**
+            // 字节（见 ImportExportBridge::submit_web_capture），而 outerHTML 里保留的
+            // `<meta charset="gb2312">` 还是原来那个。此时照 GBK 解就会整页乱码，
+            // 连格式嗅探都认不出来。纯 ASCII 两种解法的结果相同，只有确实含非 ASCII
+            // 字节时才需要区分：合法 UTF-8 优先。
+            if (looks_like_utf8(data) && contains_non_ascii(data)) {
+                report(QStringLiteral("utf-8"));
+                return QString::fromUtf8(data);
+            }
             report(QStringLiteral("gbk"));
             return gbk_to_unicode(data);
         }

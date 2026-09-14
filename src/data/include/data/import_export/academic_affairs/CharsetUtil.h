@@ -58,8 +58,15 @@ namespace Schedule {
      * 判定顺序：
      *  1. 声明是 UTF 系列：先校验字节是否真为合法 UTF-8，不合法则退回 GBK
      *     （部分教务系统声称 UTF-8 实际输出 GBK）；
-     *  2. 声明是 GB 系列（`gbk` / `gb2312` / `gb18030`）：按 GBK 解码；
+     *  2. 声明是 GB 系列（`gbk` / `gb2312` / `gb18030`）：若字节本身是**合法且含非
+     *     ASCII 的 UTF-8**，按 UTF-8 解码，否则按 GBK。这一条是给内嵌浏览器抓取用的：
+     *     抓到的页面是 JS 字符串转成的 UTF-8 字节（见
+     *     `ImportExportBridge::submit_web_capture`），而 `outerHTML` 里保留的
+     *     `<meta charset="gb2312">` 还是原来那个，照声明解会整页乱码；
      *  3. 无声明：合法 UTF-8 按 UTF-8，否则按 GBK。
+     *
+     * 纯 ASCII 走哪条分支结果都一样，因此第 2 条的额外判断只在真正含中文等非 ASCII
+     * 字节时才起作用，不会影响真正的 GBK 导出文件（其字节不是合法 UTF-8）。
      *
      * @param data         原始字节串
      * @param charset_used 可选输出，实际采用的字符集名（小写）

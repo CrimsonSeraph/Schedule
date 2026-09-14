@@ -25,3 +25,7 @@ CMakeLists.txt text charset=utf-8
 # 华东交大教务课表样本：.doc 是 GBK 编码的 Word 版式 HTML，
 # 同样必须按二进制存储，否则行尾转换会改写字节、破坏 GBK 序列。
 *.doc binary
+
+# 抓取形态样本：内容虽是 HTML，但要与 tools/gen_ecjtu_sample.py 的产物逐字节一致，
+# 不能让它被 text=auto 的 CRLF 转换改写。
+samples/schedule_sample_ecjtu.html binary

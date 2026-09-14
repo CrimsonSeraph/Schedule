@@ -38,6 +38,11 @@ namespace {
         return QDir(samples_dir()).filePath(QStringLiteral("schedule_sample_ecjtu.docx"));
     }
 
+    /** @return 内嵌浏览器抓取形态的页面样本（UTF-8 字节，但页面声明 gb2312）。 */
+    QString html_sample_path() {
+        return QDir(samples_dir()).filePath(QStringLiteral("schedule_sample_ecjtu.html"));
+    }
+
     /** @return 读取整个文件；失败返回空。 */
     QByteArray read_all(const QString& path) {
         QFile file(path);
@@ -138,6 +143,9 @@ private slots:
 
     /** Word 版式 HTML（GBK）能被解码并读成同样的网格。 */
     void decodes_word_html();
+
+    /** 内嵌浏览器抓到的页面：UTF-8 字节却自称 gb2312，仍要正确解码并导入。 */
+    void decodes_captured_page();
 
     /** 学期与作息表按文档内容合成。 */
     void parses_semester_and_time_slots();
@@ -244,6 +252,40 @@ void TestEcjtuTimetable::decodes_word_html() {
 
     // rowspan 的效果与 OOXML 的 vMerge 一致
     QVERIFY2(table.rows.at(3).at(5).contains(QStringLiteral("数据库(演示)")), qPrintable(table.rows.at(3).at(5)));
+}
+
+void TestEcjtuTimetable::decodes_captured_page() {
+    const QByteArray data = read_all(html_sample_path());
+    QVERIFY(!data.isEmpty());
+
+    // 抓取链路喂进来的就是「JS 字符串 → toUtf8()」的字节，而 outerHTML 里
+    // 仍保留页面自己的 <meta charset="gb2312">。照声明解会整页乱码：
+    // 中文全部变成替换字符，连格式嗅探都认不出来。
+    QCOMPARE(Schedule::format_from_content(data), ScheduleFormat::EcjtuTimetable);
+
+    Schedule::EcjtuTimetableIo importer;
+    ScheduleSnapshot snapshot;
+    QString error;
+    QVERIFY2(importer.parse_data(data,
+                 QStringLiteral("https://jwxt.ecjtu.edu.cn/courseTable"),
+                 &snapshot,
+                 &error),
+        qPrintable(error));
+
+    // 课表之前还有一张布局表格：必须挑中课表那张，而不是第一张
+    QCOMPARE(snapshot.courses.size(), 6);
+
+    Course course;
+    QVERIFY(find_course(snapshot.courses, QStringLiteral("大学英语(演示)"), &course));
+    QCOMPARE(course.teacher, QStringLiteral("王演示"));
+
+    // 抓取页里 数据库 在两个节次行各出现一次（没有 vMerge），去重后仍只算一段课
+    QVERIFY(find_course(snapshot.courses, QStringLiteral("数据库(演示)"), &course));
+    QCOMPARE(session_signatures(course).size(), 1);
+
+    // 与导出文件是同一张表，课程集合应当一致
+    const QByteArray exported = read_all(doc_sample_path());
+    QCOMPARE(Schedule::format_from_content(exported), ScheduleFormat::EcjtuTimetable);
 }
 
 void TestEcjtuTimetable::parses_semester_and_time_slots() {

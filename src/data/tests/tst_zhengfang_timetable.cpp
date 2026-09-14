@@ -93,6 +93,9 @@ private slots:
     /** GBK 字节串能被正确解码为中文。 */
     void decodes_gbk_chinese();
 
+    /** 字节是 UTF-8 却声明 gb2312 时按 UTF-8 解码（内嵌浏览器抓取的形态）。 */
+    void decodes_utf8_bytes_declared_as_gbk();
+
     /** 学期信息与作息表按页面内容合成。 */
     void parses_semester_and_time_slots();
 
@@ -167,6 +170,22 @@ void TestZhengfangTimetable::decodes_gbk_chinese() {
     const QByteArray gbk = QStringLiteral("高等数学").toLocal8Bit();
     QVERIFY(!Schedule::looks_like_utf8(gbk));
     QCOMPARE(Schedule::gbk_to_unicode(gbk), QStringLiteral("高等数学"));
+}
+
+void TestZhengfangTimetable::decodes_utf8_bytes_declared_as_gbk() {
+    // 内嵌浏览器抓取时，页面被转成 JS 字符串再 toUtf8()，
+    // 但 outerHTML 里的 <meta charset> 仍是原来的 gb2312
+    const QString page = QStringLiteral(
+        "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=gb2312\">"
+        "</head><body>高等数学</body></html>");
+    const QByteArray captured = page.toUtf8();
+    QVERIFY(Schedule::looks_like_utf8(captured));
+    QVERIFY(captured.contains(QStringLiteral("高等数学").toUtf8()));
+
+    QString charset;
+    const QString decoded = Schedule::decode_html_bytes(captured, &charset);
+    QCOMPARE(charset, QStringLiteral("utf-8"));
+    QVERIFY2(decoded.contains(QStringLiteral("高等数学")), qPrintable(decoded));
 }
 
 void TestZhengfangTimetable::parses_semester_and_time_slots() {
