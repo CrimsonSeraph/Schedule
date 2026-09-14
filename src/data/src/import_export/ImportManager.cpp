@@ -142,19 +142,13 @@ namespace Schedule {
         }
     }
 
-    int ImportManager::count_duplicates(const QList<Course>& incoming, const QList<Course>& existing, bool* matched_by_id) {
+    int ImportManager::count_duplicates(const QList<Course>& incoming, const QList<Course>& existing) {
         int count = 0;
-        if (matched_by_id) {
-            *matched_by_id = false;
-        }
         for (const Course& candidate : incoming) {
             bool duplicated = false;
             for (const Course& other : existing) {
                 if (!candidate.id.isEmpty() && candidate.id == other.id) {
                     duplicated = true;
-                    if (matched_by_id) {
-                        *matched_by_id = true;
-                    }
                     break;
                 }
                 // 没有 id（例如来自 CSV / ICS）时按“名称 + 代码”判定重复
@@ -196,7 +190,7 @@ namespace Schedule {
             preview.warnings.append(QStringLiteral("文件未包含作息表，将使用应用的默认作息时间"));
         }
 
-        preview.duplicate_count = count_duplicates(parsed.courses, current.courses, nullptr);
+        preview.duplicate_count = count_duplicates(parsed.courses, current.courses);
         preview.new_course_count = qMax(0, static_cast<int>(parsed.courses.size()) - preview.duplicate_count);
 
         // 预览“导入后会怎样”：先模拟一次合并，再对新课表做冲突检测，

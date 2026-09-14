@@ -116,7 +116,7 @@ namespace Schedule {
         QString registered_format_names() const;
 
         /** @return 同名同代码（或同 id）的重复课程数量。 */
-        static int count_duplicates(const QList<Course>& incoming, const QList<Course>& existing, bool* matched_by_id);
+        static int count_duplicates(const QList<Course>& incoming, const QList<Course>& existing);
 
         /** @brief id 非空按 id 匹配；否则按名称 + 代码匹配，都匹配不上返回 -1，避免空串互相命中。 */
         int find_existing_course(const ScheduleSnapshot& snapshot, const Course& course) const;
