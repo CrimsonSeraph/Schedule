@@ -1,6 +1,12 @@
 # src/data - 基础设施层：SQLite 持久化、JSON 序列化、导入导出实现
 find_package(Qt6 6.9.3 REQUIRED COMPONENTS Network Sql)
 
+# CorePrivate 是 .docx 读取（WordTableReader）的硬依赖：.docx 是一个 zip，而 Qt 6
+# 没有公开的 zip 读取 API（QZipReader 一直是私有实现）。自己写 ZIP 目录解析 +
+# DEFLATE 解压需要三百行精细代码，风险远高于依赖 Qt 自带的这个实现。
+# 若将来 Qt 移除它，唯一需要改的地方是 WordTableReader.cpp 的 read_document_xml()。
+find_package(Qt6 6.9.3 REQUIRED COMPONENTS CorePrivate)
+
 add_library(ScheduleData STATIC
 	src/AppSettings.cpp
 	src/ImportSource.cpp
@@ -16,7 +22,9 @@ add_library(ScheduleData STATIC
 	# 教务课表专用适配：正方教务（zfn / zfsoft V9）页面解析
 	src/import_export/academic_affairs/CharsetUtil.cpp
 	src/import_export/academic_affairs/DocConvertUtil.cpp
+	src/import_export/academic_affairs/EcjtuTimetableIo.cpp
 	src/import_export/academic_affairs/GbkTable.cpp
+	src/import_export/academic_affairs/WordTableReader.cpp
 	src/import_export/academic_affairs/ZhengfangTimetableIo.cpp
 	src/adapter/GenericSchoolAdapter.cpp
 	src/adapter/NetworkScheduleFetcher.cpp
@@ -36,7 +44,9 @@ add_library(ScheduleData STATIC
 	include/data/import_export/JsonScheduleIo.h
 	include/data/import_export/academic_affairs/CharsetUtil.h
 	include/data/import_export/academic_affairs/DocConvertUtil.h
+	include/data/import_export/academic_affairs/EcjtuTimetableIo.h
 	include/data/import_export/academic_affairs/GbkTable.h
+	include/data/import_export/academic_affairs/WordTableReader.h
 	include/data/import_export/academic_affairs/ZhengfangTimetableIo.h
 	include/data/adapter/GenericSchoolAdapter.h
 	include/data/adapter/NetworkScheduleFetcher.h
@@ -50,6 +60,7 @@ target_link_libraries(ScheduleData
 	PUBLIC
 		ScheduleCore
 		Qt6::Core
+		Qt6::CorePrivate
 		Qt6::Network
 		Qt6::Sql
 )

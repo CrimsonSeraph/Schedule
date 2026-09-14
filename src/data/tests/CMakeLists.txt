@@ -5,6 +5,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/ScheduleQtDeploy.cmake)
 
 set(SCHEDULE_DATA_TESTS
 	tst_doc_convert
+	tst_ecjtu_timetable
 	tst_import_export
 	tst_sample_files
 	tst_schedule_json

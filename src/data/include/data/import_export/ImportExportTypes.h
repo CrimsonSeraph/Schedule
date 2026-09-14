@@ -18,15 +18,17 @@ namespace Schedule {
      * 新增格式时只需在 `format_to_string()` / `format_from_string()` /
      * `file_extension()` 中补齐映射，并实现 `IScheduleImporter` / `IScheduleExporter`。
      *
-     * `ZhengfangHtml` 是**只导入**格式：它是教务系统导出的页面，本应用不会生成它，
-     * 因此面向导出的 `export_file_extensions()` 会把它排除在外。
+     * `ZhengfangHtml` 与 `EcjtuTimetable` 都是**只导入**格式：它们是教务系统导出的
+     * 课表文件，本应用不会生成它们，因此面向导出的 `export_file_extensions()` 会
+     * 把它们排除在外。
      */
     enum class ScheduleFormat {
-        Unknown,       ///< 未识别
-        Json,          ///< 本应用的 JSON 文档（无损，含作息表与周次位图）
-        Csv,           ///< 表格（Excel 友好，一行一个上课时间段）
-        Ics,           ///< iCalendar（可与系统日历互操作）
-        ZhengfangHtml, ///< 正方教务系统（zfn / zfsoft V9）导出的 HTML 课表页面
+        Unknown,        ///< 未识别
+        Json,           ///< 本应用的 JSON 文档（无损，含作息表与周次位图）
+        Csv,            ///< 表格（Excel 友好，一行一个上课时间段）
+        Ics,            ///< iCalendar（可与系统日历互操作）
+        ZhengfangHtml,  ///< 正方教务系统（zfn / zfsoft V9）导出的 HTML 课表页面
+        EcjtuTimetable, ///< 华东交通大学教务综合管理系统导出的 Word 表格课表（.doc / .docx / Word 版式 HTML）
     };
 
     /** @return 格式的小写机器名（`json` / `csv` / `ics` / `zhengfang-html`），用于设置与日志。 */

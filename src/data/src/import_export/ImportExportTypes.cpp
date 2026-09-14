@@ -1,6 +1,7 @@
 #include "data/import_export/ImportExportTypes.h"
 
 #include "core/service/ConflictDetector.h"
+#include "data/import_export/academic_affairs/CharsetUtil.h"
 
 #include <QFileInfo>
 
@@ -13,8 +14,9 @@ namespace Schedule {
             ScheduleFormat format;
             const char* machine_name;
             const char* display_name;
-            const char* extension;
-            /** 本应用能否导出该格式；只导入格式（正方教务页面）为 false。 */
+            /** 逗号分隔的扩展名；**第一个是推荐扩展名**（导出文件名与 `file_extension()` 用它）。 */
+            const char* extensions;
+            /** 本应用能否导出该格式；只导入格式（教务系统导出页）为 false。 */
             bool exportable;
         };
 
@@ -23,10 +25,11 @@ namespace Schedule {
             {ScheduleFormat::Csv, "csv", "表格 CSV", "csv", true},
             {ScheduleFormat::Ics, "ics", "日历 ICS", "ics", true},
             {ScheduleFormat::ZhengfangHtml, "zhengfang-html", "正方教务课表", "xls", false},
+            {ScheduleFormat::EcjtuTimetable, "ecjtu-timetable", "华东交大教务课表", "docx,doc", false},
         };
 
-        /** 嗅探正方教务页面时扫描的最大字节数（标志串位于内嵌 <script>，比较靠后）。 */
-        constexpr int ZHENGFANG_SNIFF_LIMIT = 256 * 1024;
+        /** 嗅探教务系统页面时扫描的最大字节数（标志串可能位于内嵌 <script>，比较靠后）。 */
+        constexpr int MARKUP_SNIFF_LIMIT = 256 * 1024;
 
     } // namespace
 
@@ -61,7 +64,8 @@ namespace Schedule {
     QString file_extension(ScheduleFormat format) {
         for (const FormatEntry& entry : FORMATS) {
             if (entry.format == format) {
-                return QString::fromLatin1(entry.extension);
+                // 推荐扩展名排在列表最前面
+                return QString::fromLatin1(entry.extensions).section(QLatin1Char(','), 0, 0);
             }
         }
         return QString();
@@ -70,7 +74,10 @@ namespace Schedule {
     QStringList supported_file_extensions() {
         QStringList extensions;
         for (const FormatEntry& entry : FORMATS) {
-            extensions.append(QStringLiteral(".") + QLatin1String(entry.extension));
+            // 一个格式可以有多个可导入扩展名（如 .docx 与 .doc）
+            for (const QString& name : QString::fromLatin1(entry.extensions).split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+                extensions.append(QStringLiteral(".") + name);
+            }
         }
         return extensions;
     }
@@ -79,7 +86,8 @@ namespace Schedule {
         QStringList extensions;
         for (const FormatEntry& entry : FORMATS) {
             if (entry.exportable) {
-                extensions.append(QStringLiteral(".") + QLatin1String(entry.extension));
+                // 可导出格式只有一个扩展名，直接取整个字段即可
+                extensions.append(QStringLiteral(".") + QLatin1String(entry.extensions));
             }
         }
         return extensions;
@@ -100,6 +108,10 @@ namespace Schedule {
         if (suffix == QStringLiteral("xls") || suffix == QStringLiteral("html") || suffix == QStringLiteral("htm")) {
             // 教务系统「导出」的课表多半以 .xls 命名，内容其实是 HTML
             return ScheduleFormat::ZhengfangHtml;
+        }
+        if (suffix == QStringLiteral("docx") || suffix == QStringLiteral("doc")) {
+            // 华东交大教务综合管理系统「导出」的课表是 Word 表格，扩展名是 .doc / .docx
+            return ScheduleFormat::EcjtuTimetable;
         }
         return ScheduleFormat::Unknown;
     }
@@ -130,11 +142,30 @@ namespace Schedule {
         // 正方教务：Excel 兼容的 HTML 导出页。标志串位于内嵌 <script> 中，
         // 可能在文件偏后位置，因此在更长的前缀上做一次扫描。
         // 判定放在 CSV 之前：HTML 首行之外的逗号不应把页面误判成表格。
-        const QByteArray sample = trimmed.left(ZHENGFANG_SNIFF_LIMIT);
+        const QByteArray sample = trimmed.left(MARKUP_SNIFF_LIMIT);
         const bool has_zhengfang_table = sample.contains("manualArrangeCourseTable") || sample.contains("courseTableForStd");
         const bool has_zhengfang_script = sample.contains("TaskActivity(") && sample.contains("CourseTable(");
         if (has_zhengfang_table || has_zhengfang_script) {
             return ScheduleFormat::ZhengfangHtml;
+        }
+
+        // OOXML 包（.docx / .xlsx / .pptx …）：zip 本地文件头魔数。
+        // 具体是不是课表由导入器解析 word/document.xml 后判断，这里只认容器。
+        if (trimmed.startsWith(QByteArray::fromHex("504B0304"))) {
+            return ScheduleFormat::EcjtuTimetable;
+        }
+
+        // Word 版式 HTML（教务系统「导出为 .doc」的常见形态）与课表页面。
+        // 这类内容可能是 GBK，所以先解码再找结构特征，而不是硬匹配字节。
+        // 判定放在 CSV 之前：HTML 表格里的逗号不该把页面误判成表格文件；
+        // 同时要求「节次」与两个以上具体星期名，避免把含「周一」列的 CSV 认成网页。
+        if (sample.contains('<')) {
+            const QString head = decode_html_bytes(sample, nullptr);
+            const bool has_slot_header = head.contains(QStringLiteral("节次"));
+            const bool has_day_headers = head.contains(QStringLiteral("星期一")) && (head.contains(QStringLiteral("星期二")) || head.contains(QStringLiteral("星期三")));
+            if (has_slot_header && has_day_headers) {
+                return ScheduleFormat::EcjtuTimetable;
+            }
         }
 
         // CSV：首个非空行包含分隔符或多个字段关键字

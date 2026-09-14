@@ -21,3 +21,7 @@ CMakeLists.txt text charset=utf-8
 # 必须按二进制存储，否则 text=auto / eol=crlf 会改写字节，
 # 样本就不再与 tools/gen_zhengfang_sample.py 的产物逐字节一致。
 *.xls binary
+
+# 华东交大教务课表样本：.doc 是 GBK 编码的 Word 版式 HTML，
+# 同样必须按二进制存储，否则行尾转换会改写字节、破坏 GBK 序列。
+*.doc binary

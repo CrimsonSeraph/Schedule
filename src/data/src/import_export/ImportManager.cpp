@@ -3,6 +3,7 @@
 #include "data/import_export/CsvScheduleIo.h"
 #include "data/import_export/IcsScheduleIo.h"
 #include "data/import_export/JsonScheduleIo.h"
+#include "data/import_export/academic_affairs/EcjtuTimetableIo.h"
 #include "data/import_export/academic_affairs/ZhengfangTimetableIo.h"
 
 #include <QFile>
@@ -55,6 +56,8 @@ namespace Schedule {
         register_importer(std::make_unique<IcsScheduleIo>());
         // 教务系统导出的课表页（通常名为 课表.xls，实为 GBK 编码的 HTML）
         register_importer(std::make_unique<ZhengfangTimetableIo>());
+        // 华东交大教务综合管理系统导出的 Word 表格课表（.doc / .docx / Word 版式 HTML）
+        register_importer(std::make_unique<EcjtuTimetableIo>());
     }
 
     ImportManager::~ImportManager() = default;
