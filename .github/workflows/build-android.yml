@@ -74,7 +74,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  QT_VERSION: '6.7.3'
+  QT_VERSION: '6.9.3'
   # 与 docs/PACKAGING.md 4.1 保持一致
   NDK_VERSION: '30.0.16138531'
   # ubuntu-24.04 托管 runner 预装 Android SDK 的位置（actions/runner-images 文档）
@@ -180,10 +180,14 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
-          host: linux
+          # Qt 6.7+ 起 Android 包移至 all_os 仓库（linux_x64 里最高只到 6.7.3）
+          host: all_os
           target: android
           arch: ${{ matrix.qt_arch }}
           dir: ${{ github.workspace }}/Qt
+          # Android 交叉编译必须有桌面 Qt 提供 androiddeployqt / moc / rcc；
+          # autodesktop 默认 true，这里显式写出来避免后续误改
+          autodesktop: true
           # cache: true 内部即 actions/cache，按 os+版本+arch 缓存整个 Qt 安装目录
           cache: true
           cache-key-prefix: qt-android-${{ matrix.qt_arch }}

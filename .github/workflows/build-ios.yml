@@ -247,21 +247,32 @@ jobs:
           fi
 
           if [ "${{ steps.apple.outputs.ready }}" = "true" ]; then
+            if [ "${{ steps.apple.outputs.ready }}" = "true" ]; then
             # 手工签名：临时钥匙串中的身份 + 已安装的 Ad Hoc/Development 描述文件
-            SIGN_ARGS="CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=$TEAM_ID CODE_SIGN_IDENTITY=${CODE_SIGN_IDENTITY_NAME:-iPhone Developer} PROVISIONING_PROFILE_SPECIFIER=${PROFILE_NAME} OTHER_CODE_SIGN_FLAGS=--keychain=${KEYCHAIN}"
+            SIGN_ARGS=(
+              CODE_SIGN_STYLE=Manual
+              DEVELOPMENT_TEAM="$TEAM_ID"
+              CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY_NAME:-Apple Development}"
+              PROVISIONING_PROFILE_SPECIFIER="${PROFILE_NAME}"
+              OTHER_CODE_SIGN_FLAGS="--keychain=${KEYCHAIN}"
+            )
           else
             # 未签名：仅产出 .xcarchive 供后续手工签名/归档使用
-            SIGN_ARGS="CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= EXPANDED_CODE_SIGN_IDENTITY="
+            SIGN_ARGS=(
+              CODE_SIGNING_ALLOWED=NO
+              CODE_SIGNING_REQUIRED=NO
+              CODE_SIGN_IDENTITY=""
+              EXPANDED_CODE_SIGN_IDENTITY=""
+            )
           fi
 
-          # shellcheck disable=SC2086
           xcodebuild archive \
             -project "$PROJECT" \
             -scheme "$SCHEME" \
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "$ARCHIVE_PATH" \
-            $SIGN_ARGS $AUTH_ARGS
+            "${SIGN_ARGS[@]}" $AUTH_ARGS
 
           test -d "$ARCHIVE_PATH" || { echo "::error title=归档失败::未生成 .xcarchive"; exit 1; }
           du -sh "$ARCHIVE_PATH"

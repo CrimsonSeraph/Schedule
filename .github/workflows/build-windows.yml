@@ -215,8 +215,10 @@ jobs:
           "SIGN_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
           Write-Host "已导入证书，指纹：$($cert.Thumbprint)"
 
+          # 按 SDK 版本号排序而不是路径字典序，避免 10.0.9 vs 10.0.10 之类的边界
           $signtool = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/signtool.exe" |
-            Sort-Object FullName -Descending | Select-Object -First 1
+            Sort-Object { [version](Split-Path $_.DirectoryName -Leaf) } -Descending |
+            Select-Object -First 1
           if (-not $signtool) { throw "未找到 signtool.exe（需要 Windows SDK）" }
           Write-Host "使用：$($signtool.FullName)"
 
@@ -332,7 +334,8 @@ jobs:
           $signtool = $env:SIGNTOOL
           if (-not $signtool -or -not (Test-Path $signtool)) {
             $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/signtool.exe" |
-              Sort-Object FullName -Descending | Select-Object -First 1).FullName
+              Sort-Object { [version](Split-Path $_.DirectoryName -Leaf) } -Descending |
+              Select-Object -First 1).FullName
           }
           Write-Host "签名安装包：$($setup.FullName)"
           & $signtool sign /sha1 $env:SIGN_THUMBPRINT /fd SHA256 `
@@ -360,7 +363,10 @@ jobs:
             $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
             "$h  $($_.Name)"
           }
-          Set-Content -Path "dist/SHA256SUMS-windows-x64.txt" -Value $lines -Encoding utf8
+          [IO.File]::WriteAllLines(
+            (Join-Path (Resolve-Path dist).Path 'SHA256SUMS-windows-x64.txt'),
+            $lines
+          )
           Get-Content "dist/SHA256SUMS-windows-x64.txt"
 
       - name: 上传构建产物

@@ -113,30 +113,17 @@ jobs:
           cache: true
           cache-key-prefix: qt-macos-clang_64
 
-      - name: 准备 ccache
+      - name: 导出 Qt 环境变量
         shell: bash
         run: |
           set -euo pipefail
-          command -v ccache >/dev/null 2>&1 || brew install ccache
-          mkdir -p "$CCACHE_DIR"
           echo "QTDIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
           echo "Qt 套件目录：$QT_ROOT_DIR"
-          ccache --version | head -1
-
-      - name: 缓存 ccache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-macos-${{ matrix.arch }}-${{ github.sha }}
-          restore-keys: |
-            ccache-macos-${{ matrix.arch }}-
-            ccache-macos-
 
       - name: 配置 CMake（Xcode，Release，关闭测试与自检）
         shell: bash
         run: |
           set -euo pipefail
-          ccache --zero-stats || true
           cmake -S . -B "$BUILD_DIR" -G Xcode \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="$QTDIR" \
@@ -145,7 +132,6 @@ jobs:
             -DCMAKE_XCODE_GENERATE_SCHEME=ON \
             -DCMAKE_XCODE_ATTRIBUTE_ENABLE_USER_SCRIPT_SANDBOXING=NO \
             -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DBUILD_TESTS=OFF \
             -DBUILD_SELFTEST=OFF
 
