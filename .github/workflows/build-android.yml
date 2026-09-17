@@ -74,7 +74,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  QT_VERSION: '6.9.3'
+  QT_VERSION: '6.7.3'
   # 与 docs/PACKAGING.md 4.1 保持一致
   NDK_VERSION: '30.0.16138531'
   # ubuntu-24.04 托管 runner 预装 Android SDK 的位置（actions/runner-images 文档）
