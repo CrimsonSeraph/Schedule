@@ -4,11 +4,26 @@
 #   * Android 下会构建为可被 Java 壳加载的 MODULE 库，并创建 apk / aab 打包目标
 #     （androiddeployqt 由该目标驱动）。若用 add_executable，交叉编译只能得到 .so，
 #     cmake --build 结束时不生成 APK，也不生成 *deployment-settings.json。
-qt_add_executable(Schedule
+qt_add_executable(
+	Schedule
 	main.cpp
 	UiConnector.cpp
 	UiConnector.h
 )
+
+# Android 网络权限（普通权限，安装时授予，无需运行时申请）
+if(ANDROID)
+	qt_add_android_permission(
+		Schedule
+		NAME
+		android.permission.INTERNET
+	)
+	qt_add_android_permission(
+		Schedule
+		NAME
+		android.permission.ACCESS_NETWORK_STATE
+	)
+endif()
 
 # 桌面系统托盘通知后端依赖 Qt Widgets（QSystemTrayIcon），因此只参与桌面构建。
 # 移动端使用 engine 层的 AndroidNotificationBackend 或应用内横幅。
@@ -30,6 +45,13 @@ target_link_libraries(Schedule
 		ScheduleData
 		ScheduleCore
 )
+
+# 内嵌浏览器后端：main.cpp 需要调用 QtWebView::initialize()
+if(SCHEDULE_BROWSER_BACKEND STREQUAL "webview")
+	target_compile_definitions(Schedule PRIVATE Schedule_HAS_WEBVIEW=1)
+	find_package(Qt6 6.9.3 REQUIRED COMPONENTS WebView)
+	target_link_libraries(Schedule PRIVATE Qt6::WebView)
+endif()
 
 set_target_properties(Schedule
 	PROPERTIES
@@ -61,14 +83,17 @@ endif()
 # 缺少 Qt Linguist 工具时降级为“不翻译”，不影响构建。
 find_package(Qt6 6.9.3 QUIET COMPONENTS LinguistTools)
 if(Qt6LinguistTools_FOUND)
-	qt_add_translations(Schedule
+	qt_add_translations(
+		Schedule
 		TS_FILES
-			"${CMAKE_SOURCE_DIR}/i18n/schedule_en.ts"
+		"${CMAKE_SOURCE_DIR}/i18n/schedule_en.ts"
 		RESOURCE_PREFIX
-			"/i18n"
+		"/i18n"
 	)
 else()
-	message(WARNING "未找到 Qt Linguist 工具（lupdate/lrelease），本次构建不包含翻译文件")
+	message(WARNING
+		"未找到 Qt Linguist 工具（lupdate/lrelease），本次构建不包含翻译文件"
+	)
 endif()
 
 # 课表样本文件：复制到可执行文件同级目录，供 --selftest 与手工导入使用。
@@ -76,8 +101,7 @@ endif()
 add_custom_command(
 	TARGET Schedule
 	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_directory
-		"${CMAKE_SOURCE_DIR}/samples"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/samples"
 		"$<TARGET_FILE_DIR:Schedule>/samples"
 	COMMENT "复制课表样本文件到构建输出目录"
 	VERBATIM
@@ -86,7 +110,9 @@ add_custom_command(
 # Windows 桌面：构建后把 Qt 运行库部署到 Schedule.exe 同级目录，可直接双击运行。
 # 具体实现收敛在 cmake/ScheduleQtDeploy.cmake，测试可执行文件复用同一个函数。
 include(${CMAKE_SOURCE_DIR}/cmake/ScheduleQtDeploy.cmake)
-schedule_deploy_qt_runtime(Schedule
+schedule_deploy_qt_runtime(
+	Schedule
 	--compiler-runtime
-	--qmldir "${CMAKE_SOURCE_DIR}/src/ui/qml"
+	--qmldir
+	"${CMAKE_SOURCE_DIR}/src/ui/qml"
 )

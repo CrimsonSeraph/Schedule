@@ -28,6 +28,10 @@
 #include <QTranslator>
 #include <QUrl>
 
+#if defined(Schedule_HAS_WEBVIEW)
+#include <QtWebView/QtWebView>
+#endif
+
 #include <memory>
 
 #if Schedule_SELFTEST
@@ -35,6 +39,11 @@
 #endif
 
 int main(int argc, char* argv[]) {
+#if defined(Schedule_HAS_WEBVIEW)
+    // 在创建 Q*Application 实例之前调用
+    QtWebView::initialize();
+#endif
+
 #if Schedule_HAS_TRAY_NOTIFICATIONS
     QApplication app(argc, argv);
 #else
