@@ -37,185 +37,192 @@ Dialog {
     /** 当前选中的入口是否为「打开内置浏览器」（没有预设地址，需用户自己填 / 导航）。 */
     readonly property bool manualEntry: browserEntrySelector.currentIndex <= 0
 
-    contentItem: ColumnLayout {
-        spacing: Metrics.spacingLg
+    contentItem: ScrollView {
+        id: contentScroll
+        clip: true
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+        rightPadding: Metrics.spacingSm
 
-        // ------------------------------------------------------------ 入口选择
-        GroupBox {
-            Layout.fillWidth: true
-            Layout.margins: Metrics.spacingLg
-            title: qsTr("第 1 步：选择教务入口")
+        ColumnLayout {
+            width: contentScroll.availableWidth
+            spacing: Metrics.spacingLg
 
-            ColumnLayout {
-                anchors.fill: parent
-                spacing: Metrics.spacingLg
+            // 入口选择
+            GroupBox {
+                Layout.fillWidth: true
+                Layout.margins: Metrics.spacingLg
+                title: qsTr("第 1 步：选择教务入口")
 
-                RowLayout {
-                    Layout.fillWidth: true
+                ColumnLayout {
+                    anchors.fill: parent
                     spacing: Metrics.spacingLg
 
-                    ComboBox {
-                        id: browserEntrySelector
-
-                        objectName: "browserEntrySelector"
+                    RowLayout {
                         Layout.fillWidth: true
-                        Layout.preferredWidth: 320
-                        textRole: "name"
-                        model: schedule.importExport.browserEntries
-                    }
+                        spacing: Metrics.spacingLg
 
-                    Button {
-                        id: browserOpenEntryButton
+                        ComboBox {
+                            id: browserEntrySelector
 
-                        objectName: "browserOpenEntryButton"
-                        text: qsTr("打开此入口")
-                    }
-                }
-
-                Label {
-                    Layout.fillWidth: true
-                    visible: browserEntrySelector.currentIndex >= 0
-                    text: {
-                        const entries = schedule.importExport.browserEntries;
-                        if (browserEntrySelector.currentIndex < 0 || browserEntrySelector.currentIndex >= entries.length) {
-                            return "";
+                            objectName: "browserEntrySelector"
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 320
+                            textRole: "name"
+                            model: schedule.importExport.browserEntries
                         }
-                        return entries[browserEntrySelector.currentIndex].description;
+
+                        Button {
+                            id: browserOpenEntryButton
+
+                            objectName: "browserOpenEntryButton"
+                            text: qsTr("打开此入口")
+                        }
                     }
-                    wrapMode: Text.WordWrap
-                    color: Theme.textMuted
-                    font.pixelSize: Typography.fontSmall
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: browserEntrySelector.currentIndex >= 0
+                        text: {
+                            const entries = schedule.importExport.browserEntries;
+                            if (browserEntrySelector.currentIndex < 0 || browserEntrySelector.currentIndex >= entries.length) {
+                                return "";
+                            }
+                            return entries[browserEntrySelector.currentIndex].description;
+                        }
+                        wrapMode: Text.WordWrap
+                        color: Theme.textMuted
+                        font.pixelSize: Typography.fontSmall
+                    }
                 }
             }
-        }
 
-        // ------------------------------------------------------------ 浏览器
-        GroupBox {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.margins: Metrics.spacingLg
-            Layout.minimumHeight: Responsive.browserViewMinHeight
-            title: qsTr("第 2 步：在教务系统中打开课表页面")
+            // 浏览器
+            GroupBox {
+                Layout.fillWidth: true
+                Layout.margins: Metrics.spacingLg
+                title: qsTr("第 2 步：在教务系统中打开课表页面")
+                Layout.preferredHeight: schedule.importExport.hasEmbeddedBrowser ? (Responsive.isTiny(browserDialog.width) ? Responsive.browserViewMinHeightCompact + Metrics.spacing4xl : Responsive.browserViewMinHeight + Metrics.spacing6xl) : implicitHeight
 
-            ColumnLayout {
-                anchors.fill: parent
-                spacing: Metrics.spacingLg
-
-                Flow {
-                    Layout.fillWidth: true
+                ColumnLayout {
+                    anchors.fill: parent
                     spacing: Metrics.spacingLg
 
-                    TextField {
-                        id: browserUrlField
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: Metrics.spacingLg
 
-                        objectName: "browserUrlField"
-                        width: Math.max(220, browserDialog.width - 320)
-                        placeholderText: qsTr("教务系统地址（可直接粘贴课表页网址）")
+                        TextField {
+                            id: browserUrlField
+
+                            objectName: "browserUrlField"
+                            width: browserDialog.width > 640 ? Math.max(220, browserDialog.width - 320) : browserDialog.width - Metrics.spacing6xl
+                            placeholderText: qsTr("教务系统地址（可直接粘贴课表页网址）")
+                        }
+
+                        Button {
+                            id: browserGoButton
+
+                            objectName: "browserGoButton"
+                            text: qsTr("前往")
+                        }
+
+                        Button {
+                            id: browserReloadButton
+
+                            objectName: "browserReloadButton"
+                            text: qsTr("重新加载")
+                        }
+
+                        Button {
+                            id: browserSystemOpenButton
+
+                            objectName: "browserSystemOpenButton"
+                            text: qsTr("用系统浏览器打开")
+                        }
                     }
 
-                    Button {
-                        id: browserGoButton
-
-                        objectName: "browserGoButton"
-                        text: qsTr("前往")
+                    Label {
+                        Layout.fillWidth: true
+                        visible: !schedule.importExport.hasEmbeddedBrowser
+                        text: qsTr("当前构建未启用内嵌浏览器：可先用系统浏览器打开并另存课表页面，再用「文件导入」选择该文件。")
+                        wrapMode: Text.WordWrap
+                        color: Theme.warning
+                        font.pixelSize: Typography.fontSmall
                     }
 
-                    Button {
-                        id: browserReloadButton
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        visible: schedule.importExport.hasEmbeddedBrowser
+                        color: Theme.surfaceAlt
+                        border.color: Theme.border
+                        border.width: Metrics.borderWidth
+                        radius: Metrics.radiusSm
+                        clip: true
 
-                        objectName: "browserReloadButton"
-                        text: qsTr("重新加载")
+                        EmbeddedBrowser {
+                            id: scheduleBrowser
+                            anchors.fill: parent
+                        }
                     }
 
-                    Button {
-                        id: browserSystemOpenButton
-
-                        objectName: "browserSystemOpenButton"
-                        text: qsTr("用系统浏览器打开")
+                    Label {
+                        Layout.fillWidth: true
+                        text: scheduleBrowser.lastError.length > 0 ? scheduleBrowser.lastError : (scheduleBrowser.pageTitle.length > 0 ? qsTr("当前页面：%1").arg(scheduleBrowser.pageTitle) : qsTr("尚未打开任何页面"))
+                        wrapMode: Text.WordWrap
+                        color: scheduleBrowser.lastError.length > 0 ? Theme.danger : Theme.textSecondary
+                        font.pixelSize: Typography.fontSmall
                     }
-                }
-
-                Label {
-                    Layout.fillWidth: true
-                    visible: !schedule.importExport.hasEmbeddedBrowser
-                    text: qsTr("当前构建未启用内嵌浏览器：可先用系统浏览器打开并另存课表页面，再用「文件导入」选择该文件。")
-                    wrapMode: Text.WordWrap
-                    color: Theme.warning
-                    font.pixelSize: Typography.fontSmall
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.minimumHeight: Responsive.browserViewMinHeight
-                    color: Theme.surfaceAlt
-                    border.color: Theme.border
-                    border.width: Metrics.borderWidth
-                    radius: Metrics.radiusSm
-                    clip: true
-
-                    EmbeddedBrowser {
-                        id: scheduleBrowser
-
-                        anchors.fill: parent
-                    }
-                }
-
-                Label {
-                    Layout.fillWidth: true
-                    text: scheduleBrowser.lastError.length > 0 ? scheduleBrowser.lastError : (scheduleBrowser.pageTitle.length > 0 ? qsTr("当前页面：%1").arg(scheduleBrowser.pageTitle) : qsTr("尚未打开任何页面"))
-                    wrapMode: Text.WordWrap
-                    color: scheduleBrowser.lastError.length > 0 ? Theme.danger : Theme.textSecondary
-                    font.pixelSize: Typography.fontSmall
                 }
             }
-        }
 
-        // ------------------------------------------------------------ 抓取与关闭
-        GroupBox {
-            Layout.fillWidth: true
-            Layout.margins: Metrics.spacingLg
-            title: qsTr("第 3 步：抓取并导入")
+            // 抓取与关闭
+            GroupBox {
+                Layout.fillWidth: true
+                Layout.margins: Metrics.spacingLg
+                title: qsTr("第 3 步：抓取并导入")
 
-            ColumnLayout {
-                anchors.fill: parent
-                spacing: Metrics.spacingLg
-
-                Label {
-                    Layout.fillWidth: true
-                    text: qsTr("隐私说明：抓取只读取**当前页面的内容**，不读取也不保存密码或 Cookie；不做后台同步。")
-                    wrapMode: Text.WordWrap
-                    color: Theme.warning
-                    font.pixelSize: Typography.fontSmall
-                }
-
-                Flow {
-                    Layout.fillWidth: true
+                ColumnLayout {
+                    anchors.fill: parent
                     spacing: Metrics.spacingLg
 
-                    Button {
-                        id: browserImportButton
-
-                        objectName: "browserImportButton"
-                        text: qsTr("导入课表")
-                        enabled: schedule.importExport.hasEmbeddedBrowser
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("隐私说明：抓取只读取**当前页面的内容**，不读取也不保存密码或 Cookie；不做后台同步。")
+                        wrapMode: Text.WordWrap
+                        color: Theme.warning
+                        font.pixelSize: Typography.fontSmall
                     }
 
-                    Button {
-                        id: browserCloseButton
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: Metrics.spacingLg
 
-                        objectName: "browserCloseButton"
-                        text: qsTr("关闭")
+                        Button {
+                            id: browserImportButton
+
+                            objectName: "browserImportButton"
+                            text: qsTr("导入课表")
+                            enabled: schedule.importExport.hasEmbeddedBrowser
+                        }
+
+                        Button {
+                            id: browserCloseButton
+
+                            objectName: "browserCloseButton"
+                            text: qsTr("关闭")
+                        }
                     }
-                }
 
-                Label {
-                    Layout.fillWidth: true
-                    visible: schedule.importExport.webCaptureSummary.length > 0
-                    text: schedule.importExport.webCaptureSummary
-                    wrapMode: Text.WordWrap
-                    color: schedule.importExport.hasPendingPreview ? Theme.success : Theme.danger
-                    font.pixelSize: Typography.fontSmall
+                    Label {
+                        Layout.fillWidth: true
+                        visible: schedule.importExport.webCaptureSummary.length > 0
+                        text: schedule.importExport.webCaptureSummary
+                        wrapMode: Text.WordWrap
+                        color: schedule.importExport.hasPendingPreview ? Theme.success : Theme.danger
+                        font.pixelSize: Typography.fontSmall
+                    }
                 }
             }
         }
