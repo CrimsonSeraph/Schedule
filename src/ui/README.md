@@ -13,7 +13,7 @@
 | `ScheduleEngine` | 项目内 | 提供 `AppBridge` / `ScheduleBridge`（含 `importExport` 子对象） |
 | `Qt6::Quick` / `Qt6::Qml` | 外部 | Quick Controls 2 / Layouts |
 | `Qt6::QuickDialogs2` | 外部 | `FileDialog` / `FolderDialog`（`import QtQuick.Dialogs`） |
-| `Qt6::WebView` / `Qt6::WebChannel` | 外部（**可选**） | 内嵌浏览器后端之一（`EmbeddedWebView.qml`） |
+| `Qt6::WebView` | 外部（**可选**） | 内嵌浏览器后端之一（`EmbeddedWebView.qml`）；Qt 独立模块 `qtwebview`，未安装时后端退化为 `none` |
 | `Qt6::WebEngineQuick` | 外部（**可选**） | 内嵌浏览器后端之一（`EmbeddedWebEngine.qml`） |
 
 - 允许依赖：`engine`

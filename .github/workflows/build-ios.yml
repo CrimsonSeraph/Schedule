@@ -100,6 +100,8 @@ jobs:
           target: ios
           arch: ios
           dir: ${{ github.workspace }}/Qt
+          # 与 Android 同理：qtwebview 是独立模块，不装的话内嵌浏览器后端会退化成 none
+          modules: qtwebview
           # 安装 iOS 套件时该 action 会自动补装一份桌面 Qt 作为 host 工具链（QT_HOST_PATH）
           cache: true
           cache-key-prefix: qt-ios-ios

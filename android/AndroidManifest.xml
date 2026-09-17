@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<!--
+  Android 清单：由 androiddeployqt 打包时处理（替换 %%INSERT_*%% 占位符、合并权限）。
+
+  基于 Qt 6.9.3 的默认模板 <Qt>/src/android/templates/AndroidManifest.xml，
+  只加了一个属性：<application android:usesCleartextTraffic="true">。
+
+  为什么必须开：Android 9（API 28）起默认禁止明文 HTTP，而部分教务入口是 http://
+  （如安徽工程大学 http://xjwxt.ahpu.edu.cn/...）；不开这个开关，内嵌 WebView
+  会直接报 ERR_CLEARTEXT_NOT_PERMITTED。等教务系统全部提供 https 后可以删掉。
+
+  覆盖方式：src/app/CMakeLists.txt 把 QT_ANDROID_PACKAGE_SOURCE_DIR 指向本目录。
+  androiddeployqt 会先把 Qt 默认模板拷进构建目录，再用本目录**逐文件覆盖**，
+  所以这里只放 AndroidManifest.xml，res/ 与 build.gradle 仍用 Qt 默认模板。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.qtproject.example"
+    android:installLocation="auto"
+    android:versionCode="-- %%INSERT_VERSION_CODE%% --"
+    android:versionName="-- %%INSERT_VERSION_NAME%% --">
+    <!-- %%INSERT_PERMISSIONS -->
+    <!-- %%INSERT_FEATURES -->
+    <supports-screens
+        android:anyDensity="true"
+        android:largeScreens="true"
+        android:normalScreens="true"
+        android:smallScreens="true" />
+    <application
+        android:name="org.qtproject.qt.android.bindings.QtApplication"
+        android:hardwareAccelerated="true"
+        android:label="-- %%INSERT_APP_NAME%% --"
+        android:icon="-- %%INSERT_APP_ICON%% --"
+        android:requestLegacyExternalStorage="true"
+        android:allowBackup="true"
+        android:fullBackupOnly="false"
+        android:usesCleartextTraffic="true">
+        <activity
+            android:name="org.qtproject.qt.android.bindings.QtActivity"
+            android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"
+            android:label="-- %%INSERT_APP_NAME%% --"
+            android:launchMode="singleTop"
+            android:screenOrientation="unspecified"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+          <meta-data
+                android:name="android.app.lib_name"
+                android:value="-- %%INSERT_APP_LIB_NAME%% --" />
+
+          <meta-data
+                android:name="android.app.arguments"
+                android:value="-- %%INSERT_APP_ARGUMENTS%% --" />
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.qtprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/qtprovider_paths"/>
+        </provider>
+    </application>
+</manifest>

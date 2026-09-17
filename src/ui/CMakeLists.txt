@@ -11,7 +11,8 @@ set(SCHEDULE_UI_BROWSER_LIBS "")
 
 if(SCHEDULE_BROWSER_BACKEND STREQUAL "webview")
 	list(APPEND SCHEDULE_UI_BROWSER_QML qml/EmbeddedWebView.qml)
-	list(APPEND SCHEDULE_UI_BROWSER_LIBS Qt6::WebView Qt6::WebChannel)
+	# 只用 WebView：抓取走 runJavaScript，不经过 QWebChannel（见 EmbeddedWebView.qml / BrowserCaptureScript.h）
+	list(APPEND SCHEDULE_UI_BROWSER_LIBS Qt6::WebView)
 elseif(SCHEDULE_BROWSER_BACKEND STREQUAL "webengine")
 	list(APPEND SCHEDULE_UI_BROWSER_QML qml/EmbeddedWebEngine.qml)
 	list(APPEND SCHEDULE_UI_BROWSER_LIBS Qt6::WebEngineQuick)

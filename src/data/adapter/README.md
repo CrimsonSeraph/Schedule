@@ -149,7 +149,7 @@ ImportManager::preview_data(html, source, current)  ← 与文件导入同一条
 
 | 取值 | 实现文件 | 触发条件 |
 | --- | --- | --- |
-| `webview` | `ui/qml/EmbeddedWebView.qml` | 有 `Qt6::WebView` + `Qt6::WebChannel`，**且**桌面平台存在 `<Qt>/plugins/webview` 后端插件 |
+| `webview` | `ui/qml/EmbeddedWebView.qml` | 有 `Qt6::WebView`（Qt 独立模块 `qtwebview`），**且**桌面平台存在 `<Qt>/plugins/webview` 后端插件 |
 | `webengine` | `ui/qml/EmbeddedWebEngine.qml` | 上一条不成立，但有 `Qt6::WebEngineQuick` |
 | `none` | `ui/qml/EmbeddedFallback.qml` | 两者都没有（**官方 MinGW 套件即如此**） |
 

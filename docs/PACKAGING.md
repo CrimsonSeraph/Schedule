@@ -150,6 +150,13 @@ cmake --build build/android --target apk            # 产出 APK
 
 `CMakePresets.json` 中的 `android-arm64-v8a` 预设已经设置好 `CMAKE_TOOLCHAIN_FILE`（**Qt 自带的 `lib/cmake/Qt6/qt.toolchain.cmake`**）、 `QT_HOST_PATH`、`ANDROID_ABI=arm64-v8a`、`ANDROID_PLATFORM=android-24`。
 
+> **Android 套件必须包含 `qtwebview` 模块。** 它是 Qt 的独立附加模块，不在 Android 套件的默认下载列表里；缺了它配置期会打印 `内嵌浏览器：未启用`，APK 的「从教务导入」只能走系统浏览器 + 文件导入（Android 没有 WebEngine 可退）。CI 已用 `install-qt-action` 的 `modules: qtwebview` 显式安装，并在配置后用 `内嵌浏览器后端：webview` 校验后端；手工安装请在 Qt Maintenance Tool 里勾选 “Qt WebView”，或补装：
+
+```bash
+# aqtinstall 的模块名即 qtwebview（务必带上目标 arch）
+aqt install-qt all_os android 6.9.3 android_arm64_v8a -m qtwebview
+```
+
 > **必须用 Qt 的工具链文件，而不是 NDK 自带的 `android.toolchain.cmake`。** 后者虽然能交叉编译，但不会注册 Qt 的 Android 打包链路（`apk` / `aab` 目标、 `androiddeployqt`、`*-deployment-settings.json`），`cmake --build` 结束时只能得到一个 `.so`，打不出 APK。相应地，`src/app` 必须用 `qt_add_executable`，且顶层 `find_package(Qt6 ... COMPONENTS ...)` 要显式包含 `Gui` （否则报 `No target Qt6::QAndroidIntegrationPlugin`）。
 
 ### 4.2 生成 APK
@@ -169,12 +176,9 @@ cmake --build build/android --target aab     # 可选：AAB（Google Play 上传
 
 `apk` 目标内部的顺序是：编译 `libSchedule_<abi>.so` → `androiddeployqt` → Gradle 打包。首次执行需要联网下载 Gradle 与 Android Gradle Plugin（CI 中缓存 `~/.gradle`）。
 
-未设置 `QT_ANDROID_PACKAGE_SOURCE_DIR` 时 Qt 使用自带默认模板（`$QTDIR/src/android/templates`），可以正常出包。若要声明 `POST_NOTIFICATIONS` 等清单项，需要自建 `android/AndroidManifest.xml` 并通过 `-DQT_ANDROID_PACKAGE_SOURCE_DIR=...` 指向该目录：
+工程自带了 `android/AndroidManifest.xml`：以 Qt 6.9.3 的默认模板（`$QTDIR/src/android/templates/AndroidManifest.xml`）为基准，只加了一个属性 `android:usesCleartextTraffic="true"`。`src/app/CMakeLists.txt` 通过 `QT_ANDROID_PACKAGE_SOURCE_DIR` 指向该目录。
 
-```xml
-<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-<application android:label="Schedule" ...>
-```
+androiddeployqt 会先把 Qt 默认模板拷进构建目录，再用该目录**逐文件覆盖**，所以 `android/` 里只需要放清单：`res/`、`build.gradle` 等继续用默认模板。权限（`INTERNET` / `ACCESS_NETWORK_STATE` / `POST_NOTIFICATIONS`）统一走 `qt_add_android_permission()`，不写进清单。
 
 也可以绕开 CMake 直接调用（部署设置文件仍需先由 `apk` 目标生成）：
 
@@ -187,7 +191,8 @@ $QT_HOST_PATH/bin/androiddeployqt \
 
 ### 4.3 移动端注意事项
 
-- **通知权限**：Android 13+ 需要 `POST_NOTIFICATIONS` 运行时权限；应用通过 `engine::AndroidNotificationBackend` 检查并在设置页提供“申请通知权限”按钮；
+- **通知权限**：Android 13+ 需要 `POST_NOTIFICATIONS` 运行时权限（清单已由 `qt_add_android_permission` 声明）；应用通过 `engine::AndroidNotificationBackend` 检查并在设置页提供“申请通知权限”按钮；
+- **明文 HTTP**：Android 9+（`targetSdkVersion >= 28`）默认禁止 cleartext HTTP。教务入口若是 `http://`（如安徽工程大学 `http://xjwxt.ahpu.edu.cn/...`），内嵌 WebView 会报 `ERR_CLEARTEXT_NOT_PERMITTED`；工程已在 `android/AndroidManifest.xml` 里开启 `android:usesCleartextTraffic="true"`。若教务系统全部提供 https，可删掉该属性收紧策略；
 - **后台冻结**：应用退到后台后 `QTimer` 可能不再准时， `NotificationService` 会在应用回到前台时通过 `QEvent::ApplicationStateChange` 补检查一次；
 - **布局**：`MainMobile.qml` 会自动加载（`Q_OS_ANDROID` / `Q_OS_IOS` 宏）；
 - **数据目录**：数据库位于应用私有目录，卸载应用会一并删除； **请引导用户使用“导出”功能备份课表**。

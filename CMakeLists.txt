@@ -50,6 +50,11 @@ qt_standard_project_setup()
 #   webview   → Qt WebView，复用系统原生 Web 组件（Android WebView / WKWebView 等），体积小
 #   webengine → Qt WebEngine，自带 Chromium
 #   none      → 不链接任何 Web 组件，界面只保留“系统浏览器打开 + 文件导入”的兜底路径
+#
+# 注意：`qtwebview` 是 Qt 的**独立模块**，在线安装器的默认勾选与 CI 的 install-qt-action
+# 都不一定包含它；套件里没有该模块时这里会静默落到 none，Android / iOS 又没有 WebEngine 可退，
+# 最终 APK 的「从教务导入」就只能走系统浏览器。CI 用 install-qt-action 的
+# `modules: qtwebview` 显式安装；手工装 Qt 请在 Maintenance Tool 里勾上 “Qt WebView”。
 option(SCHEDULE_ENABLE_EMBEDDED_BROWSER "启用内嵌浏览器抓取课表（关闭则回退系统浏览器 + 文件导入）" ON)
 
 set(SCHEDULE_BROWSER_BACKEND "none")
@@ -77,8 +82,11 @@ if(SCHEDULE_ENABLE_EMBEDDED_BROWSER)
 		endif()
 	endif()
 
-	find_package(Qt6 6.9.3 QUIET COMPONENTS WebView WebChannel)
-	if(Qt6WebView_FOUND AND Qt6WebChannel_FOUND AND SCHEDULE_HAS_WEBVIEW_BACKEND)
+	# 只探测 WebView：抓取走 runJavaScript 拉取模型（见 BrowserCaptureScript.h），
+	# 不使用 QWebChannel；Qt6::WebView 自身也只依赖 Core / Gui，把 WebChannel 当作
+	# 启用条件只会多一个“模块没装齐就静默降级”的失败点。
+	find_package(Qt6 6.9.3 QUIET COMPONENTS WebView)
+	if(Qt6WebView_FOUND AND SCHEDULE_HAS_WEBVIEW_BACKEND)
 		set(SCHEDULE_BROWSER_BACKEND "webview")
 	else()
 		find_package(Qt6 6.9.3 QUIET COMPONENTS WebEngineQuick)
@@ -90,6 +98,9 @@ endif()
 
 if(SCHEDULE_BROWSER_BACKEND STREQUAL "none")
 	message(STATUS "内嵌浏览器：未启用（回退到系统浏览器 + 文件导入）")
+	if(SCHEDULE_ENABLE_EMBEDDED_BROWSER)
+		message(STATUS "  原因：当前 Qt 套件里找不到 WebView 模块，也没有 WebEngine；安装 qtwebview（或 qtwebengine）后重新配置即可启用")
+	endif()
 else()
 	message(STATUS "内嵌浏览器后端：${SCHEDULE_BROWSER_BACKEND}")
 endif()

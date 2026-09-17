@@ -185,6 +185,11 @@ jobs:
           target: android
           arch: ${{ matrix.qt_arch }}
           dir: ${{ github.workspace }}/Qt
+          # qtwebview 是独立模块，不在 Android 套件的默认下载列表里。缺了它配置期
+          # `find_package(Qt6 COMPONENTS WebView)` 会失败，内嵌浏览器后端静默退化成
+          # none，APK 的「从教务导入」就只剩系统浏览器 + 文件导入。WebView 的 Android
+          # 后端插件（libplugins_webview_qtwebview_android_<abi>.so）随该模块一起装。
+          modules: qtwebview
           # Android 交叉编译必须有桌面 Qt 提供 androiddeployqt / moc / rcc；
           # autodesktop 默认 true，这里显式写出来避免后续误改
           autodesktop: true
@@ -222,6 +227,8 @@ jobs:
           # 关键：CMAKE_TOOLCHAIN_FILE 必须指向 Qt 自带的 qt.toolchain.cmake。
           # 用 NDK 自带的 android.toolchain.cmake 也能编译，但 Qt 不会创建 apk/aab 目标，
           # 也不会生成 *deployment-settings.json，最终打不出 APK。
+          # build/ 记录配置输出，供下一步校验后端；tee 之前先建目录，避免首跑竞态。
+          mkdir -p build
           cmake -S . -B build/android -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="$QT_ROOT_DIR/lib/cmake/Qt6/qt.toolchain.cmake" \
             -DQT_HOST_PATH="$QT_HOST_PATH" \
@@ -230,7 +237,16 @@ jobs:
             -DQT_ANDROID_BUILD_ALL_ABIS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTS=OFF \
-            -DBUILD_SELFTEST=OFF
+            -DBUILD_SELFTEST=OFF 2>&1 | tee build/android-configure.log
+
+          # 移动端的「从教务导入」只能靠内嵌浏览器（Android 没有 WebEngine 可退）。
+          # 后端没选中 webview 说明 Qt 套件缺 qtwebview：与其发出一个只能
+          # 「系统浏览器 + 文件导入」的 APK，不如在配置期就失败。
+          grep -q '内嵌浏览器后端：webview' build/android-configure.log || {
+            echo "::error title=未启用内嵌浏览器::CMake 没有选中 WebView 后端，检查 install-qt-action 的 modules 是否装上了 qtwebview"
+            grep '内嵌浏览器' build/android-configure.log || true
+            exit 1
+          }
 
       - name: 编译并生成 APK
         shell: bash

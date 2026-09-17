@@ -82,7 +82,7 @@ Schedule/
 - CMake ≥ 3.20
 - 支持 C++20 的编译器（MSVC / GCC 11+ / Clang 14+）
 - Qt **6.9.3**，组件：`Core`、`Gui`、`Qml`、`Quick`、`QuickDialogs2`、`Sql`、`Test`（测试）、 `Widgets`（仅桌面，用于系统托盘通知）、`LinguistTools`（国际化，可选）
-- 内嵌浏览器（**可选**，缺失时自动回退为系统浏览器 + 文件导入）：`WebView` + `WebChannel`（首选，桌面还需 `<Qt>/plugins/webview` 后端插件），或 `WebEngineQuick`（次选）
+- 内嵌浏览器（**可选**，缺失时自动回退为系统浏览器 + 文件导入）：`WebView`（首选；Qt 独立模块 `qtwebview`，桌面还需 `<Qt>/plugins/webview` 后端插件），或 `WebEngineQuick`（次选）
 - Android 交叉编译：NDK + Ninja，工具链取自 `$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake`
 
 ---
@@ -200,6 +200,8 @@ cmake --build --preset windows-msvc-debug
 - **验证程度**：华东交大的**文件导入**已用真实导出文件逐格核对；**网页抓取**的解析逻辑用与真实页面同构的抓取样本回归（含「UTF-8 字节却自称 gb2312」与「课表前有布局表」两种真实陷阱），但该站点需要校园网账号，**未做真实联调**。抓不到表格时会明确报错并提示改用「导出 → 文件导入」。
 
 内嵌浏览器按 **Qt WebView → Qt WebEngine → 系统浏览器兜底** 的顺序在配置期自动选择：Qt WebView 在桌面需要 `<Qt>/plugins/webview` 后端插件（官方 Windows 包基于 Qt WebEngine），官方 MinGW 套件没有该插件，会直接回退到「系统浏览器打开 + 教务系统导出后文件导入」， **不影响构建，也不影响其它功能**。可用 `-DSCHEDULE_ENABLE_EMBEDDED_BROWSER=OFF` 整体关闭。
+
+> **`qtwebview` 是 Qt 的独立模块**，在线安装器的默认勾选不一定包含它。套件里没有它（Android / iOS 又没有 WebEngine 可退）时，后端会静默变成 `none`，界面提示「当前构建未启用内嵌浏览器」——这正是移动端 APK 出现该提示的原因。CI 已用 `install-qt-action` 的 `modules: qtwebview` 显式安装并在配置后校验；手工装 Qt 请在 Maintenance Tool 里勾选 “Qt WebView”。
 
 详见 [src/data/adapter/README.md](src/data/adapter/README.md)。
 

@@ -11,8 +11,18 @@ qt_add_executable(
 	UiConnector.h
 )
 
-# Android 网络权限（普通权限，安装时授予，无需运行时申请）
+# Android 清单与权限
+#  - INTERNET / ACCESS_NETWORK_STATE：普通权限，安装时授予，无需运行时申请
+#  - POST_NOTIFICATIONS：Android 13+ 的运行时权限，必须先在清单里声明，「检查是否已授予」才可能为真
+#    （见 engine/src/AndroidNotificationBackend.cpp）
 if(ANDROID)
+	# 自定义清单：androiddeployqt 先把 Qt 默认模板拷进构建目录，再用该目录**逐文件覆盖**，
+	# 因此 android/ 只需放 AndroidManifest.xml（其中开出 usesCleartextTraffic），
+	# res/ 与 build.gradle 继续用 Qt 默认模板。
+	set_target_properties(Schedule
+		PROPERTIES
+			QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_SOURCE_DIR}/android"
+	)
 	qt_add_android_permission(
 		Schedule
 		NAME
@@ -22,6 +32,11 @@ if(ANDROID)
 		Schedule
 		NAME
 		android.permission.ACCESS_NETWORK_STATE
+	)
+	qt_add_android_permission(
+		Schedule
+		NAME
+		android.permission.POST_NOTIFICATIONS
 	)
 endif()
 
