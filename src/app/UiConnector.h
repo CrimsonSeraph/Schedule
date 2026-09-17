@@ -299,7 +299,7 @@ namespace Schedule {
         QSet<QObject*> m_connected_cards;
 
         /** 控件 → 处理函数映射；由 `dispatch()` 在信号触发时查表执行。 */
-        QHash<QObject*, std::function<void()>> m_handlers;
+        QHash<QPair<QObject*, int>, std::function<void()>> m_handlers;
 
         /** 重新扫描是否已经排队，避免同一帧内重复排队。 */
         bool m_reconnect_pending = false;

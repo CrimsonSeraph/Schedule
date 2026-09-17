@@ -2,10 +2,15 @@
 
 namespace Schedule {
 
-    QString browser_capture_script() {
-        // 说明：这是一段**页面内**脚本，变量与函数都刻意做成自包含的 IIFE，
-        // 避免与教务系统页面自身的全局变量（如 table0 / index / activity）冲突。
-        static const QString script = QStringLiteral(R"JS(
+    namespace {
+
+        /**
+         * @brief 悬浮按钮的安装片段：自包含 IIFE，幂等，可重复注入。
+         *
+         * 两个公开脚本都复用它，保证按钮 id / 文案 / 点击行为只有一份定义。
+         */
+        const QString& install_button_snippet() {
+            static const QString snippet = QStringLiteral(R"JS(
 (function () {
     var BUTTON_ID = 'schedule-grab-button';
     var TOAST_ID = 'schedule-grab-toast';
@@ -34,32 +39,44 @@ namespace Schedule {
         window.setTimeout(function () { element.style.display = 'none'; }, 4000);
     }
 
-    function installButton() {
-        if (!document.body || document.getElementById(BUTTON_ID)) {
-            return;
-        }
-        var button = document.createElement('button');
-        button.id = BUTTON_ID;
-        button.type = 'button';
-        button.textContent = '抓取课表';
-        button.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483647;' +
-            'padding:10px 18px;border:0;border-radius:24px;background:#4C8DFF;color:#fff;' +
-            'font-size:15px;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;';
-        button.addEventListener('click', function () {
-            window[PAYLOAD_KEY] = collectPage();
-            showToast('已抓取课表，请回到应用窗口点「导入课表」');
-        });
-        document.body.appendChild(button);
+    if (!document.body || document.getElementById(BUTTON_ID)) {
+        return;
     }
-
-    installButton();
-    // 直接把当前页面原文回传给应用；同时留一份供页面内按钮复用
-    window[PAYLOAD_KEY] = collectPage();
-    return window[PAYLOAD_KEY];
+    var button = document.createElement('button');
+    button.id = BUTTON_ID;
+    button.type = 'button';
+    button.textContent = '抓取课表';
+    button.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483647;' +
+        'padding:10px 18px;border:0;border-radius:24px;background:#4C8DFF;color:#fff;' +
+        'font-size:15px;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;';
+    button.addEventListener('click', function () {
+        window[PAYLOAD_KEY] = collectPage();
+        showToast('已抓取课表，请回到应用窗口点「导入课表」');
+    });
+    document.body.appendChild(button);
 })();
 )JS");
+            return snippet;
+        }
 
-        return script;
+    } // namespace
+
+    QString browser_inject_button_script() {
+        return install_button_snippet();
+    }
+
+    QString browser_capture_script() {
+        // 注入（幂等）+ 立即抓取当前页面原文
+        static const QString capture = QStringLiteral(R"JS(
+(function () {
+    if (!document || !document.documentElement) {
+        return '';
+    }
+    window.__scheduleCapturePayload = document.documentElement.outerHTML || '';
+    return window.__scheduleCapturePayload;
+})();
+)JS");
+        return install_button_snippet() + capture;
     }
 
 } // namespace Schedule

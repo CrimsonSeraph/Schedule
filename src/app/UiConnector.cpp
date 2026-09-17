@@ -151,8 +151,6 @@ namespace Schedule {
             return false;
         }
 
-        m_handlers.insert(object, std::move(handler));
-
         const QMetaObject* meta = object->metaObject();
         const QByteArray provided(signal);
         int index = meta->indexOfSignal(provided.constData());
@@ -173,6 +171,8 @@ namespace Schedule {
             qWarning() << "[app] 找不到信号：" << object->objectName() << signal;
             return false;
         }
+
+        m_handlers.insert(qMakePair(object, index), std::move(handler));
 
         const QMetaMethod method = meta->method(index);
         const QByteArray actual = QByteArray("2") + method.methodSignature();
@@ -196,7 +196,7 @@ namespace Schedule {
         if (!object) {
             return;
         }
-        const auto iterator = m_handlers.constFind(object);
+        const auto iterator = m_handlers.constFind(qMakePair(object, senderSignalIndex()));
         if (iterator != m_handlers.constEnd() && *iterator) {
             (*iterator)();
         }
@@ -644,6 +644,22 @@ namespace Schedule {
             }
         });
 
+        // 页面加载完成：自动注入「抓取课表」悬浮按钮
+        on_signal("scheduleBrowser", "pageLoadingChanged()", [this]() {
+            QObject* browser = find("scheduleBrowser");
+            if (!browser) {
+                return;
+            }
+            // 只在"从加载中变为加载完成"时注入
+            if (browser->property("pageLoading").toBool()) {
+                return;
+            }
+            if (!import_export()->has_embedded_browser()) {
+                return;
+            }
+            QMetaObject::invokeMethod(browser, "injectCaptureButton");
+        });
+
         // 抓取完成：页面原文经属性回传（dispatch() 不携带信号参数）
         on_signal("scheduleBrowser", "captureFinished(bool,QString)", [this]() {
             auto* io = import_export();
@@ -1057,7 +1073,14 @@ namespace Schedule {
             });
             // 模型重置会销毁旧卡片，及时清理映射，避免悬空键
             QObject::connect(hotspot, &QObject::destroyed, this, [this, hotspot]() {
-                m_handlers.remove(hotspot);
+                for (auto it = m_handlers.begin(); it != m_handlers.end();) {
+                    if (it.key().first == hotspot) {
+                        it = m_handlers.erase(it);
+                    }
+                    else {
+                        ++it;
+                    }
+                }
                 m_connected_cards.remove(hotspot);
             });
         }
@@ -1118,7 +1141,14 @@ namespace Schedule {
             });
             // 委托被回收 / 重建时及时清理映射，避免悬空键
             QObject::connect(hotspot, &QObject::destroyed, this, [this, hotspot]() {
-                m_handlers.remove(hotspot);
+                for (auto it = m_handlers.begin(); it != m_handlers.end();) {
+                    if (it.key().first == hotspot) {
+                        it = m_handlers.erase(it);
+                    }
+                    else {
+                        ++it;
+                    }
+                }
                 m_connected_cards.remove(hotspot);
             });
         }

@@ -1,6 +1,6 @@
 import QtQuick
 
-// 内嵌浏览器统一外壳。
+// 内嵌浏览器统一外壳
 //
 // **后端由 C++ 侧在编译期决定**（`schedule.importExport.webBrowserBackend`，见根 CMakeLists
 // 的 SCHEDULE_BROWSER_BACKEND），QML 只负责按名字挑实现文件：
@@ -9,10 +9,10 @@ import QtQuick
 //   - `webengine` → EmbeddedWebEngine.qml （Qt WebEngine，自带 Chromium）
 //   - `none`      → EmbeddedFallback.qml  （提示改用系统浏览器 + 文件导入）
 //
-// 关键实现取舍：这里用 `Loader.source`（字符串）而不是内联 `Component`。
+// 关键实现取舍：这里用 `Loader.source`（字符串）而不是内联 `Component`
 // 内联组件会让 QML 在解析本文件时就要求被引用类型存在；而未被选中的后端文件
-// 根本不会被加进 QML 模块，解析必然失败。`Loader.source` 是**延迟**的：
-// 只有真正选中的那份文件会被加载，其 `import QtWebView` / `import QtWebEngine` 也才会生效。
+// 根本不会被加进 QML 模块，解析必然失败`Loader.source` 是**延迟**的：
+// 只有真正选中的那份文件会被加载，其 `import QtWebView` / `import QtWebEngine` 也才会生效
 //
 // 本文件对上层暴露**统一接口**，三种后端各自实现同名成员：
 //
@@ -24,7 +24,7 @@ import QtQuick
 //   function reload()               重新加载当前页
 //   function runJavaScript(script, callback)  在页面中执行脚本并回传结果
 //
-// 本文件**不写任何信号处理器**（项目规范）：交互一律由 app/UiConnector 在 C++ 侧连接。
+// 本文件**不写任何信号处理器**（项目规范）：交互一律由 app/UiConnector 在 C++ 侧连接
 Item {
     id: root
 
@@ -32,38 +32,36 @@ Item {
 
     // ---------------------------------------------------------------- 统一接口
 
-    /** 编译期选定的后端名。 */
+    /** 编译期选定的后端名 */
     readonly property string backend: schedule.importExport.webBrowserBackend
 
-    /** 内嵌浏览器是否可用（`false` 时界面应引导用户改用系统浏览器）。 */
+    /** 内嵌浏览器是否可用（`false` 时界面应引导用户改用系统浏览器） */
     readonly property bool available: schedule.importExport.hasEmbeddedBrowser
 
-    /** 当前地址；由后端回灌。 */
+    /** 当前地址；由后端回灌 */
     readonly property url currentUrl: backendLoader.item ? backendLoader.item.currentUrl : ""
 
-    /** 页面标题；由后端回灌。 */
+    /** 页面标题；由后端回灌 */
     readonly property string pageTitle: backendLoader.item ? backendLoader.item.pageTitle : ""
 
-    /** 是否正在加载。 */
+    /** 是否正在加载 */
     readonly property bool pageLoading: backendLoader.item ? backendLoader.item.pageLoading : false
 
-    /** 最近一次加载错误；空串表示无错误。 */
+    /** 最近一次加载错误；空串表示无错误 */
     readonly property string lastError: backendLoader.item ? backendLoader.item.lastError : ""
 
-    /** 最近一次抓取到的页面原文（HTML）。 */
+    /** 最近一次抓取到的页面原文（HTML） */
     property string capturedPayload
 
-    /** 抓取完成；成功与否的说明见 webCaptureSummary，正文见 capturedPayload。 */
+    /** 抓取完成；成功与否的说明见 webCaptureSummary，正文见 capturedPayload */
     signal captureFinished(bool success, string message)
 
-    /** 当前后端的人类可读名称（界面提示用）。 */
-    readonly property string backendLabel: root.backend === "webview" ? qsTr("系统原生 WebView")
-        : root.backend === "webengine" ? qsTr("Qt WebEngine")
-        : qsTr("未启用")
+    /** 当前后端的人类可读名称（界面提示用） */
+    readonly property string backendLabel: root.backend === "webview" ? qsTr("系统原生 WebView") : root.backend === "webengine" ? qsTr("Qt WebEngine") : qsTr("未启用")
 
     // ---------------------------------------------------------------- 统一操作
 
-    /** @brief 导航到指定地址；后端不可用或地址为空时记录错误。 */
+    /** @brief 导航到指定地址；后端不可用或地址为空时记录错误 */
     function loadUrl(target) {
         const item = backendLoader.item;
         if (!item) {
@@ -73,7 +71,7 @@ Item {
         item.loadUrl(target);
     }
 
-    /** @brief 重新加载当前页。 */
+    /** @brief 重新加载当前页 */
     function reload() {
         const item = backendLoader.item;
         if (item) {
@@ -82,7 +80,7 @@ Item {
     }
 
     /**
-     * @brief 在当前页面执行脚本。
+     * @brief 在当前页面执行脚本
      * @param script   要执行的 JavaScript
      * @param callback 形如 function(result) 的回调；后端不可用时以 null 调用
      */
@@ -98,13 +96,13 @@ Item {
     }
 
     /**
-     * @brief 从**当前页面**抓取课表并回传。
+     * @brief 从**当前页面**抓取课表并回传
      *
      * 脚本由 C++ 侧提供（`schedule.importExport.webCaptureScript`）：它会取回整页 HTML
-     * （正方教务的逐周位图就在页内脚本里），并在页面右下角注入「抓取课表」悬浮按钮。
-     * 拿到原文后交给 C++ 走与文件导入完全相同的「嗅探 → 解析 → 冲突检测 → 预览」流程。
+     * （正方教务的逐周位图就在页内脚本里），并在页面右下角注入「抓取课表」悬浮按钮
+     * 拿到原文后交给 C++ 走与文件导入完全相同的「嗅探 → 解析 → 冲突检测 → 预览」流程
      *
-     * **隐私**：脚本只读取 DOM 文本，不读取 Cookie、不读取 localStorage、不发网络请求。
+     * **隐私**：脚本只读取 DOM 文本，不读取 Cookie、不读取 localStorage、不发网络请求
      */
     function grabTimetable() {
         const item = backendLoader.item;
@@ -113,7 +111,7 @@ Item {
             root.captureFinished(false, qsTr("内嵌浏览器不可用"));
             return;
         }
-        item.runJavaScript(schedule.importExport.webCaptureScript, function(result) {
+        item.runJavaScript(schedule.importExport.webCaptureScript, function (result) {
             if (result === undefined || result === null) {
                 root.capturedPayload = "";
                 root.captureFinished(false, qsTr("未能读取页面内容，请确认页面已加载完成"));
@@ -128,6 +126,15 @@ Item {
             root.capturedPayload = payload;
             root.captureFinished(true, qsTr("已从当前页面抓取 %1 个字符").arg(payload.length));
         });
+    }
+
+    /** @brief 只在当前页面注入「抓取课表」悬浮按钮，不抓取内容 */
+    function injectCaptureButton() {
+        const item = backendLoader.item;
+        if (!item) {
+            return;
+        }
+        item.runJavaScript(schedule.importExport.webInjectButtonScript, null);
     }
 
     Loader {

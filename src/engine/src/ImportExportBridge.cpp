@@ -200,8 +200,7 @@ namespace Schedule {
 
             // 只有 http(s) 才能交给浏览器：本地样本适配器的地址是文件路径，
             // 未配置地址的实验性适配器则是空串，两者都不应出现在入口列表里。
-            if (!url.startsWith(QStringLiteral("http://"), Qt::CaseInsensitive)
-                && !url.startsWith(QStringLiteral("https://"), Qt::CaseInsensitive)) {
+            if (!url.startsWith(QStringLiteral("http://"), Qt::CaseInsensitive) && !url.startsWith(QStringLiteral("https://"), Qt::CaseInsensitive)) {
                 continue;
             }
 
@@ -218,6 +217,9 @@ namespace Schedule {
 
     QString ImportExportBridge::web_capture_script() const {
         return browser_capture_script();
+    }
+    QString ImportExportBridge::web_inject_button_script() const {
+        return browser_inject_button_script();
     }
 
     QString ImportExportBridge::web_capture_summary() const {

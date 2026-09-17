@@ -40,4 +40,15 @@ namespace Schedule {
      */
     QString browser_capture_script();
 
+    /**
+     * @brief 返回**只注入悬浮按钮**的脚本，不抓取、不回传内容。
+     *
+     * 由宿主在"页面加载完成"时调用，让用户在页面内随时看得到「抓取课表」按钮；
+     * 实际抓取仍走 `browser_capture_script()`（用户点应用侧「导入课表」时执行）。
+     *
+     * 与 `browser_capture_script()` 共享同一段安装片段，按钮幂等，重复调用安全。
+     */
+    QString browser_inject_button_script();
+
+
 } // namespace Schedule

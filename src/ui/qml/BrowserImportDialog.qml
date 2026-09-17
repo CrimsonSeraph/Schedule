@@ -102,7 +102,7 @@ Dialog {
                 Layout.fillWidth: true
                 Layout.margins: Metrics.spacingLg
                 title: qsTr("第 2 步：在教务系统中打开课表页面")
-                Layout.preferredHeight: schedule.importExport.hasEmbeddedBrowser ? (Responsive.isTiny(browserDialog.width) ? Responsive.browserViewMinHeightCompact + Metrics.spacing4xl : Responsive.browserViewMinHeight + Metrics.spacing6xl) : implicitHeight
+                // Layout.preferredHeight: schedule.importExport.hasEmbeddedBrowser ? (Responsive.isTiny(browserDialog.width) ? Responsive.browserViewMinHeightCompact + Metrics.spacing4xl : Responsive.browserViewMinHeight + Metrics.spacing6xl) : implicitHeight
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -139,6 +139,8 @@ Dialog {
 
                             objectName: "browserSystemOpenButton"
                             text: qsTr("用系统浏览器打开")
+                            ToolTip.visible: hovered
+                            ToolTip.text: schedule.importExport.hasEmbeddedBrowser ? qsTr("仅用于在系统浏览器中查看页面；导入请在内嵌浏览器中完成并点「导入课表」") : qsTr("内嵌浏览器不可用时的查看通道；导入请另存页面后用「文件导入」")
                         }
                     }
 
@@ -153,7 +155,7 @@ Dialog {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        Layout.preferredHeight: Responsive.isTiny(browserDialog.width) ? Responsive.browserViewMinHeightCompact : Responsive.browserViewMinHeight
                         visible: schedule.importExport.hasEmbeddedBrowser
                         color: Theme.surfaceAlt
                         border.color: Theme.border
