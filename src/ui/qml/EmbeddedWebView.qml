@@ -15,6 +15,9 @@ Item {
     property string pageTitle: ""
     property bool pageLoading: false
     property string lastError: ""
+    property real zoomFactor: 1.0
+
+    property real appliedZoomFactor: 0
 
     function loadUrl(target) {
         const text = String(target || "");
@@ -34,13 +37,31 @@ Item {
         view.runJavaScript(script, callback);
     }
 
+    function applyZoom() {
+        const z = backend.zoomFactor;
+        if (Math.abs(z - backend.appliedZoomFactor) < 0.001) {
+            return;
+        }
+        backend.appliedZoomFactor = z;
+        const js = "(function(){" + "  var z = " + z.toFixed(3) + ";" + "  var h = document.documentElement;" + "  if (!h) return;" + "  h.style.zoom = z;" + "})();";
+        view.runJavaScript(js, null);
+    }
+
     WebView {
         id: view
 
         objectName: "scheduleWebView"
         anchors.fill: parent
         url: ""
+        onLoadingChanged: {
+            if (!loading) {
+                backend.appliedZoomFactor = 0;
+                backend.applyZoom();
+            }
+        }
     }
+
+    onZoomFactorChanged: backend.applyZoom()
 
     // 页面元信息通过声明式绑定回灌给统一接口（不写信号处理器）。
     // title / loading 在未加载时为默认值，绑定天然处理了「尚未导航」的情形。

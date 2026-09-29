@@ -30,33 +30,48 @@ Dialog {
     title: qsTr("从教务导入")
     modal: true
     closePolicy: Popup.CloseOnEscape
-    width: Responsive.dialogWidth(Responsive.browserDialogWidth, parent ? parent.width : -1)
-    height: Math.min(Responsive.dialogHeight(Responsive.browserDialogHeight, parent ? parent.height : -1), parent ? parent.height - 40 : 600)
-    anchors.centerIn: parent
+    readonly property var overlayItem: Overlay.overlay
+    readonly property real parentW: overlayItem ? overlayItem.width : 480
+    readonly property real parentH: overlayItem ? overlayItem.height : 800
+    readonly property bool fullScreenMode: parentW < 600
 
-    /** 当前选中的入口是否为「打开内置浏览器」（没有预设地址，需用户自己填 / 导航）。 */
+    width: fullScreenMode ? parentW : Math.min(Responsive.browserDialogWidth, parentW - 40)
+    height: fullScreenMode ? parentH : Math.min(Responsive.browserDialogHeight, parentH - 40)
+    x: fullScreenMode ? 0 : (parentW - width) / 2
+    y: fullScreenMode ? 0 : (parentH - height) / 2
+    padding: fullScreenMode ? 0 : Metrics.spacingLg
     readonly property bool manualEntry: browserEntrySelector.currentIndex <= 0
+    readonly property int groupMargin: fullScreenMode ? Metrics.spacingSm : Metrics.spacingLg
+    readonly property bool tightHeight: height < 620
+    readonly property bool veryTightHeight: height < 500
 
-    contentItem: ScrollView {
-        id: contentScroll
+    contentItem: Flickable {
+        id: flick
+
         clip: true
-        contentHeight: contentLayout.implicitHeight
-        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-        ScrollBar.vertical.policy: ScrollBar.AsNeeded
-        rightPadding: Metrics.spacingSm
+        boundsBehavior: Flickable.StopAtBounds
+        contentWidth: width
+        contentHeight: contentColumn.height
+
+        ScrollBar.vertical: ScrollBar {
+            policy: ScrollBar.AsNeeded
+        }
 
         ColumnLayout {
-            width: contentScroll.availableWidth
-            spacing: Metrics.spacingLg
+            id: contentColumn
+
+            width: flick.width
+            height: Math.max(implicitHeight, flick.height)
+            spacing: browserDialog.groupMargin
 
             // 入口选择
             GroupBox {
                 Layout.fillWidth: true
-                Layout.margins: Metrics.spacingLg
+                Layout.margins: browserDialog.groupMargin
                 title: qsTr("第 1 步：选择教务入口")
 
                 ColumnLayout {
-                    anchors.fill: parent
+                    width: parent.width
                     spacing: Metrics.spacingLg
 
                     RowLayout {
@@ -83,7 +98,7 @@ Dialog {
 
                     Label {
                         Layout.fillWidth: true
-                        visible: browserEntrySelector.currentIndex >= 0
+                        visible: browserEntrySelector.currentIndex >= 0 && !browserDialog.tightHeight
                         text: {
                             const entries = schedule.importExport.browserEntries;
                             if (browserEntrySelector.currentIndex < 0 || browserEntrySelector.currentIndex >= entries.length) {
@@ -101,12 +116,13 @@ Dialog {
             // 浏览器
             GroupBox {
                 Layout.fillWidth: true
-                Layout.margins: Metrics.spacingLg
+                Layout.fillHeight: true
+                Layout.margins: browserDialog.groupMargin
                 title: qsTr("第 2 步：在教务系统中打开课表页面")
-                // Layout.preferredHeight: schedule.importExport.hasEmbeddedBrowser ? (Responsive.isTiny(browserDialog.width) ? Responsive.browserViewMinHeightCompact + Metrics.spacing4xl : Responsive.browserViewMinHeight + Metrics.spacing6xl) : implicitHeight
 
                 ColumnLayout {
                     width: parent.width
+                    height: parent.height
                     spacing: Metrics.spacingLg
 
                     Flow {
@@ -136,6 +152,35 @@ Dialog {
                         }
 
                         Button {
+                            objectName: "browserZoomOutButton"
+                            text: "－"
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("缩小网页")
+                        }
+
+                        Label {
+                            text: Math.round(scheduleBrowser.zoomFactor * 100) + "%"
+                            color: Theme.textMuted
+                            verticalAlignment: Text.AlignVCenter
+                            height: browserZoomInButton.height
+                        }
+
+                        Button {
+                            id: browserZoomInButton
+                            objectName: "browserZoomInButton"
+                            text: "＋"
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("放大网页")
+                        }
+
+                        Button {
+                            objectName: "browserZoomResetButton"
+                            text: "1:1"
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("重置缩放")
+                        }
+
+                        Button {
                             id: browserSystemOpenButton
 
                             objectName: "browserSystemOpenButton"
@@ -156,8 +201,10 @@ Dialog {
 
                     Rectangle {
                         id: browserContainer
+
                         Layout.fillWidth: true
-                        Layout.preferredHeight: Responsive.isTiny(browserDialog.width) ? Responsive.browserViewMinHeightCompact : Responsive.browserViewMinHeight
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: 120
                         visible: schedule.importExport.hasEmbeddedBrowser
                         color: Theme.surfaceAlt
                         border.color: Theme.border
@@ -167,15 +214,16 @@ Dialog {
 
                         EmbeddedBrowser {
                             id: scheduleBrowser
+
                             anchors.fill: parent
                             clip: true
-
                             layer.enabled: true
                         }
                     }
 
                     Label {
                         Layout.fillWidth: true
+                        visible: !browserDialog.veryTightHeight
                         text: scheduleBrowser.lastError.length > 0 ? scheduleBrowser.lastError : (scheduleBrowser.pageTitle.length > 0 ? qsTr("当前页面：%1").arg(scheduleBrowser.pageTitle) : qsTr("尚未打开任何页面"))
                         wrapMode: Text.WordWrap
                         color: scheduleBrowser.lastError.length > 0 ? Theme.danger : Theme.textSecondary
@@ -187,11 +235,11 @@ Dialog {
             // 抓取与关闭
             GroupBox {
                 Layout.fillWidth: true
-                Layout.margins: Metrics.spacingLg
+                Layout.margins: browserDialog.groupMargin
                 title: qsTr("第 3 步：抓取并导入")
 
                 ColumnLayout {
-                    anchors.fill: parent
+                    width: parent.width
                     spacing: Metrics.spacingLg
 
                     Label {

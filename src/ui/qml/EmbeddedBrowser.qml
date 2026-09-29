@@ -50,6 +50,9 @@ Item {
     /** 最近一次加载错误；空串表示无错误 */
     readonly property string lastError: backendLoader.item ? backendLoader.item.lastError : ""
 
+    /** 网页缩放系数 */
+    property real zoomFactor: 1.0
+
     /** 最近一次抓取到的页面原文（HTML） */
     property string capturedPayload
 
@@ -145,5 +148,12 @@ Item {
 
         // 相对路径基于本文件所在目录解析（同一 QML 模块内）
         source: root.backend === "webview" ? "EmbeddedWebView.qml" : root.backend === "webengine" ? "EmbeddedWebEngine.qml" : "EmbeddedFallback.qml"
+    }
+
+    Binding {
+        target: backendLoader.item
+        property: "zoomFactor"
+        value: root.zoomFactor
+        when: backendLoader.item !== null
     }
 }

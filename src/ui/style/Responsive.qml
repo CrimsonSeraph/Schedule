@@ -77,8 +77,8 @@ QtObject {
     readonly property int importDialogWidth: 680
     readonly property int importDialogHeight: 620
     // 内嵌浏览器对话框：要容纳网页内容，取更大的首选尺寸
-    readonly property int browserDialogWidth: 900
-    readonly property int browserDialogHeight: 720
+    readonly property int browserDialogWidth: 1100
+    readonly property int browserDialogHeight: 820
     // 网页可视区的最小高度：低于此值时应提示用户放大窗口，而不是继续压缩页面
     readonly property int browserViewMinHeight: 220
 

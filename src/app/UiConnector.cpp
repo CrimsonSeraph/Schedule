@@ -92,7 +92,7 @@ namespace Schedule {
 
     UiConnector::~UiConnector() = default;
 
-    // ---------------------------------------------------------------- 查找与读写
+    // ------------------------------------------------------------查找与读写
 
     QObject* UiConnector::find(const char* name) const {
         if (!m_root) {
@@ -202,7 +202,7 @@ namespace Schedule {
         }
     }
 
-    // -------------------------------------------------------------------- 入口
+    // ----------------------------------------------------------------入口
 
     int UiConnector::connect_all() {
         if (!m_root) {
@@ -256,7 +256,7 @@ namespace Schedule {
         return m_connection_count;
     }
 
-    // -------------------------------------------------------------------- 导航
+    // ----------------------------------------------------------------导航
 
     void UiConnector::connect_navigation() {
         const auto go_to_page = [this](int index) {
@@ -348,7 +348,7 @@ namespace Schedule {
         }
     }
 
-    // ---------------------------------------------------------------- 课程操作
+    // ------------------------------------------------------------课程操作
 
     void UiConnector::connect_course_actions() {
         on_click("addCourseButton", [this]() { open_course_editor(QString()); });
@@ -398,7 +398,7 @@ namespace Schedule {
         });
     }
 
-    // ------------------------------------------------------------------ 设置页
+    // --------------------------------------------------------------设置页
 
     void UiConnector::connect_settings_page() {
         // --- 默认导入目录
@@ -472,7 +472,7 @@ namespace Schedule {
         on_click("saveNowButton", [this]() { m_bridge->save_to_repository(); });
     }
 
-    // -------------------------------------------------------------- 课程编辑器
+    // ----------------------------------------------------------课程编辑器
 
     void UiConnector::connect_course_editor() {
         on_click("courseCancelButton", [this]() { invoke(m_course_editor, "close"); });
@@ -671,6 +671,26 @@ namespace Schedule {
             const QString source = browser->property("currentUrl").toString();
             io->submit_web_capture(html, source);
         });
+
+        // 网页缩放：直接读写 scheduleBrowser.zoomFactor
+        const auto adjust_zoom = [this](qreal delta) {
+            QObject* browser = find("scheduleBrowser");
+            if (!browser) {
+                return;
+            }
+            const qreal current = browser->property("zoomFactor").toReal();
+            const qreal next = qBound(0.5, current + delta, 3.0);
+            browser->setProperty("zoomFactor", next);
+        };
+
+        on_click("browserZoomOutButton", [adjust_zoom]() { adjust_zoom(-0.1); });
+        on_click("browserZoomInButton", [adjust_zoom]() { adjust_zoom(+0.1); });
+
+        on_click("browserZoomResetButton", [this]() {
+            if (QObject* browser = find("scheduleBrowser")) {
+                browser->setProperty("zoomFactor", 1.0);
+            }
+        });
     }
 
     void UiConnector::sync_browser_url_field() {
@@ -725,7 +745,7 @@ namespace Schedule {
         on_click("exportCancelButton", [this]() { invoke(m_export_dialog, "close"); });
     }
 
-    // ---------------------------------------------------------------- 初值填充
+    // ------------------------------------------------------------初值填充
 
     void UiConnector::prime_widgets() {
         // 学期表单
@@ -758,7 +778,7 @@ namespace Schedule {
         return m_bridge ? m_bridge->import_export() : nullptr;
     }
 
-    // ------------------------------------------------------------ 编辑器的实现
+    // --------------------------------------------------------编辑器的实现
 
     void UiConnector::show_course_detail(const QString& course_id) {
         if (course_id.isEmpty() || !m_course_detail) {
@@ -947,7 +967,7 @@ namespace Schedule {
         }
     }
 
-    // -------------------------------------------------------------- 教务适配器
+    // ----------------------------------------------------------教务适配器
 
     void UiConnector::connect_school_adapters() {
         // 切换适配器时把该适配器当前的地址回填到表单
@@ -983,7 +1003,7 @@ namespace Schedule {
         });
     }
 
-    // ------------------------------------------------------------------ 提醒
+    // --------------------------------------------------------------提醒
 
     void UiConnector::connect_reminders() {
         if (!m_notifications) {
@@ -1033,7 +1053,7 @@ namespace Schedule {
         });
     }
 
-    // ---------------------------------------------------------------- 动态卡片
+    // ------------------------------------------------------------动态卡片
 
     void UiConnector::prune_card_connections() {
         for (auto iterator = m_connected_cards.begin(); iterator != m_connected_cards.end();) {

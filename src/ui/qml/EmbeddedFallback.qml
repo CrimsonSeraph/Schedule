@@ -17,6 +17,7 @@ Item {
     property string pageTitle: ""
     property bool pageLoading: false
     property string lastError: ""
+    property real zoomFactor: 1.0
 
     function loadUrl(target) {
         // 兜底后端无法承载页面内容，只记录原因，由外层引导用户改用系统浏览器

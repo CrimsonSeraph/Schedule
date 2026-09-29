@@ -14,6 +14,7 @@ Item {
     property string pageTitle: ""
     property bool pageLoading: false
     property string lastError: ""
+    property real zoomFactor: 1.0
 
     function loadUrl(target) {
         const text = String(target || "");
@@ -38,6 +39,7 @@ Item {
 
         objectName: "scheduleWebEngineView"
         anchors.fill: parent
+        zoomFactor: backend.zoomFactor
     }
 
     Binding {
