@@ -31,7 +31,7 @@ Dialog {
     modal: true
     closePolicy: Popup.CloseOnEscape
     width: Responsive.dialogWidth(Responsive.browserDialogWidth, parent ? parent.width : -1)
-    height: Responsive.dialogHeight(Responsive.browserDialogHeight, parent ? parent.height : -1)
+    height: Math.min(Responsive.dialogHeight(Responsive.browserDialogHeight, parent ? parent.height : -1), parent ? parent.height - 40 : 600)
     anchors.centerIn: parent
 
     /** 当前选中的入口是否为「打开内置浏览器」（没有预设地址，需用户自己填 / 导航）。 */
@@ -40,6 +40,7 @@ Dialog {
     contentItem: ScrollView {
         id: contentScroll
         clip: true
+        contentHeight: contentLayout.implicitHeight
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
         ScrollBar.vertical.policy: ScrollBar.AsNeeded
         rightPadding: Metrics.spacingSm
@@ -105,7 +106,7 @@ Dialog {
                 // Layout.preferredHeight: schedule.importExport.hasEmbeddedBrowser ? (Responsive.isTiny(browserDialog.width) ? Responsive.browserViewMinHeightCompact + Metrics.spacing4xl : Responsive.browserViewMinHeight + Metrics.spacing6xl) : implicitHeight
 
                 ColumnLayout {
-                    anchors.fill: parent
+                    width: parent.width
                     spacing: Metrics.spacingLg
 
                     Flow {
@@ -154,6 +155,7 @@ Dialog {
                     }
 
                     Rectangle {
+                        id: browserContainer
                         Layout.fillWidth: true
                         Layout.preferredHeight: Responsive.isTiny(browserDialog.width) ? Responsive.browserViewMinHeightCompact : Responsive.browserViewMinHeight
                         visible: schedule.importExport.hasEmbeddedBrowser
@@ -166,6 +168,9 @@ Dialog {
                         EmbeddedBrowser {
                             id: scheduleBrowser
                             anchors.fill: parent
+                            clip: true
+
+                            layer.enabled: true
                         }
                     }
 
