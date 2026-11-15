@@ -183,7 +183,7 @@ namespace Schedule {
         // 固定项：不预设地址，用户在内嵌浏览器里自行登录并走到课表页
         QVariantMap manual;
         manual.insert(QStringLiteral("id"), QStringLiteral("manual"));
-        manual.insert(QStringLiteral("name"), QStringLiteral("打开内置浏览器（自行前往课表页）"));
+        manual.insert(QStringLiteral("name"), QStringLiteral("内置浏览器"));
         manual.insert(QStringLiteral("description"),
             QStringLiteral("在应用内打开浏览器，登录教务系统后停留在课表页面，再点“导入课表”。"));
         manual.insert(QStringLiteral("url"), QString());

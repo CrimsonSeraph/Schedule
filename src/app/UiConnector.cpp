@@ -579,7 +579,17 @@ namespace Schedule {
     }
 
     void UiConnector::open_browser_import() {
-        open_browser_import_at(-1);
+        // 从导入向导进入时默认落在第一个已适配学校的直达入口；
+        // 内置浏览器（index 0）没有预设地址，直接打开只会得到 about:blank。
+        int entry_index = 0;
+        const QVariantList entries = m_bridge->import_export()->browser_entries();
+        for (int i = 1; i < entries.size(); ++i) {
+            if (!entries.at(i).toMap().value(QStringLiteral("url")).toString().trimmed().isEmpty()) {
+                entry_index = i;
+                break;
+            }
+        }
+        open_browser_import_at(entry_index);
     }
 
     void UiConnector::open_browser_import_at(int entry_index) {

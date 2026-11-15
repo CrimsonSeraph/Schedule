@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
 
 // 移动端主界面：紧凑头部（周次切换）+ 中央页面栈 + 底部导航 + 三个对话框。
@@ -28,6 +29,11 @@ ApplicationWindow {
     height: 860
     visible: true
     title: qsTr("Schedule - 课表")
+
+    // Material 控件跟随项目主题色：默认 accent 是粉/橙，和蓝白设计冲突；
+    // primary 同时决定顶部 ToolBar 的底色，与内嵌浏览器页的蓝色顶栏保持一致。
+    Material.primary: Theme.accent
+    Material.accent: Theme.accent
 
     // ------------------------------------------------------------ 响应式断点
     // 全部来自 Responsive 单例

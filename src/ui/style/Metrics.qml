@@ -33,6 +33,13 @@ QtObject {
     readonly property int weekSelectorWidthCompact: 108
     readonly property int weekSelectorWidth: 150
 
+    // 移动端对话框顶栏 / 底栏：自绘，避免 Controls 默认 header 额外占一行
+    readonly property int appBarHeight: 52
+    readonly property int bottomBarHeight: 44
+    readonly property int toolButtonSize: 40
+    readonly property int controlHeight: 40
+    readonly property int zoomLabelWidth: 36
+
     // -------------------------------------------------------------- 周视图
     readonly property int weekHeaderHeight: 38
     readonly property int weekSlotHeight: 64

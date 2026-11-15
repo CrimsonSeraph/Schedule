@@ -2,282 +2,357 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// 「从教务导入」对话框：在内嵌浏览器里打开教务系统，停在课表页后一键抓取并导入。
+// 「从教务导入」：移动端优先的全屏页；桌面端仍是居中对话框。
 //
-// **入口列表（第 1 项固定，其后为已适配的教务网站）由 C++ 侧组装**
-// （`schedule.importExport.browserEntries`）：本文件只做展示与取用，不判断哪些学校可用。
+// 结构（自上而下）：
+//   顶栏    关闭 / 标题 / 「导入课表」主操作
+//   入口行  教务入口下拉 +「打开」
+//   地址行  教务系统地址 +「前往」
+//   网页    占满剩余高度（不再套 Flickable，避免 WebView 吃掉滚动手势）
+//   状态行  当前页面 / 错误 / 抓取摘要
+//   底栏    重新加载 / 缩放 / 系统浏览器
 //
-// C++ 侧（app 层 UiConnector）连接的全部交互：
-//  - browserEntrySelector.currentIndexChanged -> 把选中入口的地址回填 browserUrlField
-//  - browserOpenEntryButton.clicked           -> 用 browserUrlField 的内容导航
-//  - browserGoButton.clicked                  -> 同「打开此入口」（地址栏手动输入时用）
-//  - browserReloadButton.clicked              -> 重新加载当前页
-//  - browserSystemOpenButton.clicked          -> 交给系统默认浏览器打开
-//  - browserImportButton.clicked              -> 从当前页面抓取课表并生成导入预览
-//  - browserCloseButton.clicked               -> 关闭
-//  - scheduleBrowser.captureFinished(bool, QString) -> 把抓取到的页面原文交给 ImportManager
-//
-// **隐私**：应用不读取也不保存密码与 Cookie；内嵌浏览器只承载用户自己的登录会话，
-// 抓取时只带走**当前页面的 HTML**，应用退出即消失。
-//
-// 响应式策略：工具栏与按钮行用 Flow 自动换行；网页区域取剩余高度并保底
-// `Responsive.browserViewMinHeight`，低于该高度时提示用户放大窗口。
+// 交互仍全部由 C++ 侧（app 层 UiConnector）按 objectName 连接，QML 不写信号处理器：
+//  - browserEntrySelector.currentIndexChanged -> 回填 browserUrlField
+//  - browserOpenEntryButton / browserGoButton / browserReloadButton
+//  - browserSystemOpenButton / browserImportButton / browserCloseButton
+//  - browserZoomOutButton / browserZoomInButton / browserZoomResetButton
+//  - scheduleBrowser.captureFinished(bool, QString)
 Dialog {
     id: browserDialog
 
     objectName: "browserImportDialog"
 
-    title: qsTr("从教务导入")
     modal: true
     closePolicy: Popup.CloseOnEscape
-    readonly property var overlayItem: Overlay.overlay
-    readonly property real parentW: overlayItem ? overlayItem.width : 480
-    readonly property real parentH: overlayItem ? overlayItem.height : 800
+    // 顶栏 / 底栏自绘：Controls 默认 header 会额外占一行，且全屏时没有位置放关闭按钮。
+    header: null
+    footer: null
+    padding: 0
+    // 以 Overlay 为父对象，全屏时才能盖住应用自身的周次导航。
+    parent: Overlay.overlay
+
+    readonly property real parentW: parent ? parent.width : 480
+    readonly property real parentH: parent ? parent.height : 800
     readonly property bool fullScreenMode: parentW < 600
+    readonly property int horizontalInset: Metrics.spacing2xl
 
     width: fullScreenMode ? parentW : Math.min(Responsive.browserDialogWidth, parentW - 40)
     height: fullScreenMode ? parentH : Math.min(Responsive.browserDialogHeight, parentH - 40)
     x: fullScreenMode ? 0 : (parentW - width) / 2
     y: fullScreenMode ? 0 : (parentH - height) / 2
-    padding: fullScreenMode ? 0 : Metrics.spacingLg
-    readonly property bool manualEntry: browserEntrySelector.currentIndex <= 0
-    readonly property int groupMargin: fullScreenMode ? Metrics.spacingSm : Metrics.spacingLg
-    readonly property bool tightHeight: height < 620
-    readonly property bool veryTightHeight: height < 500
 
-    contentItem: Flickable {
-        id: flick
+    background: Rectangle {
+        color: Theme.surface
+        radius: browserDialog.fullScreenMode ? 0 : Metrics.radiusLg
+        border.width: browserDialog.fullScreenMode ? 0 : Metrics.borderWidth
+        border.color: Theme.border
+    }
 
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        contentWidth: width
-        contentHeight: contentColumn.height
+    contentItem: ColumnLayout {
+        spacing: 0
 
-        ScrollBar.vertical: ScrollBar {
-            policy: ScrollBar.AsNeeded
+        // ---------------------------------------------------------------- 顶栏
+        Rectangle {
+            Layout.fillWidth: true
+            // 全屏时窗口是 edge-to-edge，顶栏内容要让开系统状态栏；
+            // SafeArea 在桌面平台为 0，不影响对话框形态。
+            Layout.preferredHeight: Metrics.appBarHeight + SafeArea.margins.top
+            // 顶栏用主题蓝：状态栏图标是浅色，白色顶栏会让时间/信号“消失”。
+            color: Theme.accent
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.topMargin: SafeArea.margins.top
+                anchors.leftMargin: browserDialog.horizontalInset
+                anchors.rightMargin: browserDialog.horizontalInset
+                spacing: Metrics.spacingLg
+
+                ToolButton {
+                    id: browserCloseButton
+
+                    objectName: "browserCloseButton"
+                    text: qsTr("关闭")
+                    flat: true
+                    Layout.preferredHeight: Metrics.toolButtonSize
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("关闭")
+
+                    contentItem: Text {
+                        text: browserCloseButton.text
+                        color: "#FFFFFF"
+                        font.pixelSize: Typography.fontSmall
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("从教务导入")
+                        font.pixelSize: Typography.fontHeading
+                        font.bold: true
+                        color: "#FFFFFF"
+                        elide: Text.ElideRight
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("登录后停在课表页")
+                        font.pixelSize: Typography.fontSmall
+                        color: Theme.cardTextTertiary
+                        elide: Text.ElideRight
+                    }
+                }
+
+                Button {
+                    id: browserImportButton
+
+                    objectName: "browserImportButton"
+                    text: qsTr("导入课表")
+                    enabled: schedule.importExport.hasEmbeddedBrowser
+                    Layout.preferredHeight: Metrics.controlHeight
+                    font.pixelSize: Typography.fontBodyLarge
+
+                    contentItem: Text {
+                        text: browserImportButton.text
+                        color: browserImportButton.enabled ? Theme.accentStrong : Theme.textMuted
+                        font: browserImportButton.font
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                    }
+
+                    background: Rectangle {
+                        radius: Metrics.radiusLg
+                        color: browserImportButton.enabled ? "#FFFFFF" : Theme.surfaceAlt
+                        opacity: browserImportButton.down ? 0.85 : 1.0
+                    }
+                }
+            }
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Metrics.borderWidth
+                color: Qt.rgba(1, 1, 1, 0.24)
+            }
         }
 
+        // ------------------------------------------------------------ 入口 / 地址
         ColumnLayout {
-            id: contentColumn
+            Layout.fillWidth: true
+            Layout.leftMargin: browserDialog.horizontalInset
+            Layout.rightMargin: browserDialog.horizontalInset
+            Layout.topMargin: Metrics.spacingMd
+            spacing: Metrics.spacingMd
 
-            width: flick.width
-            height: Math.max(implicitHeight, flick.height)
-            spacing: browserDialog.groupMargin
-
-            // 入口选择
-            GroupBox {
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.margins: browserDialog.groupMargin
-                title: qsTr("第 1 步：选择教务入口")
+                spacing: Metrics.spacingLg
 
-                ColumnLayout {
-                    width: parent.width
-                    spacing: Metrics.spacingLg
+                ComboBox {
+                    id: browserEntrySelector
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: Metrics.spacingLg
+                    objectName: "browserEntrySelector"
+                    Layout.fillWidth: true
+                    textRole: "name"
+                    model: schedule.importExport.browserEntries
+                    font.pixelSize: Typography.fontBody
+                }
 
-                        ComboBox {
-                            id: browserEntrySelector
+                Button {
+                    id: browserOpenEntryButton
 
-                            objectName: "browserEntrySelector"
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: 320
-                            textRole: "name"
-                            model: schedule.importExport.browserEntries
-                        }
-
-                        Button {
-                            id: browserOpenEntryButton
-
-                            objectName: "browserOpenEntryButton"
-                            text: qsTr("打开此入口")
-                        }
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        visible: browserEntrySelector.currentIndex >= 0 && !browserDialog.tightHeight
-                        text: {
-                            const entries = schedule.importExport.browserEntries;
-                            if (browserEntrySelector.currentIndex < 0 || browserEntrySelector.currentIndex >= entries.length) {
-                                return "";
-                            }
-                            return entries[browserEntrySelector.currentIndex].description;
-                        }
-                        wrapMode: Text.WordWrap
-                        color: Theme.textMuted
-                        font.pixelSize: Typography.fontSmall
-                    }
+                    objectName: "browserOpenEntryButton"
+                    text: qsTr("打开")
+                    Layout.preferredHeight: Metrics.controlHeight
+                    font.pixelSize: Typography.fontBodyLarge
                 }
             }
 
-            // 浏览器
-            GroupBox {
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.margins: browserDialog.groupMargin
-                title: qsTr("第 2 步：在教务系统中打开课表页面")
+                spacing: Metrics.spacingLg
 
-                ColumnLayout {
-                    width: parent.width
-                    height: parent.height
-                    spacing: Metrics.spacingLg
+                TextField {
+                    id: browserUrlField
 
-                    Flow {
-                        Layout.fillWidth: true
-                        spacing: Metrics.spacingLg
+                    objectName: "browserUrlField"
+                    Layout.fillWidth: true
+                    placeholderText: qsTr("教务系统地址（可直接粘贴课表页网址）")
+                    font.pixelSize: Typography.fontBody
+                    selectByMouse: true
+                }
 
-                        TextField {
-                            id: browserUrlField
+                ToolButton {
+                    id: browserGoButton
 
-                            objectName: "browserUrlField"
-                            width: browserDialog.width > 640 ? Math.max(220, browserDialog.width - 320) : browserDialog.width - Metrics.spacing6xl
-                            placeholderText: qsTr("教务系统地址（可直接粘贴课表页网址）")
-                        }
-
-                        Button {
-                            id: browserGoButton
-
-                            objectName: "browserGoButton"
-                            text: qsTr("前往")
-                        }
-
-                        Button {
-                            id: browserReloadButton
-
-                            objectName: "browserReloadButton"
-                            text: qsTr("重新加载")
-                        }
-
-                        Button {
-                            objectName: "browserZoomOutButton"
-                            text: "－"
-                            ToolTip.visible: hovered
-                            ToolTip.text: qsTr("缩小网页")
-                        }
-
-                        Label {
-                            text: Math.round(scheduleBrowser.zoomFactor * 100) + "%"
-                            color: Theme.textMuted
-                            verticalAlignment: Text.AlignVCenter
-                            height: browserZoomInButton.height
-                        }
-
-                        Button {
-                            id: browserZoomInButton
-                            objectName: "browserZoomInButton"
-                            text: "＋"
-                            ToolTip.visible: hovered
-                            ToolTip.text: qsTr("放大网页")
-                        }
-
-                        Button {
-                            objectName: "browserZoomResetButton"
-                            text: "1:1"
-                            ToolTip.visible: hovered
-                            ToolTip.text: qsTr("重置缩放")
-                        }
-
-                        Button {
-                            id: browserSystemOpenButton
-
-                            objectName: "browserSystemOpenButton"
-                            text: qsTr("用系统浏览器打开")
-                            ToolTip.visible: hovered
-                            ToolTip.text: schedule.importExport.hasEmbeddedBrowser ? qsTr("仅用于在系统浏览器中查看页面；导入请在内嵌浏览器中完成并点「导入课表」") : qsTr("内嵌浏览器不可用时的查看通道；导入请另存页面后用「文件导入」")
-                        }
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        visible: !schedule.importExport.hasEmbeddedBrowser
-                        text: qsTr("当前构建未启用内嵌浏览器：可先用系统浏览器打开并另存课表页面，再用「文件导入」选择该文件。")
-                        wrapMode: Text.WordWrap
-                        color: Theme.warning
-                        font.pixelSize: Typography.fontSmall
-                    }
-
-                    Rectangle {
-                        id: browserContainer
-
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumHeight: 120
-                        visible: schedule.importExport.hasEmbeddedBrowser
-                        color: Theme.surfaceAlt
-                        border.color: Theme.border
-                        border.width: Metrics.borderWidth
-                        radius: Metrics.radiusSm
-                        clip: true
-
-                        EmbeddedBrowser {
-                            id: scheduleBrowser
-
-                            anchors.fill: parent
-                            clip: true
-                            layer.enabled: true
-                        }
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        visible: !browserDialog.veryTightHeight
-                        text: scheduleBrowser.lastError.length > 0 ? scheduleBrowser.lastError : (scheduleBrowser.pageTitle.length > 0 ? qsTr("当前页面：%1").arg(scheduleBrowser.pageTitle) : qsTr("尚未打开任何页面"))
-                        wrapMode: Text.WordWrap
-                        color: scheduleBrowser.lastError.length > 0 ? Theme.danger : Theme.textSecondary
-                        font.pixelSize: Typography.fontSmall
-                    }
+                    objectName: "browserGoButton"
+                    text: qsTr("前往")
+                    flat: true
+                    Layout.preferredHeight: Metrics.controlHeight
+                    font.pixelSize: Typography.fontBodyLarge
                 }
             }
 
-            // 抓取与关闭
-            GroupBox {
+            Label {
                 Layout.fillWidth: true
-                Layout.margins: browserDialog.groupMargin
-                title: qsTr("第 3 步：抓取并导入")
+                visible: !schedule.importExport.hasEmbeddedBrowser
+                text: qsTr("当前构建未启用内嵌浏览器：用系统浏览器打开并另存课表页面，再用「文件导入」选择该文件。")
+                wrapMode: Text.WordWrap
+                color: Theme.warning
+                font.pixelSize: Typography.fontSmall
+            }
 
-                ColumnLayout {
-                    width: parent.width
-                    spacing: Metrics.spacingLg
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("只读取当前页面 HTML，不保存密码或 Cookie")
+                color: Theme.textMuted
+                font.pixelSize: Typography.fontTiny
+                elide: Text.ElideRight
+            }
+        }
 
-                    Label {
-                        Layout.fillWidth: true
-                        text: qsTr("隐私说明：抓取只读取**当前页面的内容**，不读取也不保存密码或 Cookie；不做后台同步。")
-                        wrapMode: Text.WordWrap
-                        color: Theme.warning
-                        font.pixelSize: Typography.fontSmall
-                    }
+        // ---------------------------------------------------------------- 网页
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.leftMargin: browserDialog.horizontalInset
+            Layout.rightMargin: browserDialog.horizontalInset
+            Layout.topMargin: Metrics.spacingMd
+            Layout.minimumHeight: 120
+            visible: schedule.importExport.hasEmbeddedBrowser
+            color: Theme.surfaceAlt
+            border.width: Metrics.borderWidth
+            border.color: Theme.border
+            radius: Metrics.radiusSm
+            clip: true
 
-                    Flow {
-                        Layout.fillWidth: true
-                        spacing: Metrics.spacingLg
+            EmbeddedBrowser {
+                id: scheduleBrowser
 
-                        Button {
-                            id: browserImportButton
+                anchors.fill: parent
+                clip: true
+                layer.enabled: true
+            }
+        }
 
-                            objectName: "browserImportButton"
-                            text: qsTr("导入课表")
-                            enabled: schedule.importExport.hasEmbeddedBrowser
-                        }
+        // ---------------------------------------------------------------- 状态行
+        Label {
+            Layout.fillWidth: true
+            Layout.leftMargin: browserDialog.horizontalInset
+            Layout.rightMargin: browserDialog.horizontalInset
+            Layout.topMargin: Metrics.spacingSm
+            text: schedule.importExport.webCaptureSummary.length > 0
+                  ? schedule.importExport.webCaptureSummary
+                  : (scheduleBrowser.pageLoading
+                     ? qsTr("正在加载页面…")
+                     : (scheduleBrowser.lastError.length > 0
+                        ? scheduleBrowser.lastError
+                        : (scheduleBrowser.pageTitle.length > 0
+                           ? qsTr("当前页面：%1").arg(scheduleBrowser.pageTitle)
+                           : qsTr("尚未打开任何页面"))))
+            color: schedule.importExport.webCaptureSummary.length > 0
+                   ? (schedule.importExport.hasPendingPreview ? Theme.success : Theme.danger)
+                   : (scheduleBrowser.lastError.length > 0 ? Theme.danger : Theme.textMuted)
+            font.pixelSize: Typography.fontSmall
+            elide: Text.ElideRight
+        }
 
-                        Button {
-                            id: browserCloseButton
+        // ---------------------------------------------------------------- 底栏
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: Metrics.bottomBarHeight
+            color: Theme.surface
 
-                            objectName: "browserCloseButton"
-                            text: qsTr("关闭")
-                        }
-                    }
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: Metrics.borderWidth
+                color: Theme.divider
+            }
 
-                    Label {
-                        Layout.fillWidth: true
-                        visible: schedule.importExport.webCaptureSummary.length > 0
-                        text: schedule.importExport.webCaptureSummary
-                        wrapMode: Text.WordWrap
-                        color: schedule.importExport.hasPendingPreview ? Theme.success : Theme.danger
-                        font.pixelSize: Typography.fontSmall
-                    }
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: browserDialog.horizontalInset
+                anchors.rightMargin: browserDialog.horizontalInset
+                spacing: Metrics.spacingSm
+
+                ToolButton {
+                    id: browserReloadButton
+
+                    objectName: "browserReloadButton"
+                    text: qsTr("刷新")
+                    flat: true
+                    Layout.preferredHeight: Metrics.toolButtonSize
+                    font.pixelSize: Typography.fontSmall
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("重新加载")
+                }
+
+                ToolButton {
+                    objectName: "browserZoomOutButton"
+                    text: "−"
+                    flat: true
+                    Layout.preferredWidth: Metrics.toolButtonSize
+                    Layout.preferredHeight: Metrics.toolButtonSize
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("缩小网页")
+                }
+
+                Label {
+                    text: Math.round(scheduleBrowser.zoomFactor * 100) + "%"
+                    color: Theme.textMuted
+                    font.pixelSize: Typography.fontSmall
+                    horizontalAlignment: Text.AlignHCenter
+                    Layout.preferredWidth: Metrics.zoomLabelWidth
+                }
+
+                ToolButton {
+                    id: browserZoomInButton
+
+                    objectName: "browserZoomInButton"
+                    text: "+"
+                    flat: true
+                    Layout.preferredWidth: Metrics.toolButtonSize
+                    Layout.preferredHeight: Metrics.toolButtonSize
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("放大网页")
+                }
+
+                ToolButton {
+                    objectName: "browserZoomResetButton"
+                    text: qsTr("1:1")
+                    flat: true
+                    Layout.preferredHeight: Metrics.toolButtonSize
+                    font.pixelSize: Typography.fontSmall
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("重置缩放")
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                ToolButton {
+                    id: browserSystemOpenButton
+
+                    objectName: "browserSystemOpenButton"
+                    text: qsTr("系统浏览器")
+                    flat: true
+                    Layout.preferredHeight: Metrics.toolButtonSize
+                    font.pixelSize: Typography.fontSmall
+                    ToolTip.visible: hovered
+                    ToolTip.text: schedule.importExport.hasEmbeddedBrowser
+                                  ? qsTr("仅用于在系统浏览器中查看页面")
+                                  : qsTr("内嵌浏览器不可用时的查看通道")
                 }
             }
         }

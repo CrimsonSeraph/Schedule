@@ -40,7 +40,7 @@ src/ui/
 │   ├── CourseDetailDialog.qml # 课程详情弹层（点击课卡后展示，可进入编辑器）
 │   ├── ImportWizard.qml   # 导入向导（从教务导入 / 选文件 → 预览 → 策略 → 应用）
 │   ├── ExportDialog.qml   # 导出对话框（选格式与目录，展示实际路径）
-│   ├── BrowserImportDialog.qml # 从教务导入：入口列表 + 内嵌浏览器 + 导入课表
+│   ├── BrowserImportDialog.qml # 从教务导入：移动端全屏页（顶栏 + 入口/地址 + 网页 + 底栏）
 │   ├── EmbeddedBrowser.qml     # 内嵌浏览器统一外壳（按编译期后端挑实现）
 │   ├── EmbeddedWebView.qml     # 后端：Qt WebView（仅被选中时才会打进模块）
 │   ├── EmbeddedWebEngine.qml   # 后端：Qt WebEngine（仅被选中时才会打进模块）
@@ -140,6 +140,8 @@ cmake --build --preset windows-msvc-debug
 
 - **用 `Loader.source`（字符串）而不是内联 `Component`**：未选中的后端文件可能 `import` 本机并不存在的模块，内联组件会让 QML 在解析外壳时就要求该类型存在；`Loader.source` 是延迟的，只有真正选中的那份文件会被加载与解析。CMake 也据此**只把选中的后端加进 QML 模块**。
 - **QML 仍然不写信号处理器**：后端只做「属性绑定回灌 + 函数转发」，注入脚本、抓取触发与结果处理都在 C++ 侧（`UiConnector` + `BrowserCaptureScript`）。
+
+`BrowserImportDialog` 在移动端是**全屏页**而不是居中小对话框：顶栏（关闭 / 标题 / 导入课表）用 `SafeArea.margins.top` 让开系统状态栏，入口与地址各占一行，网页占满剩余高度，缩放与「系统浏览器」收进底栏。网页区**不再套 `Flickable`**，避免 WebView 吃掉滚动/返回内容的手势；桌面端仍是居中对话框，复用同一套内容。
 
 后端探测逻辑与「为什么优先 WebView、为什么必须检查插件目录」见 [../data/adapter/README.md](../data/adapter/README.md) 的「内嵌浏览器后端」一节。
 
