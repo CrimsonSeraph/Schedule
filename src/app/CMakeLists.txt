@@ -16,6 +16,23 @@ qt_add_executable(
 #  - POST_NOTIFICATIONS：Android 13+ 的运行时权限，必须先在清单里声明，「检查是否已授予」才可能为真
 #    （见 engine/src/AndroidNotificationBackend.cpp）
 if(ANDROID)
+	# 本地 SDK 的 build-tools / platform 版本与 Qt 自动探测不一致时，可分别覆盖：
+	#   -DSCHEDULE_ANDROID_BUILD_TOOLS_REVISION=36.0.0
+	#   -DSCHEDULE_ANDROID_COMPILE_SDK_VERSION=android-36
+	# 不传时保持 Qt 自动探测，CI 不受影响。
+	if(SCHEDULE_ANDROID_BUILD_TOOLS_REVISION)
+		set_target_properties(Schedule
+			PROPERTIES
+				QT_ANDROID_SDK_BUILD_TOOLS_REVISION "${SCHEDULE_ANDROID_BUILD_TOOLS_REVISION}"
+		)
+	endif()
+	if(SCHEDULE_ANDROID_COMPILE_SDK_VERSION)
+		set_target_properties(Schedule
+			PROPERTIES
+				QT_ANDROID_COMPILE_SDK_VERSION "${SCHEDULE_ANDROID_COMPILE_SDK_VERSION}"
+		)
+	endif()
+
 	# 自定义清单：androiddeployqt 先把 Qt 默认模板拷进构建目录，再用该目录**逐文件覆盖**，
 	# 因此 android/ 只需放 AndroidManifest.xml（其中开出 usesCleartextTraffic），
 	# res/ 与 build.gradle 继续用 Qt 默认模板。

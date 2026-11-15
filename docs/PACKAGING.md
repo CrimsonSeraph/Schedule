@@ -150,6 +150,8 @@ cmake --build build/android --target apk            # 产出 APK
 
 `CMakePresets.json` 中的 `android-arm64-v8a` 预设已经设置好 `CMAKE_TOOLCHAIN_FILE`（**Qt 自带的 `lib/cmake/Qt6/qt.toolchain.cmake`**）、 `QT_HOST_PATH`、`ANDROID_ABI=arm64-v8a`、`ANDROID_PLATFORM=android-24`。
 
+> **本地 SDK 的 build-tools / platform 版本与 Qt 自动探测不一致时**（例如 SDK 里只有 `android-36`，而最高 build-tools 是 `37.0.0`，androiddeployqt 会去找未安装的 `android-37`），可在配置时显式覆盖：`-DSCHEDULE_ANDROID_BUILD_TOOLS_REVISION=36.0.0 -DSCHEDULE_ANDROID_COMPILE_SDK_VERSION=android-36`。不传这两个变量时保持 Qt 的自动探测，CI（build-tools 35）不受影响。
+
 > **Android 套件必须包含 `qtwebview` 模块。** 它是 Qt 的独立附加模块，不在 Android 套件的默认下载列表里；缺了它配置期会打印 `内嵌浏览器：未启用`，APK 的「从教务导入」只能走系统浏览器 + 文件导入（Android 没有 WebEngine 可退）。CI 已用 `install-qt-action` 的 `modules: qtwebview` 显式安装，并在配置后用 `内嵌浏览器后端：webview` 校验后端；手工安装请在 Qt Maintenance Tool 里勾选 “Qt WebView”，或补装：
 
 ```bash
