@@ -55,7 +55,7 @@ QtObject {
     readonly property int sidePanelWidth: 320
     readonly property int sidePanelMinWidth: 260
     // 学期页窄屏（上下分栏）时表单区的高度上限 / 下限
-    readonly property int stackedPanelHeight: 300
+    readonly property int stackedPanelHeight: 400
     readonly property int stackedPanelMinHeight: 200
 
     // ---------------------------------------------------------- 通知横幅

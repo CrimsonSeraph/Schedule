@@ -30,31 +30,28 @@ Item {
 
         // ---------------------------------------------------------------- 学期表单
         ScrollView {
+            id: semesterScroll
+
             // 宽屏时占左侧固定宽度；窄屏时改为限制纵向高度（-1 表示不参与该方向的分配）
             SplitView.preferredWidth: semesterPage.wideLayout ? Metrics.sidePanelWidth : -1
             SplitView.minimumWidth: semesterPage.wideLayout ? Metrics.sidePanelMinWidth : -1
             SplitView.preferredHeight: semesterPage.wideLayout ? -1 : Metrics.stackedPanelHeight
-            SplitView.minimumHeight: semesterPage.wideLayout ? -1 : Metrics.stackedPanelMinHeight
+            SplitView.minimumHeight: semesterPage.wideLayout ? -1 : Metrics.stackedPanelHeight
             clip: true
 
             ColumnLayout {
-                width: parent.width
+                // ScrollView 的 contentItem 宽度按内容隐式宽度收缩，直接写 parent.width
+                // 会让表单只有半屏宽；这里显式跟随 ScrollView 视口宽度。
+                width: semesterScroll.width
                 spacing: Metrics.spacingXl
 
-                Label {
-                    Layout.margins: Metrics.spacing2xl
-                    text: qsTr("学期设置")
-                    font.bold: true
-                    font.pixelSize: Typography.fontHeading
-                    color: Theme.textPrimary
-                }
-
                 GridLayout {
-                    Layout.margins: Metrics.spacing2xl
+                    Layout.margins: Metrics.spacingLg
                     Layout.fillWidth: true
-                    columns: 2
+                    // 窄屏单列：标签在上、输入框占满整行，避免占位文字被压到不可读
+                    columns: semesterPage.wideLayout ? 2 : 1
                     columnSpacing: Metrics.spacingLg
-                    rowSpacing: Metrics.spacingLg
+                    rowSpacing: Metrics.spacingMd
 
                     Label {
                         text: qsTr("学期名称")
@@ -97,25 +94,10 @@ Item {
                     id: saveSemesterButton
 
                     objectName: "saveSemesterButton"
-                    Layout.margins: Metrics.spacing2xl
+                    Layout.margins: Metrics.spacingLg
                     Layout.fillWidth: true
+                    implicitHeight: Metrics.controlHeight
                     text: schedule.hasSemester ? qsTr("保存学期信息") : qsTr("创建学期")
-                }
-
-                Label {
-                    Layout.margins: Metrics.spacing2xl
-                    Layout.fillWidth: true
-                    text: schedule.hasSemester ? qsTr("当前：%1\n%2 ~ %3（共 %4 周）").arg(schedule.semesterName).arg(schedule.semesterStartDate).arg(schedule.semesterEndDate).arg(schedule.totalWeeks) : qsTr("尚未创建学期")
-                    color: Theme.textSecondary
-                    wrapMode: Text.WordWrap
-                }
-
-                Label {
-                    Layout.margins: Metrics.spacing2xl
-                    Layout.fillWidth: true
-                    text: qsTr("共 %1 门课程 · %2").arg(schedule.courseCount).arg(schedule.conflictSummary)
-                    color: schedule.hasBlockingConflicts ? Theme.danger : Theme.success
-                    wrapMode: Text.WordWrap
                 }
 
                 Item {
@@ -143,6 +125,13 @@ Item {
                     color: Theme.textPrimary
                 }
 
+                Label {
+                    Layout.fillWidth: true
+                    text: qsTr("%1 门课程").arg(schedule.courseCount)
+                    color: Theme.textSecondary
+                    font.pixelSize: Typography.fontSmall
+                }
+
                 // 用 Flow 承载操作按钮：窄屏自动换行，不会被挤出视口
                 Flow {
                     Layout.fillWidth: true
@@ -153,6 +142,7 @@ Item {
 
                         objectName: "pageNewCourseButton"
                         text: qsTr("新建课程")
+                        implicitHeight: Metrics.controlHeight
                     }
 
                     Button {
@@ -160,6 +150,8 @@ Item {
 
                         objectName: "editCourseButton"
                         text: qsTr("编辑选中")
+                        flat: true
+                        implicitHeight: Metrics.controlHeight
                     }
 
                     Button {
@@ -167,6 +159,8 @@ Item {
 
                         objectName: "deleteCourseButton"
                         text: qsTr("删除选中")
+                        flat: true
+                        implicitHeight: Metrics.controlHeight
                     }
                 }
             }

@@ -22,6 +22,9 @@ Item {
     readonly property int groupColumns: Responsive.settingsColumns(settingsPage.width)
     readonly property int pairColumns: Responsive.settingsPairColumns(settingsPage.width)
 
+    // 自检按钮只在 --selftest 下显示：正常运行不暴露调试入口，自动化自检仍能点到它。
+    readonly property bool selftestMode: Qt.application.arguments.indexOf("--selftest") >= 0
+
     ScrollView {
         id: settingsScroll
 
@@ -36,22 +39,13 @@ Item {
             width: settingsScroll.width
             spacing: Metrics.spacing3xl
 
-            // 标题行同时承载“自检”按钮：放在页面最顶部，保证任何窗口高度下都可见，
-            // 便于 --selftest 通过真实鼠标点击验证 C++ 侧的连接链路。
+            // 自检按钮只在 --selftest 模式出现，正常界面不显示调试入口；
+            // 仍放在页面最顶部，保证自检能在真实窗口里点到它。
             RowLayout {
                 Layout.fillWidth: true
                 Layout.margins: Metrics.spacing2xl
                 spacing: Metrics.spacingLg
-
-                Label {
-                    Layout.fillWidth: true
-                    text: qsTr("设置")
-                    font.bold: true
-                    font.pixelSize: Typography.fontTitle
-                    color: Theme.textPrimary
-                    // 窄屏时省略标题而不是把“自检”按钮挤出视口
-                    elide: Text.ElideRight
-                }
+                visible: settingsPage.selftestMode
 
                 Button {
                     id: testButton
@@ -77,40 +71,48 @@ Item {
                         text: qsTr("默认导入目录")
                     }
 
-                    TextField {
+                    Label {
                         id: importDirField
 
                         objectName: "importDirField"
                         Layout.fillWidth: true
-                        placeholderText: schedule.importExport.defaultImportDir
                         text: schedule.importExport.defaultImportDir
+                        elide: Text.ElideMiddle
+                        color: Theme.textPrimary
+                        font.pixelSize: Typography.fontBody
                     }
 
                     Button {
                         id: chooseImportDirButton
 
                         objectName: "chooseImportDirButton"
-                        text: qsTr("选择…")
+                        text: qsTr("选择")
+                        flat: true
+                        implicitHeight: Metrics.controlHeight
                     }
 
                     Label {
                         text: qsTr("默认导出目录")
                     }
 
-                    TextField {
+                    Label {
                         id: exportDirField
 
                         objectName: "exportDirField"
                         Layout.fillWidth: true
-                        placeholderText: schedule.importExport.defaultExportDir
                         text: schedule.importExport.defaultExportDir
+                        elide: Text.ElideMiddle
+                        color: Theme.textPrimary
+                        font.pixelSize: Typography.fontBody
                     }
 
                     Button {
                         id: chooseExportDirButton
 
                         objectName: "chooseExportDirButton"
-                        text: qsTr("选择…")
+                        text: qsTr("选择")
+                        flat: true
+                        implicitHeight: Metrics.controlHeight
                     }
 
                     Item {
@@ -129,6 +131,7 @@ Item {
 
                             objectName: "saveDirsButton"
                             text: qsTr("保存目录")
+                            implicitHeight: Metrics.controlHeight
                         }
 
                         Button {
@@ -136,6 +139,7 @@ Item {
 
                             objectName: "resetDirsButton"
                             text: qsTr("恢复默认目录")
+                            implicitHeight: Metrics.controlHeight
                         }
                     }
                 }
@@ -565,7 +569,8 @@ Item {
                         Layout.fillWidth: true
                         text: schedule.databasePath
                         color: Theme.textSecondary
-                        wrapMode: Text.WrapAnywhere
+                        elide: Text.ElideMiddle
+                        wrapMode: Text.NoWrap
                     }
 
                     Label {
