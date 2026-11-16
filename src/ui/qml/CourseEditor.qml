@@ -349,24 +349,27 @@ Dialog {
                                 Layout.fillWidth: true
                                 spacing: Metrics.spacingLg
 
-                                Button {
+                                AppButton {
                                     id: sessionAddButton
 
                                     objectName: "sessionAddButton"
                                     text: qsTr("添加时间段")
                                 }
 
-                                Button {
+                                AppButton {
                                     id: sessionUpdateButton
 
                                     objectName: "sessionUpdateButton"
                                     text: qsTr("更新选中时间段")
                                 }
 
-                                Button {
+                                AppButton {
                                     id: sessionRemoveButton
 
                                     objectName: "sessionRemoveButton"
+
+
+                                    danger: true
                                     text: qsTr("删除选中时间段")
                                 }
                             }
@@ -407,17 +410,20 @@ Dialog {
                 elide: Text.ElideRight
             }
 
-            Button {
+            AppButton {
                 id: courseCancelButton
 
                 objectName: "courseCancelButton"
                 text: qsTr("取消")
             }
 
-            Button {
+            AppButton {
                 id: courseSaveButton
 
                 objectName: "courseSaveButton"
+
+
+                primary: true
                 text: qsTr("保存课程")
             }
         }

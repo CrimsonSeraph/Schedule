@@ -83,10 +83,13 @@ Dialog {
                         Layout.fillWidth: true
                         spacing: Metrics.spacingLg
 
-                        Button {
+                        AppButton {
                             id: importFromWebButton
 
                             objectName: "importFromWebButton"
+
+
+                            primary: true
                             text: qsTr("从教务导入…")
                         }
                     }
@@ -111,7 +114,7 @@ Dialog {
                         placeholderText: qsTr("支持 JSON / CSV / ICS / 教务系统导出的课表文件（含 .doc / .docx）")
                     }
 
-                    Button {
+                    AppButton {
                         id: importChooseFileButton
 
                         objectName: "importChooseFileButton"
@@ -210,15 +213,18 @@ Dialog {
                         Layout.fillWidth: true
                         spacing: Metrics.spacingLg
 
-                        Button {
+                        AppButton {
                             id: importApplyButton
 
                             objectName: "importApplyButton"
+
+
+                            primary: true
                             text: qsTr("开始导入")
                             enabled: schedule.importExport.hasPendingPreview
                         }
 
-                        Button {
+                        AppButton {
                             id: importCancelButton
 
                             objectName: "importCancelButton"

@@ -86,14 +86,14 @@ Dialog {
                         Layout.columnSpan: exportDialog.narrowForm ? 1 : 2
                         spacing: Metrics.spacingLg
 
-                        Button {
+                        AppButton {
                             id: exportChooseDirButton
 
                             objectName: "exportChooseDirButton"
                             text: qsTr("选择目录…")
                         }
 
-                        Button {
+                        AppButton {
                             id: exportResetDirButton
 
                             objectName: "exportResetDirButton"
@@ -152,14 +152,17 @@ Dialog {
                     layoutDirection: Qt.RightToLeft
                     spacing: Metrics.spacingLg
 
-                    Button {
+                    AppButton {
                         id: exportConfirmButton
 
                         objectName: "exportConfirmButton"
+
+
+                        primary: true
                         text: qsTr("导出")
                     }
 
-                    Button {
+                    AppButton {
                         id: exportCancelButton
 
                         objectName: "exportCancelButton"
