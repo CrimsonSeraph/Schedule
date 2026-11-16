@@ -520,6 +520,13 @@ ApplicationWindow {
                 implicitHeight: 52
                 text: qsTr("导出…")
             }
+
+            MenuItem {
+                objectName: "shareImageMenuItem"
+                Layout.fillWidth: true
+                implicitHeight: 52
+                text: qsTr("保存课表图片")
+            }
         }
     }
 

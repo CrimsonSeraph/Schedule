@@ -66,6 +66,13 @@ Item {
     // 网格横向滚动偏移：星期表头据此同步位移，保证表头与列始终对齐
     readonly property real gridOffsetX: gridFlick.contentX
 
+    // 背景：保证 grabToImage 导出的分享图不会出现透明 / 白色角落
+    Rectangle {
+        anchors.fill: parent
+        color: Theme.surface
+        z: -1
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0

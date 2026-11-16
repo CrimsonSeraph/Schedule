@@ -5,11 +5,18 @@
 #include "engine/NotificationService.h"
 
 #include <QAbstractItemModel>
+#include <QDateTime>
 #include <QDebug>
+#include <QFont>
+#include <QImage>
+#include <QPainter>
 #include <QDesktopServices>
+#include <QDir>
 #include <QMetaMethod>
 #include <QMetaObject>
 #include <QQuickItem>
+#include <QQuickItemGrabResult>
+#include <QSharedPointer>
 #include <QTimer>
 #include <QUrl>
 #include <QVariantList>
@@ -662,6 +669,7 @@ namespace Schedule {
             set_text("exportDirField", io->default_export_dir());
             invoke(m_export_dialog, "open");
         });
+        on_signal("shareImageMenuItem", "triggered()", [this]() { save_week_image(); });
     }
 
     void UiConnector::connect_import_wizard() {
@@ -1233,6 +1241,71 @@ namespace Schedule {
             banner->setProperty("bannerTitle", QString());
             banner->setProperty("bannerMessage", QString());
         }
+    }
+
+    void UiConnector::save_week_image() {
+        if (QObject* stack = find("pageStack")) {
+            stack->setProperty("currentIndex", 0);
+        }
+        // 等 QML 完成页面切换与布局后再截图
+        QTimer::singleShot(200, this, [this]() {
+            auto* week = qobject_cast<QQuickItem*>(find("weekView"));
+            if (!week) {
+                m_bridge->post_error(QStringLiteral("找不到课表视图"));
+                return;
+            }
+            auto result = week->grabToImage();
+            if (!result) {
+                m_bridge->post_error(QStringLiteral("课表截图失败"));
+                return;
+            }
+            connect(result.data(), &QQuickItemGrabResult::ready, this, [this, result]() {
+                const QString base = import_export() ? import_export()->default_export_dir() : QDir::currentPath();
+                const QString dir = QDir(base).filePath(QStringLiteral("share"));
+                QDir().mkpath(dir);
+                const QString path = QDir(dir).filePath(QStringLiteral("timetable-week%1-%2.png")
+                    .arg(m_bridge->selected_week())
+                    .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"))));
+                // 在网格上方合成一条标题带：学期名 + 周次，方便直接分享
+                QImage source = result->image();
+                // 抓图结果带 devicePixelRatio，直接 drawImage 会按 DPR 缩小；
+                // 这里按原始像素绘制，保证分享图里的网格铺满宽度。
+                source.setDevicePixelRatio(1.0);
+                const bool dark = m_bridge->property("darkMode").toBool();
+                const QColor surface = dark ? QColor(QStringLiteral("#151A23")) : QColor(Qt::white);
+                const int band = qMax(120, source.height() / 12);
+                QImage output(source.width(), source.height() + band, QImage::Format_ARGB32_Premultiplied);
+                output.fill(surface);
+
+                QPainter painter(&output);
+                painter.fillRect(0, 0, output.width(), band, QColor(QStringLiteral("#4C8DFF")));
+                painter.drawImage(0, band, source);
+
+                QFont titleFont = painter.font();
+                titleFont.setPixelSize(qMax(28, band / 3));
+                titleFont.setBold(true);
+                painter.setFont(titleFont);
+                painter.setPen(Qt::white);
+                painter.drawText(QRect(40, 8, output.width() - 80, band / 2), Qt::AlignLeft | Qt::AlignVCenter,
+                    m_bridge->semester_name());
+
+                QFont subFont = titleFont;
+                subFont.setPixelSize(qMax(20, band / 5));
+                subFont.setBold(false);
+                painter.setFont(subFont);
+                painter.setPen(QColor(QStringLiteral("#E8EDF5")));
+                painter.drawText(QRect(40, band / 2, output.width() - 80, band / 2 - 8), Qt::AlignLeft | Qt::AlignVCenter,
+                    QStringLiteral("第 %1 周 · %2").arg(m_bridge->selected_week()).arg(m_bridge->selected_week_range()));
+                painter.end();
+
+                if (output.save(path)) {
+                    m_bridge->post_info(QStringLiteral("课表图片已保存：%1").arg(path));
+                }
+                else {
+                    m_bridge->post_error(QStringLiteral("保存课表图片失败"));
+                }
+            });
+        });
     }
 
     // ------------------------------------------------------------动态卡片

@@ -478,6 +478,14 @@ namespace Schedule {
         report_info(QStringLiteral("已切换到“%1”").arg(snapshot.semester.name));
     }
 
+    void ScheduleBridge::post_info(const QString& message) {
+        report_info(message);
+    }
+
+    void ScheduleBridge::post_error(const QString& message) {
+        report_error(message);
+    }
+
     void ScheduleBridge::remove_semester(const QString& semester_id) {
         if (!m_repository || !m_repository->is_open() || semester_id.isEmpty()) {
             return;

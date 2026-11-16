@@ -193,6 +193,9 @@ namespace Schedule {
         /** @brief 立即隐藏应用内提醒横幅。 */
         void hide_banner();
 
+        /** @brief 把当前周视图保存为 PNG 到导出目录并提示路径。 */
+        void save_week_image();
+
         /** @brief 首次填充界面初值（学期表单、设置页文本框）。 */
         void prime_widgets();
 

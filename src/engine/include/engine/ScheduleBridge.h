@@ -201,6 +201,12 @@ namespace Schedule {
         /** @brief 删除指定学期 / 课表（至少保留一个；删除当前学期时先切到另一个）。 */
         Q_INVOKABLE void remove_semester(const QString& semester_id);
 
+        /** @brief 在状态栏显示一条提示（供 app 层复用桥接的通知通道）。 */
+        Q_INVOKABLE void post_info(const QString& message);
+
+        /** @brief 在状态栏显示一条错误。 */
+        Q_INVOKABLE void post_error(const QString& message);
+
         // ------------------------------------------------------------ 属性读取
 
         QAbstractItemModel* course_model() const;
