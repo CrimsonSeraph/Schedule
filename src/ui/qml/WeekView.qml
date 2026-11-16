@@ -262,6 +262,7 @@ Item {
 
                             delegate: CourseCard {
                                 visible: model.dayOfWeek === dayColumn.dayIndex
+                                opacity: model.activeThisWeek ? 1.0 : 0.35
                                 x: CourseCardStyle.inset
                                 y: (model.startSlot - 1) * weekView.effectiveSlotHeight + CourseCardStyle.inset
                                 width: Math.max(CourseCardStyle.minRenderWidth, dayColumn.width - CourseCardStyle.inset * 2)

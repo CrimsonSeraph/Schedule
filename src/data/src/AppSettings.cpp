@@ -194,6 +194,14 @@ namespace Schedule {
         return write_string(SettingsKeys::show_weekend(), enabled ? QStringLiteral("1") : QStringLiteral("0"), error_message);
     }
 
+    bool AppSettings::show_other_weeks() const {
+        return read_string(SettingsKeys::show_other_weeks(), QStringLiteral("0")) == QStringLiteral("1");
+    }
+
+    bool AppSettings::set_show_other_weeks(bool enabled, QString* error_message) {
+        return write_string(SettingsKeys::show_other_weeks(), enabled ? QStringLiteral("1") : QStringLiteral("0"), error_message);
+    }
+
     int AppSettings::slot_density() const {
         bool ok = false;
         const int density = read_string(SettingsKeys::slot_density(), QStringLiteral("1")).toInt(&ok);

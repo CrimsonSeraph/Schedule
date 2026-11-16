@@ -38,6 +38,10 @@ namespace Schedule {
         return QStringLiteral("ui/show_weekend");
     }
 
+    QString SettingsKeys::show_other_weeks() {
+        return QStringLiteral("ui/show_other_weeks");
+    }
+
     QString SettingsKeys::slot_density() {
         return QStringLiteral("ui/slot_density");
     }
@@ -65,6 +69,7 @@ namespace Schedule {
             reminder_minutes(),
             theme(),
             show_weekend(),
+            show_other_weeks(),
             slot_density(),
             card_radius(),
             adapter_schedule_url(),

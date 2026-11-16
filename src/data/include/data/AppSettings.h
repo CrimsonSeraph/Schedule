@@ -108,6 +108,12 @@ namespace Schedule {
         /** @brief 设置是否显示周六、周日。 */
         bool set_show_weekend(bool enabled, QString* error_message = nullptr);
 
+        /** @return 是否显示非本周课程（默认 false）。 */
+        bool show_other_weeks() const;
+
+        /** @brief 设置是否显示非本周课程。 */
+        bool set_show_other_weeks(bool enabled, QString* error_message = nullptr);
+
         /** @return 格子高度档位：0 紧凑 / 1 标准 / 2 宽松（默认 1）。 */
         int slot_density() const;
 

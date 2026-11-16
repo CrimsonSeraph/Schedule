@@ -120,6 +120,9 @@ namespace Schedule {
         /** 课卡圆角档位（0 小 / 1 中 / 2 大）。 */
         Q_PROPERTY(int cardRadius READ card_radius NOTIFY displaySettingsChanged)
 
+        /** 是否在周视图中显示非本周课程（幽灵卡）。 */
+        Q_PROPERTY(bool showOtherWeeks READ show_other_weeks NOTIFY displaySettingsChanged)
+
         /** 界面主题（"system" / "light" / "dark"）。 */
         Q_PROPERTY(QString theme READ theme NOTIFY themeChanged)
 
@@ -173,6 +176,12 @@ namespace Schedule {
 
         /** @brief 设置课卡圆角档位。 */
         Q_INVOKABLE void set_card_radius(int radius);
+
+        /** @return 是否显示非本周课程。 */
+        bool show_other_weeks() const;
+
+        /** @brief 设置是否显示非本周课程。 */
+        Q_INVOKABLE void set_show_other_weeks(bool enabled);
 
         /** @return 界面主题（"system" / "light" / "dark"）。 */
         QString theme() const;

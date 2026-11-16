@@ -42,6 +42,9 @@ namespace Schedule {
         /** 周视图是否显示周六、周日（"1" / "0"）。 */
         static QString show_weekend();
 
+        /** 是否显示非本周课程（"1" / "0"）。 */
+        static QString show_other_weeks();
+
         /** 周视图格子高度档位（"0" 紧凑 / "1" 标准 / "2" 宽松）。 */
         static QString slot_density();
 

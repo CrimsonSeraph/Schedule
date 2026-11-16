@@ -76,6 +76,15 @@ Item {
                         checked: schedule.showWeekend
                     }
 
+                    CheckBox {
+                        id: showOtherWeeksCheck
+
+                        objectName: "showOtherWeeksCheck"
+                        Layout.columnSpan: settingsPage.pairColumns
+                        text: qsTr("显示非本周课程")
+                        checked: schedule.showOtherWeeks
+                    }
+
                     Label {
                         text: qsTr("主题")
                     }

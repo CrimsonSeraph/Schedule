@@ -80,6 +80,11 @@ namespace Schedule {
         // 周视图始终展示整周，因此固定不过滤星期
         m_week_model->set_day_filter(0);
 
+        if (m_settings) {
+            m_week_model->set_include_other_weeks(m_settings->show_other_weeks());
+            m_session_model->set_include_other_weeks(m_settings->show_other_weeks());
+        }
+
         m_import_export = new ImportExportBridge(m_service, m_repository, m_settings, this);
 
         connect_service();
@@ -554,6 +559,28 @@ namespace Schedule {
 
     int ScheduleBridge::card_radius() const {
         return m_settings ? m_settings->card_radius() : 1;
+    }
+
+    bool ScheduleBridge::show_other_weeks() const {
+        return m_settings && m_settings->show_other_weeks();
+    }
+
+    void ScheduleBridge::set_show_other_weeks(bool enabled) {
+        if (!m_settings) {
+            return;
+        }
+        QString error;
+        if (!m_settings->set_show_other_weeks(enabled, &error)) {
+            report_error(error);
+            return;
+        }
+        if (m_week_model) {
+            m_week_model->set_include_other_weeks(enabled);
+        }
+        if (m_session_model) {
+            m_session_model->set_include_other_weeks(enabled);
+        }
+        emit displaySettingsChanged();
     }
 
     void ScheduleBridge::set_card_radius(int radius) {

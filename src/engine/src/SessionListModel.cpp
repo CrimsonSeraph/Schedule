@@ -42,6 +42,8 @@ namespace Schedule {
         case SlotCountRole:
         case RowSpanRole:
             return placed.session.slot_count;
+        case ActiveThisWeekRole:
+            return m_active_session_ids.contains(placed.session.id);
         case WeeksRole:
             return placed.session.weeks.to_expression();
         case WeeksDisplayRole:
@@ -85,6 +87,7 @@ namespace Schedule {
             {DateRole, "date"},
             {WeekRole, "week"},
             {RowSpanRole, "rowSpan"},
+            {ActiveThisWeekRole, "activeThisWeek"},
         };
     }
 
@@ -113,6 +116,18 @@ namespace Schedule {
         reload();
     }
 
+    bool SessionListModel::include_other_weeks() const {
+        return m_include_other_weeks;
+    }
+
+    void SessionListModel::set_include_other_weeks(bool enabled) {
+        if (m_include_other_weeks == enabled) {
+            return;
+        }
+        m_include_other_weeks = enabled;
+        reload();
+    }
+
     void SessionListModel::set_service(ScheduleService* service) {
         m_service = service;
         reload();
@@ -128,17 +143,44 @@ namespace Schedule {
 
     void SessionListModel::reload() {
         QList<ScheduleService::PlacedSession> sessions;
+        QSet<QString> active_ids;
+
         if (m_service && m_week > 0) {
-            if (m_day_filter == 0) {
-                sessions = m_service->sessions_in_week(m_week);
+            const QList<ScheduleService::PlacedSession> current = (m_day_filter == 0)
+                ? m_service->sessions_in_week(m_week)
+                : m_service->sessions_at(m_day_filter, m_week);
+            for (const auto& placed : current) {
+                active_ids.insert(placed.session.id);
+            }
+
+            if (!m_include_other_weeks || !m_service->has_semester()) {
+                sessions = current;
             }
             else {
-                sessions = m_service->sessions_at(m_day_filter, m_week);
+                // 幽灵卡在前、本周卡片在后，保证本周卡片绘制在上层
+                QList<ScheduleService::PlacedSession> ghosts;
+                QSet<QString> seen = active_ids;
+                const int total_weeks = qMax(1, m_service->semester().total_weeks);
+                for (int week = 1; week <= total_weeks; ++week) {
+                    const QList<ScheduleService::PlacedSession> list = (m_day_filter == 0)
+                        ? m_service->sessions_in_week(week)
+                        : m_service->sessions_at(m_day_filter, week);
+                    for (const auto& placed : list) {
+                        if (seen.contains(placed.session.id)) {
+                            continue;
+                        }
+                        seen.insert(placed.session.id);
+                        ghosts.append(placed);
+                    }
+                }
+                sessions = ghosts;
+                sessions.append(current);
             }
         }
 
         beginResetModel();
         m_sessions = sessions;
+        m_active_session_ids = active_ids;
         endResetModel();
     }
 

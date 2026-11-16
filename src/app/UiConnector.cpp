@@ -505,6 +505,10 @@ namespace Schedule {
             QObject* check = find("showWeekendCheck");
             m_bridge->set_show_weekend(check && check->property("checked").toBool());
         });
+        on_signal("showOtherWeeksCheck", "toggled(bool)", [this]() {
+            QObject* check = find("showOtherWeeksCheck");
+            m_bridge->set_show_other_weeks(check && check->property("checked").toBool());
+        });
         on_signal("slotDensitySelector", "currentIndexChanged()", [this]() {
             m_bridge->set_slot_density(combo_index(find("slotDensitySelector")));
         });

@@ -5,6 +5,7 @@
 #include <QAbstractListModel>
 #include <QHash>
 #include <QList>
+#include <QSet>
 #include <QVariantMap>
 
 namespace Schedule {
@@ -58,6 +59,7 @@ namespace Schedule {
             DateRole,                        ///< 日期 `yyyy-MM-dd`
             WeekRole,                        ///< 周次
             RowSpanRole,                     ///< 占用节次行数
+            ActiveThisWeekRole,              ///< 该时间段是否在本周生效（false 为“非本周”幽灵卡）
         };
 
         /** @param parent 父对象 */
@@ -90,6 +92,12 @@ namespace Schedule {
         /** @brief 设置星期过滤（1..7）；传 0 表示显示整周。 */
         Q_INVOKABLE void set_day_filter(int day_of_week);
 
+        /** @return 是否同时展示“非本周”时间段（幽灵卡）。 */
+        bool include_other_weeks() const;
+
+        /** @brief 设置是否同时展示“非本周”时间段。 */
+        void set_include_other_weeks(bool enabled);
+
         /** @brief 注入数据源（不持有所有权）；注入后模型会自动重载。 */
         void set_service(ScheduleService* service);
 
@@ -117,6 +125,12 @@ namespace Schedule {
 
         /** 当前展示的排布数据。 */
         QList<ScheduleService::PlacedSession> m_sessions;
+
+        /** 本周生效的时间段 id 集合；用于区分幽灵卡。 */
+        QSet<QString> m_active_session_ids;
+
+        /** 是否包含非本周时间段。 */
+        bool m_include_other_weeks = false;
     };
 
 } // namespace Schedule

@@ -94,6 +94,7 @@ Item {
                     delegate: CourseCard {
                         width: parent.width
                         height: dayView.cardHeight
+                        opacity: model.activeThisWeek ? 1.0 : 0.35
 
                         courseId: model.courseId
                         courseName: model.courseName

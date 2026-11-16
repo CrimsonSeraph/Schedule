@@ -48,3 +48,7 @@ if(SCHEDULE_BROWSER_BACKEND STREQUAL "webview")
 elseif(SCHEDULE_BROWSER_BACKEND STREQUAL "webengine")
 	target_compile_definitions(ScheduleEngine PRIVATE Schedule_HAS_WEBENGINE=1)
 endif()
+
+if(BUILD_TESTS)
+	add_subdirectory(tests)
+endif()
