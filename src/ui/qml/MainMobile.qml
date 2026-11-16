@@ -3,24 +3,18 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 
-// 移动端主界面：紧凑头部（周次切换）+ 中央页面栈 + 底部导航 + 三个对话框。
+// 移动端主界面：页面级标题栏 + 周次条 + 页面栈 + 状态条 + 底部导航 + 底部「更多」弹层。
 //
 // 交互约定与桌面版一致：QML 不含任何信号处理器，全部交互由 C++ 侧 UiConnector 显式连接。
 //
+// 导航约定：底部导航 4 个主 Tab（周 / 日 / 课程 / 设置）+「更多」；
+// 「更多」是底部弹层，新建 / 导入 / 导出仍复用原来的 objectName，C++ 连接不变。
+//
 // 响应式约定：
-//  - 底部导航精简为 4 个主 Tab（周 / 日 / 课程 / 设置），新建、导入、导出折叠进
-//    “更多”折叠菜单，避免 7 个按钮在 320dp 宽的屏幕上互相挤压；
-//  - 断点只依赖窗口宽高且来自 Responsive 单例，竖屏 / 横屏切换与折叠屏展开走同一条路径：
-//      * narrow（宽度 < Responsive.tinyWidth）：极端窄屏，状态行与回显进一步精简；
-//      * shortHeight（高度 < Responsive.shortHeight，例如横屏 844×390）：隐藏学期回显与状态行；
-//      * landscape：横屏时节次高度进一步压缩，保证整周可见。
-//  - 折叠菜单项（addCourseMenuItem / importMenuItem / exportMenuItem）与触发按钮
-//    moreMenuButton 是**新增控件**，需要 C++ 侧（app 层 UiConnector）显式连接
-//    `triggered()` 与 `clicked()`（打开菜单）；桌面版使用同一批 objectName，
-//    因此两端只需要一套连接代码。
-//  - 原本内联在底部导航的 addCourseButton / importButton / exportButton 已随“4 个主 Tab”
-//    一起移出本文件；课程编辑入口仍然可用（学期页的 pageNewCourseButton 连接不变），
-//    导入 / 导出由上面的菜单项承接。
+//  - currentTab 跟随 pageStack.currentIndex：周 / 日显示周次条，课程 / 设置只显示页面标题；
+//  - shortHeight（横屏 / 分屏）隐藏标题行与状态条，把高度让给内容；
+//  - 周视图在移动端允许 7 列压到 Responsive.mobileMinDayWidth，优先整周可见。
+
 ApplicationWindow {
     id: root
 
@@ -36,52 +30,90 @@ ApplicationWindow {
     Material.accent: Theme.accent
 
     // ------------------------------------------------------------ 响应式断点
-    // 全部来自 Responsive 单例
-    // 极端窄屏（小屏手机竖屏）
     readonly property bool narrow: Responsive.isTiny(width)
-
-    // 低高度（手机横屏 / 分屏）
     readonly property bool shortHeight: Responsive.isShort(height)
-
-    // 横屏：宽大于高
     readonly property bool landscape: width > height
 
-    header: ToolBar {
+    // 当前页签：0 周 / 1 日 / 2 课程 / 3 设置
+    // pageStack 在下方声明，创建前先按 0 处理，创建后自动跟随 currentIndex。
+    readonly property int currentTab: pageStack ? pageStack.currentIndex : 0
+
+    // ---------------------------------------------------------------- 头部
+    // 用窗口 header 而不是内容区的 ColumnLayout：Android 上窗口 header 会铺到状态栏下方，
+    // 状态栏的浅色图标才能落在蓝色背景上；内容区从状态栏下方开始，放这里会出现白条。
+    header: Rectangle {
+        id: headerBar
+
+        color: Theme.accent
+        implicitHeight: SafeArea.margins.top + (root.shortHeight ? 0
+            : (root.currentTab <= 1 ? Metrics.appBarHeight + Metrics.weekBarHeight + Metrics.spacingSm
+                                    : Metrics.appBarHeight))
+
         ColumnLayout {
+            id: headerColumn
+
             anchors.fill: parent
+            anchors.topMargin: SafeArea.margins.top
             spacing: 0
 
+            // 页面标题：课表页显示学期名，课程 / 设置显示页面名
             RowLayout {
                 Layout.fillWidth: true
+                Layout.preferredHeight: Metrics.appBarHeight
                 spacing: Metrics.spacingMd
-                // 低高度时省掉这一行，把垂直空间让给课表本体
                 visible: !root.shortHeight
 
                 Label {
-                    text: schedule.hasSemester ? schedule.semesterName : qsTr("尚未设置学期")
-                    font.bold: true
-                    elide: Text.ElideRight
                     Layout.fillWidth: true
                     leftPadding: Metrics.spacingLg
+                    verticalAlignment: Text.AlignVCenter
+                    text: root.currentTab === 2 ? qsTr("课程")
+                          : root.currentTab === 3 ? qsTr("设置")
+                          : (schedule.hasSemester ? schedule.semesterName : qsTr("尚未设置学期"))
+                    font.pixelSize: Typography.fontHeading
+                    font.bold: true
+                    color: "#FFFFFF"
+                    elide: Text.ElideRight
                 }
 
                 Label {
-                    text: schedule.conflictSummary
-                    color: schedule.hasBlockingConflicts ? Theme.danger : Theme.success
-                    font.pixelSize: Typography.fontSmall
+                    // 冲突摘要只属于课表页，设置 / 课程页不显示
+                    visible: root.currentTab <= 1
                     rightPadding: Metrics.spacingLg
+                    verticalAlignment: Text.AlignVCenter
+                    text: schedule.conflictSummary
+                    color: schedule.hasBlockingConflicts ? "#FFD7D2" : "#D8F5E5"
+                    font.pixelSize: Typography.fontSmall
                 }
             }
 
+            // 周次条：仅周 / 日页签
             RowLayout {
                 Layout.fillWidth: true
+                Layout.leftMargin: Metrics.spacingSm
+                Layout.rightMargin: Metrics.spacingSm
+                Layout.bottomMargin: Metrics.spacingSm
+                Layout.preferredHeight: Metrics.weekBarHeight
                 spacing: Metrics.spacingSm
+                visible: root.currentTab <= 1 && !root.shortHeight
 
                 ToolButton {
                     id: prevWeekButton
 
                     objectName: "prevWeekButton"
-                    text: qsTr("◀")
+                    text: "‹"
+                    flat: true
+                    Layout.preferredWidth: Metrics.toolButtonSize
+                    Layout.preferredHeight: Metrics.controlHeight
+                    background: Item { }
+
+                    contentItem: Text {
+                        text: prevWeekButton.text
+                        color: "#FFFFFF"
+                        font.pixelSize: Typography.fontTitle
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
                 }
 
                 ComboBox {
@@ -89,17 +121,57 @@ ApplicationWindow {
 
                     objectName: "weekSelector"
                     Layout.fillWidth: true
+                    Layout.preferredHeight: Metrics.controlHeight
                     textRole: "label"
                     valueRole: "value"
                     model: schedule.weekOptions
                     currentIndex: Math.max(0, schedule.selectedWeek - 1)
+                    font.pixelSize: Typography.fontBody
+
+                    background: Rectangle {
+                        radius: height / 2
+                        color: Qt.rgba(1, 1, 1, 0.16)
+                        border.width: Metrics.borderWidth
+                        border.color: Qt.rgba(1, 1, 1, 0.35)
+                    }
+
+                    contentItem: Text {
+                        leftPadding: Metrics.spacingLg
+                        rightPadding: weekSelector.indicator.width + Metrics.spacingLg
+                        text: weekSelector.displayText
+                        color: "#FFFFFF"
+                        font: weekSelector.font
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                    }
+
+                    indicator: Text {
+                        x: weekSelector.width - width - Metrics.spacingLg
+                        y: (weekSelector.height - height) / 2
+                        // 用常见三角形，避免 ▾ 在部分 Android 字体里显示成方框
+                        text: "▼"
+                        color: "#FFFFFF"
+                        font.pixelSize: Typography.fontTiny
+                    }
                 }
 
                 ToolButton {
                     id: nextWeekButton
 
                     objectName: "nextWeekButton"
-                    text: qsTr("▶")
+                    text: "›"
+                    flat: true
+                    Layout.preferredWidth: Metrics.toolButtonSize
+                    Layout.preferredHeight: Metrics.controlHeight
+                    background: Item { }
+
+                    contentItem: Text {
+                        text: nextWeekButton.text
+                        color: "#FFFFFF"
+                        font.pixelSize: Typography.fontTitle
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
                 }
 
                 ToolButton {
@@ -107,11 +179,23 @@ ApplicationWindow {
 
                     objectName: "currentWeekButton"
                     text: root.narrow ? qsTr("周") : qsTr("本周")
+                    flat: true
+                    Layout.preferredHeight: Metrics.controlHeight
+                    background: Item { }
+
+                    contentItem: Text {
+                        text: currentWeekButton.text
+                        color: "#FFFFFF"
+                        font.pixelSize: Typography.fontBodyLarge
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
                 }
             }
         }
     }
 
+    // ---------------------------------------------------------------- 页面栈
     StackLayout {
         id: pageStack
 
@@ -122,9 +206,10 @@ ApplicationWindow {
         WeekView {
             id: weekPage
 
-            // 手机屏幕窄，压缩节次高度让整周尽量可见；横屏 / 低高度时再压一档
             slotHeight: (root.shortHeight || root.landscape) ? Responsive.mobileSlotHeightCompact : Responsive.mobileSlotHeight
             slotColumnWidth: root.narrow ? Responsive.mobileSlotColumnWidthNarrow : Responsive.mobileSlotColumnWidth
+            // 手机竖屏优先整周可见：允许 7 列压到 40dp，日期自动隐藏、课卡进入 tight 模式
+            minDayWidth: Responsive.mobileMinDayWidth
         }
 
         DayView {
@@ -140,69 +225,97 @@ ApplicationWindow {
         }
     }
 
+    // ---------------------------------------------------------------- 底部
     footer: ColumnLayout {
         spacing: 0
 
-        Label {
-            id: statusLabel
-
-            objectName: "statusLabel"
+        // 状态条：空闲时不占高度；有错误 / 提示时才出现
+        Rectangle {
             Layout.fillWidth: true
-            Layout.leftMargin: Metrics.spacingLg
-            Layout.rightMargin: Metrics.spacingLg
-            elide: Text.ElideRight
-            font.pixelSize: Typography.fontSmall
-            // 低高度屏幕优先保证课表可见，状态信息仍可从错误提示能力之外的页面获取
-            visible: !root.shortHeight
-            text: schedule.lastError.length > 0 ? qsTr("⚠ %1").arg(schedule.lastError) : (schedule.lastInfo.length > 0 ? qsTr("✓ %1").arg(schedule.lastInfo) : qsTr("就绪"))
-            color: schedule.lastError.length > 0 ? Theme.danger : Theme.textSecondary
+            Layout.preferredHeight: visible ? Metrics.statusBarHeight : 0
+            visible: !root.shortHeight && (schedule.lastError.length > 0 || schedule.lastInfo.length > 0)
+            color: Theme.surfaceAlt
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: Metrics.borderWidth
+                color: Theme.border
+            }
+
+            Label {
+                id: statusLabel
+
+                objectName: "statusLabel"
+                anchors.fill: parent
+                anchors.leftMargin: Metrics.spacingLg
+                anchors.rightMargin: Metrics.spacingLg
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+                font.pixelSize: Typography.fontSmall
+                text: schedule.lastError.length > 0 ? qsTr("⚠ %1").arg(schedule.lastError) : qsTr("✓ %1").arg(schedule.lastInfo)
+                color: schedule.lastError.length > 0 ? Theme.danger : Theme.textSecondary
+            }
         }
 
-        RowLayout {
+        // 底部导航：4 个主 Tab +「更多」
+        Rectangle {
             Layout.fillWidth: true
-            spacing: 0
+            Layout.preferredHeight: Metrics.navBarHeight
+            color: Theme.surface
 
-            ToolButton {
-                id: navWeekButton
-
-                objectName: "navWeekButton"
-                Layout.fillWidth: true
-                text: qsTr("周")
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: Metrics.borderWidth
+                color: Theme.border
             }
 
-            ToolButton {
-                id: navDayButton
+            RowLayout {
+                anchors.fill: parent
+                spacing: 0
 
-                objectName: "navDayButton"
-                Layout.fillWidth: true
-                text: qsTr("日")
-            }
+                NavButton {
+                    objectName: "navWeekButton"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    label: qsTr("周")
+                    selected: root.currentTab === 0
+                }
 
-            ToolButton {
-                id: navSemesterButton
+                NavButton {
+                    objectName: "navDayButton"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    label: qsTr("日")
+                    selected: root.currentTab === 1
+                }
 
-                objectName: "navSemesterButton"
-                Layout.fillWidth: true
-                text: qsTr("课程")
-            }
+                NavButton {
+                    objectName: "navSemesterButton"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    label: qsTr("课程")
+                    selected: root.currentTab === 2
+                }
 
-            ToolButton {
-                id: navSettingsButton
+                NavButton {
+                    objectName: "navSettingsButton"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    label: qsTr("设置")
+                    selected: root.currentTab === 3
+                }
 
-                objectName: "navSettingsButton"
-                Layout.fillWidth: true
-                text: qsTr("设置")
-            }
-
-            // 折叠入口：新建 / 导入 / 导出。按钮只负责触发，菜单的展开由 C++ 侧
-            // （UiConnector）读取 objectName 后调用 Menu.open() 完成，QML 中不出现任何
-            // 信号处理器；菜单项是新增交互控件，需要 C++ 侧连接 triggered()。
-            ToolButton {
-                id: moreMenuButton
-
-                objectName: "moreMenuButton"
-                Layout.fillWidth: true
-                text: qsTr("更多")
+                NavButton {
+                    objectName: "moreMenuButton"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    label: qsTr("更多")
+                    selected: false
+                }
             }
         }
     }
@@ -219,7 +332,6 @@ ApplicationWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: root.shortHeight ? Metrics.bannerBottomMarginShort : Metrics.bannerBottomMargin
-        // 两侧留白随窗口收缩，且保证宽度不会因为极窄窗口变成负数
         width: Responsive.bannerWidth(parent.width)
         height: notificationBanner.bannerTitle.length > 0 ? Metrics.bannerHeight : 0
         visible: height > 0
@@ -251,30 +363,74 @@ ApplicationWindow {
         }
     }
 
-    // 折叠菜单：由 moreMenuButton 触发，C++ 侧（UiConnector）读取 objectName 后调用
-    // open() 展开，QML 中不需要信号处理器；菜单项需要 C++ 侧连接 triggered()。
-    Menu {
+    // 「更多」底部弹层：C++ 侧（UiConnector）读取 objectName 后调用 open()，
+    // 菜单项仍用 MenuItem 的 triggered()，原有连接不变。
+    Popup {
         id: moreMenu
-        parent: moreMenuButton
-        x: moreMenuButton.width - moreMenu.width
-        y: -moreMenu.implicitHeight - Metrics.spacingSm
 
         objectName: "moreMenu"
-        title: qsTr("更多")
+        parent: Overlay.overlay
+        modal: true
+        dim: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        width: parent ? parent.width : 480
+        height: contentColumn.implicitHeight + Metrics.spacing2xl
+        x: 0
+        y: parent ? parent.height - height : 0
+        padding: 0
 
-        MenuItem {
-            objectName: "addCourseMenuItem"
-            text: qsTr("＋ 新建课程")
+        background: Rectangle {
+            color: Theme.surface
+            radius: Metrics.radiusLg
+            border.width: Metrics.borderWidth
+            border.color: Theme.border
         }
 
-        MenuItem {
-            objectName: "importMenuItem"
-            text: qsTr("导入…")
-        }
+        contentItem: ColumnLayout {
+            id: contentColumn
+            spacing: 0
 
-        MenuItem {
-            objectName: "exportMenuItem"
-            text: qsTr("导出…")
+            Rectangle {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: Metrics.spacingMd
+                width: 36
+                height: 4
+                radius: 2
+                color: Theme.divider
+            }
+
+            Label {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.spacing2xl
+                Layout.rightMargin: Metrics.spacing2xl
+                Layout.topMargin: Metrics.spacingMd
+                Layout.bottomMargin: Metrics.spacingSm
+                text: qsTr("更多")
+                font.pixelSize: Typography.fontSubheading
+                font.bold: true
+                color: Theme.textPrimary
+            }
+
+            MenuItem {
+                objectName: "addCourseMenuItem"
+                Layout.fillWidth: true
+                implicitHeight: 52
+                text: qsTr("＋ 新建课程")
+            }
+
+            MenuItem {
+                objectName: "importMenuItem"
+                Layout.fillWidth: true
+                implicitHeight: 52
+                text: qsTr("导入…")
+            }
+
+            MenuItem {
+                objectName: "exportMenuItem"
+                Layout.fillWidth: true
+                implicitHeight: 52
+                text: qsTr("导出…")
+            }
         }
     }
 

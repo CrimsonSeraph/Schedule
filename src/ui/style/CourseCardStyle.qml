@@ -31,7 +31,7 @@ QtObject {
     readonly property int minRenderHeight: 24
 
     // ------------------------------------------------------ 内边距 / 行距
-    readonly property int tightPadding: 3
+    readonly property int tightPadding: 2
     readonly property int densePadding: Metrics.spacingSm
     readonly property int padding: Metrics.spacingMd
     readonly property int denseSpacing: Metrics.spacing2xs

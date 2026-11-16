@@ -44,6 +44,8 @@ QtObject {
 
     // 周视图：单个星期列的最小可读宽度（再窄改为横向滚动）
     readonly property int minDayWidth: 64
+    // 移动端：允许 7 列压到这一宽度，优先“整周可见”，课卡自动进入 tight 模式
+    readonly property int mobileMinDayWidth: 40
 
     // 周视图：表头星期字号降一档的列宽，以及日期 / 节次时间的显示阈值
     readonly property int dayHeaderCompactWidth: 72

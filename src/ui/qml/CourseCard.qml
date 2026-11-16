@@ -56,10 +56,10 @@ Rectangle {
             text: card.courseName
             color: Theme.cardTextPrimary
             font.bold: true
-            font.pixelSize: card.tight ? Typography.fontSmall : (card.dense ? Typography.fontBody : Typography.fontSubheading)
+            font.pixelSize: card.tight ? Typography.fontCaption : (card.dense ? Typography.fontBody : Typography.fontSubheading)
             elide: Text.ElideRight
-            // 极矮卡片只留一行标题，避免第二行被裁掉
-            maximumLineCount: card.tight ? 1 : 2
+            // 窄列靠两行标题保住可读性；极矮卡片仍只留一行，避免被裁掉
+            maximumLineCount: card.tight ? (card.height >= 48 ? 2 : 1) : 2
             wrapMode: Text.WordWrap
         }
 

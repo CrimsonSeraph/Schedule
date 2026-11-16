@@ -40,6 +40,11 @@ QtObject {
     readonly property int controlHeight: 40
     readonly property int zoomLabelWidth: 36
 
+    // 移动端主界面：周条 / 状态条 / 底部导航
+    readonly property int weekBarHeight: 46
+    readonly property int statusBarHeight: 28
+    readonly property int navBarHeight: 56
+
     // -------------------------------------------------------------- 周视图
     readonly property int weekHeaderHeight: 38
     readonly property int weekSlotHeight: 64
