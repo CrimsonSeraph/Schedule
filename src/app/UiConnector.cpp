@@ -844,6 +844,7 @@ namespace Schedule {
         m_detail_course_id = course_id;
         set_property(m_course_detail, "course", course);
         set_property(m_course_detail, "sessions", course.value(QStringLiteral("sessions")));
+        set_property(m_course_detail, "weekNote", m_bridge->course_note(course_id, m_bridge->selected_week()));
         invoke(m_course_detail, "open");
     }
 
@@ -882,6 +883,18 @@ namespace Schedule {
         }
 
         set_property(m_course_editor, "editingCourseId", resolved_id);
+
+        // 本周备注：存在时回填到备注框并勾选“仅保存到本周”；复制/新建不继承
+        bool week_only = false;
+        if (!course_id.isEmpty() && !duplicate) {
+            const QString week_note = m_bridge->course_note(course_id, m_bridge->selected_week());
+            if (!week_note.isEmpty()) {
+                week_only = true;
+                set_text("editorNotesField", week_note);
+            }
+        }
+        set_property(find("editorNotesThisWeekCheck"), "checked", week_only);
+
         set_property(m_course_editor, "conflictHint", QString());
 
         // 表单默认值：周次填满整个学期，便于快速录入
@@ -996,8 +1009,20 @@ namespace Schedule {
         data.insert(QStringLiteral("teacher"), text_of("editorTeacherField"));
         data.insert(QStringLiteral("location"), text_of("editorLocationField"));
         data.insert(QStringLiteral("color"), text_of("editorColorField"));
-        data.insert(QStringLiteral("notes"), text_of("editorNotesField"));
         data.insert(QStringLiteral("credits"), text_of("editorCreditsField").toDouble());
+
+        // “仅保存到本周”：保留课程本身的备注不动，备注写入 course_note 设置项
+        const QString editing_id = m_course_editor ? m_course_editor->property("editingCourseId").toString() : QString();
+        QObject* week_check = find("editorNotesThisWeekCheck");
+        const bool week_only = week_check && week_check->property("checked").toBool() && !editing_id.isEmpty();
+        const QString note_text = text_of("editorNotesField");
+        if (week_only) {
+            auto* model = qobject_cast<CourseListModel*>(m_bridge->course_model());
+            const QVariantMap existing = model ? model->find(editing_id) : QVariantMap();
+            data.insert(QStringLiteral("notes"), existing.value(QStringLiteral("notes")).toString());
+        } else {
+            data.insert(QStringLiteral("notes"), note_text);
+        }
 
         // 时间段来自 QML 的草稿列表模型
         QVariantList sessions;
@@ -1016,6 +1041,9 @@ namespace Schedule {
 
         // 只有在业务层确实写入成功时才关闭对话框，以免校验失败时用户丢失已填内容
         if (m_bridge->save_course(data)) {
+            if (week_only) {
+                m_bridge->set_course_note(editing_id, m_bridge->selected_week(), note_text);
+            }
             invoke(m_course_editor, "close");
         }
     }

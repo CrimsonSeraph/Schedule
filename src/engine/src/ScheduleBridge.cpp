@@ -393,6 +393,25 @@ namespace Schedule {
         emit themeChanged();
     }
 
+    QString ScheduleBridge::course_note(const QString& course_id, int week) const {
+        if (!m_repository || course_id.isEmpty() || week <= 0) {
+            return QString();
+        }
+        return m_repository->setting(QStringLiteral("course_note/%1/%2").arg(course_id).arg(week));
+    }
+
+    void ScheduleBridge::set_course_note(const QString& course_id, int week, const QString& note) {
+        if (!m_repository || course_id.isEmpty() || week <= 0) {
+            return;
+        }
+        QString error;
+        if (!m_repository->set_setting(QStringLiteral("course_note/%1/%2").arg(course_id).arg(week), note, &error)) {
+            report_error(error);
+            return;
+        }
+        emit courseNoteChanged(course_id, week);
+    }
+
     // ---------------------------------------------------------------- 显示设置
 
     bool ScheduleBridge::show_weekend() const {

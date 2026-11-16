@@ -196,6 +196,14 @@ Dialog {
                             Layout.fillWidth: true
                             placeholderText: qsTr("需带教材")
                         }
+                        CheckBox {
+                            id: editorNotesThisWeekCheck
+
+                            objectName: "editorNotesThisWeekCheck"
+                            Layout.columnSpan: courseEditor.formColumns
+                            text: qsTr("仅保存到本周")
+                            enabled: courseEditor.editingCourseId.length > 0
+                        }
                     }
                 }
 

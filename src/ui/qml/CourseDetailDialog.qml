@@ -24,6 +24,9 @@ Dialog {
     // C++ 在打开详情窗前写入：全部上课时间段
     property var sessions: []
 
+    // C++ 在打开详情窗前写入：本周备注（为空表示本周没有单独备注）
+    property string weekNote: ""
+
     // 移动端用底部弹层呈现；桌面端保持居中对话框
     property bool sheetMode: false
 
@@ -156,6 +159,21 @@ Dialog {
                             objectName: "courseDetailNotes"
                             Layout.fillWidth: true
                             text: courseDetailDialog.fieldText("notes", qsTr("未填写"))
+                            color: Theme.textPrimary
+                            wrapMode: Text.WordWrap
+                        }
+
+                        Label {
+                            text: qsTr("本周备注")
+                            color: Theme.textSecondary
+                            visible: courseDetailDialog.weekNote.length > 0
+                        }
+
+                        Label {
+                            objectName: "courseDetailWeekNote"
+                            Layout.fillWidth: true
+                            visible: courseDetailDialog.weekNote.length > 0
+                            text: courseDetailDialog.weekNote
                             color: Theme.textPrimary
                             wrapMode: Text.WordWrap
                         }

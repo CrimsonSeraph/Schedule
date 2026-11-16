@@ -177,6 +177,12 @@ namespace Schedule {
         /** @brief 设置界面主题。 */
         Q_INVOKABLE void set_theme(const QString& theme);
 
+        /** @return 指定课程在指定周的本周备注；未设置时为空串。 */
+        Q_INVOKABLE QString course_note(const QString& course_id, int week) const;
+
+        /** @brief 保存/清除指定课程在指定周的本周备注。 */
+        Q_INVOKABLE void set_course_note(const QString& course_id, int week, const QString& note);
+
         // ------------------------------------------------------------ 属性读取
 
         QAbstractItemModel* course_model() const;
@@ -322,6 +328,9 @@ namespace Schedule {
 
         /** 界面主题或系统配色变化后发出。 */
         void themeChanged();
+
+        /** 某课程某周的本周备注变化后发出。 */
+        void courseNoteChanged(const QString& course_id, int week);
 
     private:
         /** @brief 建立内部信号连接（服务 → 模型刷新）。 */
