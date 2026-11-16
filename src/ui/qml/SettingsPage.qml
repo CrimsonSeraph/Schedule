@@ -47,7 +47,7 @@ Item {
                 spacing: Metrics.spacingLg
                 visible: settingsPage.selftestMode
 
-                Button {
+                AppButton {
                     id: testButton
 
                     objectName: "testButton"
@@ -82,7 +82,7 @@ Item {
                         font.pixelSize: Typography.fontBody
                     }
 
-                    Button {
+                    AppButton {
                         id: chooseImportDirButton
 
                         objectName: "chooseImportDirButton"
@@ -106,7 +106,7 @@ Item {
                         font.pixelSize: Typography.fontBody
                     }
 
-                    Button {
+                    AppButton {
                         id: chooseExportDirButton
 
                         objectName: "chooseExportDirButton"
@@ -126,15 +126,18 @@ Item {
                         Layout.columnSpan: settingsPage.wideForm ? 2 : 1
                         spacing: Metrics.spacingLg
 
-                        Button {
+                        AppButton {
                             id: saveDirsButton
 
                             objectName: "saveDirsButton"
+
+
+                            primary: true
                             text: qsTr("保存目录")
                             implicitHeight: Metrics.controlHeight
                         }
 
-                        Button {
+                        AppButton {
                             id: resetDirsButton
 
                             objectName: "resetDirsButton"
@@ -216,14 +219,17 @@ Item {
                         Layout.columnSpan: settingsPage.wideForm ? 2 : 1
                         spacing: Metrics.spacingLg
 
-                        Button {
+                        AppButton {
                             id: saveSlotButton
 
                             objectName: "saveSlotButton"
+
+
+                            primary: true
                             text: qsTr("保存该节次")
                         }
 
-                        Button {
+                        AppButton {
                             id: resetSlotsButton
 
                             objectName: "resetSlotsButton"
@@ -294,14 +300,14 @@ Item {
                             Layout.columnSpan: settingsPage.wideForm ? 2 : 1
                             spacing: Metrics.spacingLg
 
-                            Button {
+                            AppButton {
                                 id: testNotificationButton
 
                                 objectName: "testNotificationButton"
                                 text: qsTr("发送测试通知")
                             }
 
-                            Button {
+                            AppButton {
                                 id: requestPermissionButton
 
                                 objectName: "requestPermissionButton"
@@ -411,14 +417,17 @@ Item {
                         Layout.fillWidth: true
                         spacing: Metrics.spacingLg
 
-                        Button {
+                        AppButton {
                             id: settingsAdapterImportButton
 
                             objectName: "settingsAdapterImportButton"
+
+
+                            primary: true
                             text: qsTr("从教务导入…")
                         }
 
-                        Button {
+                        AppButton {
                             id: settingsAdapterSystemOpenButton
 
                             objectName: "settingsAdapterSystemOpenButton"
@@ -525,24 +534,30 @@ Item {
                             Layout.fillWidth: true
                             spacing: Metrics.spacingLg
 
-                            Button {
+                            AppButton {
                                 id: adapterSaveUrlButton
 
                                 objectName: "adapterSaveUrlButton"
+
+
+                                primary: true
                                 text: qsTr("保存接口地址")
                             }
 
-                            Button {
+                            AppButton {
                                 id: adapterImportButton
 
                                 objectName: "adapterImportButton"
                                 text: qsTr("从适配器导入")
                             }
 
-                            Button {
+                            AppButton {
                                 id: adapterClearSessionButton
 
                                 objectName: "adapterClearSessionButton"
+
+
+                                danger: true
                                 text: qsTr("清除凭证")
                             }
                         }
@@ -590,17 +605,20 @@ Item {
                         Layout.columnSpan: settingsPage.wideForm ? 2 : 1
                         spacing: Metrics.spacingLg
 
-                        Button {
+                        AppButton {
                             id: reloadButton
 
                             objectName: "reloadButton"
                             text: qsTr("从数据库重新加载")
                         }
 
-                        Button {
+                        AppButton {
                             id: saveNowButton
 
                             objectName: "saveNowButton"
+
+
+                            primary: true
                             text: qsTr("立即保存")
                         }
                     }

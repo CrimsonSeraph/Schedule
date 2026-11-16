@@ -90,10 +90,13 @@ Item {
                     }
                 }
 
-                Button {
+                AppButton {
                     id: saveSemesterButton
 
                     objectName: "saveSemesterButton"
+
+
+                    primary: true
                     Layout.margins: Metrics.spacingLg
                     Layout.fillWidth: true
                     implicitHeight: Metrics.controlHeight
@@ -137,15 +140,18 @@ Item {
                     Layout.fillWidth: true
                     spacing: Metrics.spacingLg
 
-                    Button {
+                    AppButton {
                         id: pageNewCourseButton
 
                         objectName: "pageNewCourseButton"
+
+
+                        primary: true
                         text: qsTr("新建课程")
                         implicitHeight: Metrics.controlHeight
                     }
 
-                    Button {
+                    AppButton {
                         id: editCourseButton
 
                         objectName: "editCourseButton"
@@ -154,10 +160,13 @@ Item {
                         implicitHeight: Metrics.controlHeight
                     }
 
-                    Button {
+                    AppButton {
                         id: deleteCourseButton
 
                         objectName: "deleteCourseButton"
+
+
+                        danger: true
                         text: qsTr("删除选中")
                         flat: true
                         implicitHeight: Metrics.controlHeight

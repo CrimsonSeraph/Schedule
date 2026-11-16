@@ -61,6 +61,7 @@ qt6_add_qml_module(
 	qml/MainDesktop.qml
 	qml/MainMobile.qml
 	qml/NavButton.qml
+	qml/AppButton.qml
 	qml/WeekView.qml
 	qml/DayView.qml
 	qml/CourseCard.qml
