@@ -126,6 +126,12 @@ namespace Schedule {
         /** 当前是否使用深色配色（"system" 时跟随系统）。 */
         Q_PROPERTY(bool darkMode READ dark_mode NOTIFY themeChanged)
 
+        /** 全部学期 / 课表（map 列表：id / name / startDate / totalWeeks / isCurrent）。 */
+        Q_PROPERTY(QVariantList semesterOptions READ semester_options NOTIFY semestersChanged)
+
+        /** 当前学期在 `semesterOptions` 中的下标；没有学期时为 -1。 */
+        Q_PROPERTY(int currentSemesterIndex READ current_semester_index NOTIFY semestersChanged)
+
     public:
         /**
          * @param service    课表服务（不持有所有权）
@@ -182,6 +188,18 @@ namespace Schedule {
 
         /** @brief 保存/清除指定课程在指定周的本周备注。 */
         Q_INVOKABLE void set_course_note(const QString& course_id, int week, const QString& note);
+
+        /** @return 全部学期 / 课表列表。 */
+        QVariantList semester_options() const;
+
+        /** @return 当前学期在 semester_options() 中的下标；没有学期时为 -1。 */
+        int current_semester_index() const;
+
+        /** @brief 切换到指定学期 / 课表（先保存当前数据）。 */
+        Q_INVOKABLE void switch_semester(const QString& semester_id);
+
+        /** @brief 删除指定学期 / 课表（至少保留一个；删除当前学期时先切到另一个）。 */
+        Q_INVOKABLE void remove_semester(const QString& semester_id);
 
         // ------------------------------------------------------------ 属性读取
 
@@ -331,6 +349,9 @@ namespace Schedule {
 
         /** 某课程某周的本周备注变化后发出。 */
         void courseNoteChanged(const QString& course_id, int week);
+
+        /** 学期 / 课表列表或当前学期变化后发出。 */
+        void semestersChanged();
 
     private:
         /** @brief 建立内部信号连接（服务 → 模型刷新）。 */

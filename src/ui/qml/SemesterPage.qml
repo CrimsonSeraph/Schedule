@@ -45,6 +45,42 @@ Item {
                 width: semesterScroll.width
                 spacing: Metrics.spacingXl
 
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Metrics.spacingLg
+                    Layout.rightMargin: Metrics.spacingLg
+                    Layout.topMargin: Metrics.spacingLg
+                    spacing: Metrics.spacingLg
+
+                    Label {
+                        text: qsTr("学期")
+                        color: Theme.textSecondary
+                    }
+
+                    ComboBox {
+                        id: semesterSelector
+
+                        objectName: "semesterSelector"
+                        Layout.fillWidth: true
+                        textRole: "name"
+                        model: schedule.semesterOptions
+                        currentIndex: schedule.currentSemesterIndex
+                    }
+
+                    AppButton {
+                        objectName: "newSemesterButton"
+                        text: qsTr("新建")
+                        implicitHeight: Metrics.controlHeight
+                    }
+
+                    AppButton {
+                        objectName: "deleteSemesterButton"
+                        text: qsTr("删除")
+                        danger: true
+                        implicitHeight: Metrics.controlHeight
+                    }
+                }
+
                 GridLayout {
                     Layout.margins: Metrics.spacingLg
                     Layout.fillWidth: true
@@ -280,6 +316,49 @@ Item {
                         color: modelData.blocking ? Theme.danger : Theme.warning
                         wrapMode: Text.WordWrap
                     }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: semesterDeleteDialog
+
+        objectName: "semesterDeleteDialog"
+        title: qsTr("删除学期")
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(360, parent ? parent.width - 2 * Metrics.spacing2xl : 320)
+
+        contentItem: ColumnLayout {
+            spacing: Metrics.spacingLg
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("删除当前学期会同时删除它的课表与课程，且无法恢复。确定继续？")
+                wrapMode: Text.WordWrap
+                color: Theme.textPrimary
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Metrics.spacingLg
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                AppButton {
+                    objectName: "semesterDeleteCancelButton"
+                    text: qsTr("取消")
+                    implicitHeight: Metrics.controlHeight
+                }
+
+                AppButton {
+                    objectName: "semesterDeleteConfirmButton"
+                    text: qsTr("删除")
+                    danger: true
+                    implicitHeight: Metrics.controlHeight
                 }
             }
         }

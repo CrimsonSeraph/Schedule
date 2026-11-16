@@ -142,6 +142,9 @@ namespace Schedule {
         /** @brief 学期页表单。 */
         void connect_semester_page();
 
+        /** @brief 用当前学期（或新建状态）回填学期表单与选择器。 */
+        void refresh_semester_form();
+
         /** @brief 设置页（目录、作息表、数据维护）。 */
         void connect_settings_page();
 
@@ -288,6 +291,9 @@ namespace Schedule {
 
         /** 详情弹层当前展示的课程 id；「编辑」按钮据此进入课程编辑器。 */
         QString m_detail_course_id;
+
+        /** 是否处于“新建学期”模式（保存时创建而不是更新当前学期）。 */
+        bool m_creating_semester = false;
 
         /** 导入向导对话框。 */
         QPointer<QObject> m_import_wizard;

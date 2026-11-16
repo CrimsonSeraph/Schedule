@@ -404,13 +404,90 @@ namespace Schedule {
             const QString start = text_of("semesterStartField");
             const int weeks = int_of("semesterWeeksSpin", 20);
 
-            if (m_bridge->has_semester()) {
-                m_bridge->update_semester(name, start, weeks);
-            }
-            else {
+            const bool creating = m_creating_semester || !m_bridge->has_semester();
+            if (creating) {
                 m_bridge->create_semester(name, start, weeks);
             }
+            else {
+                m_bridge->update_semester(name, start, weeks);
+            }
+            m_creating_semester = false;
+            refresh_semester_form();
         });
+
+        on_signal("semesterSelector", "currentIndexChanged()", [this]() {
+            QObject* combo = find("semesterSelector");
+            if (!combo) {
+                return;
+            }
+            const int index = combo->property("currentIndex").toInt();
+            const QVariantList options = m_bridge->semester_options();
+            if (index < 0 || index >= options.size()) {
+                return;
+            }
+            m_bridge->switch_semester(options.at(index).toMap().value(QStringLiteral("id")).toString());
+            refresh_semester_form();
+        });
+
+        on_click("deleteSemesterButton", [this]() {
+            if (m_creating_semester) {
+                return;
+            }
+            if (QObject* dialog = find("semesterDeleteDialog")) {
+                invoke(dialog, "open");
+            }
+        });
+
+        on_click("semesterDeleteCancelButton", [this]() {
+            if (QObject* dialog = find("semesterDeleteDialog")) {
+                invoke(dialog, "close");
+            }
+        });
+
+        on_click("semesterDeleteConfirmButton", [this]() {
+            const QVariantList options = m_bridge->semester_options();
+            const int index = m_bridge->current_semester_index();
+            if (index >= 0 && index < options.size()) {
+                m_bridge->remove_semester(options.at(index).toMap().value(QStringLiteral("id")).toString());
+            }
+            if (QObject* dialog = find("semesterDeleteDialog")) {
+                invoke(dialog, "close");
+            }
+            refresh_semester_form();
+        });
+
+        on_click("newSemesterButton", [this]() {
+            m_creating_semester = true;
+            set_text("semesterNameField", QString());
+            set_text("semesterStartField", WeekCalculator::monday_of(QDate::currentDate()).toString(Qt::ISODate));
+            set_int("semesterWeeksSpin", 20);
+            set_int("semesterSelector", -1);
+            set_text("saveSemesterButton", QStringLiteral("创建学期"));
+        });
+
+        connect(m_bridge, &ScheduleBridge::semesterChanged, this, [this]() { refresh_semester_form(); });
+    }
+
+    void UiConnector::refresh_semester_form() {
+        if (m_creating_semester) {
+            set_int("semesterSelector", -1);
+            set_text("saveSemesterButton", QStringLiteral("创建学期"));
+            return;
+        }
+        if (m_bridge->has_semester()) {
+            set_text("semesterNameField", m_bridge->semester_name());
+            set_text("semesterStartField", m_bridge->semester_start_date());
+            set_int("semesterWeeksSpin", m_bridge->total_weeks());
+            set_int("semesterSelector", m_bridge->current_semester_index());
+            set_text("saveSemesterButton", QStringLiteral("保存学期信息"));
+        }
+        else {
+            set_text("semesterNameField", QStringLiteral("我的课表"));
+            set_text("semesterStartField", WeekCalculator::monday_of(QDate::currentDate()).toString(Qt::ISODate));
+            set_int("semesterWeeksSpin", 20);
+            set_int("semesterSelector", -1);
+            set_text("saveSemesterButton", QStringLiteral("创建学期"));
+        }
     }
 
     // --------------------------------------------------------------设置页
@@ -817,6 +894,7 @@ namespace Schedule {
             set_text("semesterStartField", WeekCalculator::monday_of(QDate::currentDate()).toString(Qt::ISODate));
             set_int("semesterWeeksSpin", 20);
         }
+        refresh_semester_form();
 
         // 设置页目录与首个节次
         auto* io = import_export();

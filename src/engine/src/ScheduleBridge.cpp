@@ -151,6 +151,7 @@ namespace Schedule {
         }
         emit selectedWeekChanged();
         emit selectedDayChanged();
+        emit semestersChanged();
         return loaded;
     }
 
@@ -412,6 +413,103 @@ namespace Schedule {
         emit courseNoteChanged(course_id, week);
     }
 
+    QVariantList ScheduleBridge::semester_options() const {
+        QVariantList list;
+        if (!m_repository || !m_repository->is_open()) {
+            return list;
+        }
+        const QList<Semester> semesters = m_repository->load_semesters();
+        const QString current_id = (m_service && m_service->has_semester()) ? m_service->semester().id : QString();
+        for (const Semester& semester : semesters) {
+            QVariantMap map;
+            map.insert(QStringLiteral("id"), semester.id);
+            map.insert(QStringLiteral("name"), semester.name);
+            map.insert(QStringLiteral("startDate"), semester.start_date.toString(Qt::ISODate));
+            map.insert(QStringLiteral("totalWeeks"), semester.total_weeks);
+            map.insert(QStringLiteral("isCurrent"), semester.id == current_id);
+            list.append(map);
+        }
+        return list;
+    }
+
+    int ScheduleBridge::current_semester_index() const {
+        const QVariantList list = semester_options();
+        for (int index = 0; index < list.size(); ++index) {
+            if (list.at(index).toMap().value(QStringLiteral("isCurrent")).toBool()) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    void ScheduleBridge::switch_semester(const QString& semester_id) {
+        if (!m_repository || !m_repository->is_open() || semester_id.isEmpty()) {
+            return;
+        }
+        if (m_service && m_service->has_semester() && m_service->semester().id == semester_id) {
+            return;
+        }
+
+        save_to_repository();
+
+        ScheduleSnapshot snapshot;
+        QString error;
+        if (!m_repository->load_snapshot(semester_id, &snapshot, &error)) {
+            report_error(QStringLiteral("切换学期失败：%1").arg(error));
+            return;
+        }
+        m_service->load_snapshot(snapshot);
+        m_repository->set_current_semester(semester_id);
+        if (m_settings) {
+            m_settings->set_current_semester_id(semester_id);
+        }
+
+        m_selected_week = current_week() > 0 ? current_week() : 1;
+        if (m_session_model) {
+            m_session_model->set_week(m_selected_week);
+            m_session_model->set_day_filter(m_selected_day);
+        }
+        if (m_week_model) {
+            m_week_model->set_week(m_selected_week);
+        }
+        refresh_all();
+        emit selectedWeekChanged();
+        emit semestersChanged();
+        report_info(QStringLiteral("已切换到“%1”").arg(snapshot.semester.name));
+    }
+
+    void ScheduleBridge::remove_semester(const QString& semester_id) {
+        if (!m_repository || !m_repository->is_open() || semester_id.isEmpty()) {
+            return;
+        }
+        const QList<Semester> semesters = m_repository->load_semesters();
+        if (semesters.size() <= 1) {
+            report_error(QStringLiteral("至少保留一个学期"));
+            return;
+        }
+        const bool was_current = m_service && m_service->has_semester() && m_service->semester().id == semester_id;
+        if (was_current) {
+            QString other_id;
+            for (const Semester& semester : semesters) {
+                if (semester.id != semester_id) {
+                    other_id = semester.id;
+                    break;
+                }
+            }
+            if (other_id.isEmpty()) {
+                return;
+            }
+            switch_semester(other_id);
+        }
+        QString error;
+        if (!m_repository->remove_semester(semester_id, &error)) {
+            report_error(QStringLiteral("删除学期失败：%1").arg(error));
+            return;
+        }
+        emit semestersChanged();
+        report_info(QStringLiteral("学期已删除"));
+    }
+
     // ---------------------------------------------------------------- 显示设置
 
     bool ScheduleBridge::show_weekend() const {
@@ -601,6 +699,7 @@ namespace Schedule {
         }
         emit selectedWeekChanged();
         report_info(QStringLiteral("已创建学期“%1”").arg(semester.name));
+        emit semestersChanged();
     }
 
     void ScheduleBridge::update_semester(const QString& name, const QString& start_date, int total_weeks) {
@@ -635,6 +734,7 @@ namespace Schedule {
             emit selectedWeekChanged();
         }
         report_info(QStringLiteral("学期信息已更新"));
+        emit semestersChanged();
     }
 
     void ScheduleBridge::reset_time_slots_to_default() {
