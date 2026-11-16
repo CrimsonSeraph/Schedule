@@ -507,6 +507,7 @@ ApplicationWindow {
 
     CourseDetailDialog {
         id: courseDetailDialog
+        sheetMode: true
     }
 
     ImportWizard {

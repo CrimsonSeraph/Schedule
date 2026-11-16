@@ -550,6 +550,14 @@ namespace Schedule {
             }
         });
 
+        on_click("courseDetailCopyButton", [this]() {
+            const QString course_id = m_detail_course_id;
+            invoke(m_course_detail, "close");
+            if (!course_id.isEmpty()) {
+                open_course_editor(course_id, true);
+            }
+        });
+
         on_click("courseDetailCloseButton", [this]() { invoke(m_course_detail, "close"); });
     }
 
@@ -839,7 +847,7 @@ namespace Schedule {
         invoke(m_course_detail, "open");
     }
 
-    void UiConnector::open_course_editor(const QString& course_id) {
+    void UiConnector::open_course_editor(const QString& course_id, bool duplicate) {
         // 先清空表单，避免上一次编辑的残留
         set_text("editorNameField", QString());
         set_text("editorCodeField", QString());
@@ -855,8 +863,10 @@ namespace Schedule {
             auto* model = qobject_cast<CourseListModel*>(m_bridge->course_model());
             const QVariantMap course = model ? model->find(course_id) : QVariantMap();
             if (!course.isEmpty()) {
-                resolved_id = course_id;
-                set_text("editorNameField", course.value(QStringLiteral("name")).toString());
+                // 复制：保留全部字段与时间段，但清空 id、名称加“（副本）”，保存时创建新课程
+                resolved_id = duplicate ? QString() : course_id;
+                const QString course_name = course.value(QStringLiteral("name")).toString();
+                set_text("editorNameField", duplicate ? QStringLiteral("%1（副本）").arg(course_name) : course_name);
                 set_text("editorCodeField", course.value(QStringLiteral("code")).toString());
                 set_text("editorTeacherField", course.value(QStringLiteral("teacher")).toString());
                 set_text("editorLocationField", course.value(QStringLiteral("location")).toString());

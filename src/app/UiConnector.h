@@ -202,7 +202,7 @@ namespace Schedule {
         void show_course_detail(const QString& course_id);
 
         /** @brief 打开课程编辑器；`course_id` 为空表示新建。 */
-        void open_course_editor(const QString& course_id);
+        void open_course_editor(const QString& course_id, bool duplicate = false);
 
         /** @brief 读取编辑器表单并保存课程；成功后关闭对话框。 */
         void save_course_from_editor();

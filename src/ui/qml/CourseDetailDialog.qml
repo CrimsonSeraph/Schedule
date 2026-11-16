@@ -24,14 +24,30 @@ Dialog {
     // C++ 在打开详情窗前写入：全部上课时间段
     property var sessions: []
 
+    // 移动端用底部弹层呈现；桌面端保持居中对话框
+    property bool sheetMode: false
+
     readonly property bool narrowForm: Responsive.isDialogNarrow(courseDetailDialog.width)
 
     title: qsTr("课程详情")
     modal: true
-    closePolicy: Popup.CloseOnEscape
-    width: Responsive.dialogWidth(Responsive.detailDialogWidth, parent ? parent.width : -1)
-    height: Responsive.dialogHeight(Responsive.detailDialogHeight, parent ? parent.height : -1)
-    anchors.centerIn: parent
+    closePolicy: courseDetailDialog.sheetMode
+                 ? (Popup.CloseOnEscape | Popup.CloseOnPressOutside)
+                 : Popup.CloseOnEscape
+    width: courseDetailDialog.sheetMode
+           ? (parent ? parent.width : 360)
+           : Responsive.dialogWidth(Responsive.detailDialogWidth, parent ? parent.width : -1)
+    height: courseDetailDialog.sheetMode
+            ? (parent ? Math.min(parent.height * 0.72, 640) : 500)
+            : Responsive.dialogHeight(Responsive.detailDialogHeight, parent ? parent.height : -1)
+    x: parent ? (courseDetailDialog.sheetMode ? 0 : (parent.width - width) / 2) : 0
+    y: parent ? (courseDetailDialog.sheetMode ? parent.height - height : (parent.height - height) / 2) : 0
+
+    // 底部弹层全宽、圆角；桌面端保持默认的对话框外观
+    background: Rectangle {
+        color: Theme.surface
+        radius: Metrics.radiusLg
+    }
 
     /** @return 课程字段的展示文本；字段缺失或为空时返回 fallback。 */
     function fieldText(name, fallback) {
@@ -205,24 +221,36 @@ Dialog {
 
             Label {
                 Layout.fillWidth: true
+                visible: !courseDetailDialog.sheetMode
                 text: qsTr("需要调整？点击“编辑”进入课程编辑器")
                 color: Theme.textMuted
                 font.pixelSize: Typography.fontSmall
                 elide: Text.ElideRight
             }
 
-            Button {
+            AppButton {
+                id: courseDetailCopyButton
+
+                objectName: "courseDetailCopyButton"
+                text: qsTr("复制")
+                implicitHeight: Metrics.controlHeight
+            }
+
+            AppButton {
                 id: courseDetailCloseButton
 
                 objectName: "courseDetailCloseButton"
                 text: qsTr("关闭")
+                implicitHeight: Metrics.controlHeight
             }
 
-            Button {
+            AppButton {
                 id: courseDetailEditButton
 
                 objectName: "courseDetailEditButton"
                 text: qsTr("编辑")
+                primary: true
+                implicitHeight: Metrics.controlHeight
             }
         }
     }
