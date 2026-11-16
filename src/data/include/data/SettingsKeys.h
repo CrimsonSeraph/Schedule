@@ -39,6 +39,15 @@ namespace Schedule {
         /** 界面主题（"system" / "light" / "dark"）。 */
         static QString theme();
 
+        /** 周视图是否显示周六、周日（"1" / "0"）。 */
+        static QString show_weekend();
+
+        /** 周视图格子高度档位（"0" 紧凑 / "1" 标准 / "2" 宽松）。 */
+        static QString slot_density();
+
+        /** 课卡圆角档位（"0" 小 / "1" 中 / "2" 大）。 */
+        static QString card_radius();
+
         /** 通用教务适配器的课表数据接口地址（http(s) 或本地文件路径）。 */
         static QString adapter_schedule_url();
 

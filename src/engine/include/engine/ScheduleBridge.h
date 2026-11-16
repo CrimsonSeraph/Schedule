@@ -111,6 +111,15 @@ namespace Schedule {
         /** 最近一次提示信息。 */
         Q_PROPERTY(QString lastInfo READ last_info NOTIFY infoMessage)
 
+        /** 周视图是否显示周六、周日。 */
+        Q_PROPERTY(bool showWeekend READ show_weekend NOTIFY displaySettingsChanged)
+
+        /** 格子高度档位（0 紧凑 / 1 标准 / 2 宽松）。 */
+        Q_PROPERTY(int slotDensity READ slot_density NOTIFY displaySettingsChanged)
+
+        /** 课卡圆角档位（0 小 / 1 中 / 2 大）。 */
+        Q_PROPERTY(int cardRadius READ card_radius NOTIFY displaySettingsChanged)
+
     public:
         /**
          * @param service    课表服务（不持有所有权）
@@ -132,6 +141,26 @@ namespace Schedule {
          * @return 是否成功（仓库为空或没有学期时返回 false，但不视为错误）
          */
         bool initialize();
+
+        // ------------------------------------------------------------ 显示设置
+
+        /** @return 周视图是否显示周六、周日。 */
+        bool show_weekend() const;
+
+        /** @brief 设置周视图是否显示周六、周日。 */
+        Q_INVOKABLE void set_show_weekend(bool enabled);
+
+        /** @return 格子高度档位（0 紧凑 / 1 标准 / 2 宽松）。 */
+        int slot_density() const;
+
+        /** @brief 设置格子高度档位。 */
+        Q_INVOKABLE void set_slot_density(int density);
+
+        /** @return 课卡圆角档位（0 小 / 1 中 / 2 大）。 */
+        int card_radius() const;
+
+        /** @brief 设置课卡圆角档位。 */
+        Q_INVOKABLE void set_card_radius(int radius);
 
         // ------------------------------------------------------------ 属性读取
 
@@ -272,6 +301,9 @@ namespace Schedule {
          * @param message 面向用户的中文提示
          */
         void infoMessage(const QString& message);
+
+        /** 显示设置（周六日 / 格子高度 / 课卡圆角）变化后发出。 */
+        void displaySettingsChanged();
 
     private:
         /** @brief 建立内部信号连接（服务 → 模型刷新）。 */

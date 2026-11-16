@@ -94,6 +94,26 @@ namespace Schedule {
         /** @brief 设置界面主题；非法值回退为 "system"。 */
         bool set_theme(const QString& theme, QString* error_message = nullptr);
 
+        // ------------------------------------------------------------ 显示设置
+
+        /** @return 周视图是否显示周六、周日（默认 true）。 */
+        bool show_weekend() const;
+
+        /** @brief 设置是否显示周六、周日。 */
+        bool set_show_weekend(bool enabled, QString* error_message = nullptr);
+
+        /** @return 格子高度档位：0 紧凑 / 1 标准 / 2 宽松（默认 1）。 */
+        int slot_density() const;
+
+        /** @brief 设置格子高度档位；仅接受 0 / 1 / 2。 */
+        bool set_slot_density(int density, QString* error_message = nullptr);
+
+        /** @return 课卡圆角档位：0 小 / 1 中 / 2 大（默认 1）。 */
+        int card_radius() const;
+
+        /** @brief 设置课卡圆角档位；仅接受 0 / 1 / 2。 */
+        bool set_card_radius(int radius, QString* error_message = nullptr);
+
         /** @return 通用教务适配器的课表数据接口地址；未设置时为空串。 */
         QString adapter_schedule_url() const;
 

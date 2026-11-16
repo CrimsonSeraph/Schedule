@@ -401,6 +401,18 @@ namespace Schedule {
     // --------------------------------------------------------------设置页
 
     void UiConnector::connect_settings_page() {
+        // --- 显示设置
+        on_signal("showWeekendCheck", "toggled(bool)", [this]() {
+            QObject* check = find("showWeekendCheck");
+            m_bridge->set_show_weekend(check && check->property("checked").toBool());
+        });
+        on_signal("slotDensitySelector", "currentIndexChanged()", [this]() {
+            m_bridge->set_slot_density(combo_index(find("slotDensitySelector")));
+        });
+        on_signal("cardRadiusSelector", "currentIndexChanged()", [this]() {
+            m_bridge->set_card_radius(combo_index(find("cardRadiusSelector")));
+        });
+
         // --- 默认导入目录
         on_click("chooseImportDirButton", [this]() {
             if (QObject* dialog = find("importDirDialog")) {

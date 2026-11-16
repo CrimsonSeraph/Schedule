@@ -34,6 +34,18 @@ namespace Schedule {
         return QStringLiteral("ui/theme");
     }
 
+    QString SettingsKeys::show_weekend() {
+        return QStringLiteral("ui/show_weekend");
+    }
+
+    QString SettingsKeys::slot_density() {
+        return QStringLiteral("ui/slot_density");
+    }
+
+    QString SettingsKeys::card_radius() {
+        return QStringLiteral("ui/card_radius");
+    }
+
     QString SettingsKeys::adapter_schedule_url() {
         return QStringLiteral("adapter/generic_schedule_url");
     }
@@ -52,6 +64,9 @@ namespace Schedule {
             reminder_enabled(),
             reminder_minutes(),
             theme(),
+            show_weekend(),
+            slot_density(),
+            card_radius(),
             adapter_schedule_url(),
             adapter_login_url(),
         };

@@ -37,16 +37,22 @@ Item {
     // 单个星期列的最小可读宽度：再窄就横向滚动，不再继续压缩（常量见 Responsive）
     property int minDayWidth: Responsive.minDayWidth
 
-    readonly property int dayCount: 7
+    // 显示设置可以隐藏周六、周日；列宽与表头都跟随 dayCount 重算
+    readonly property int dayCount: schedule.showWeekend ? 7 : 5
     readonly property var periods: schedule.timeSlots
 
     // 实际节次高度：按可用高度收缩，让“整周”尽量一屏可见
     readonly property int effectiveSlotHeight: {
         const count = Math.max(1, weekView.periods.length);
         const usable = Math.max(0, weekView.height - weekView.headerHeight);
+        const wanted = Math.max(weekView.minSlotHeight, weekView.slotHeight);
+        // 宽松档：保持用户选择的行高，整周放不下时交给纵向滚动；
+        // 紧凑 / 标准档仍尽量压到一屏，避免默认视图出现滚动条。
+        if (weekView.slotHeight >= Responsive.mobileSlotHeightLoose) {
+            return wanted;
+        }
         const fitted = Math.floor(usable / count);
-        const wanted = fitted > 0 ? Math.min(weekView.slotHeight, fitted) : weekView.slotHeight;
-        return Math.max(weekView.minSlotHeight, wanted);
+        return fitted > 0 ? Math.min(wanted, fitted) : wanted;
     }
 
     // 按可用宽度平分的列宽；小于 minDayWidth 时改为横向滚动

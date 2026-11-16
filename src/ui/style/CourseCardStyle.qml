@@ -40,6 +40,9 @@ QtObject {
     // ---------------------------------------------------------- 圆角 / 描边
     readonly property int radius: Metrics.radiusMd
     readonly property int tightRadius: Metrics.radiusSm
+    // 显示设置“卡片圆角”的小 / 大两档
+    readonly property int radiusSmall: Metrics.radiusXs
+    readonly property int radiusLarge: Metrics.radiusLg
     readonly property int borderWidth: Metrics.borderWidth
     // 卡片描边由背景色加深得到，保证深色课卡也有可见边界
     readonly property real borderDarken: 1.35

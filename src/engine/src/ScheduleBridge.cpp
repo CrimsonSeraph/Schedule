@@ -355,6 +355,56 @@ namespace Schedule {
         return m_last_info;
     }
 
+    // ---------------------------------------------------------------- 显示设置
+
+    bool ScheduleBridge::show_weekend() const {
+        return !m_settings || m_settings->show_weekend();
+    }
+
+    void ScheduleBridge::set_show_weekend(bool enabled) {
+        if (!m_settings) {
+            return;
+        }
+        QString error;
+        if (!m_settings->set_show_weekend(enabled, &error)) {
+            report_error(error);
+            return;
+        }
+        emit displaySettingsChanged();
+    }
+
+    int ScheduleBridge::slot_density() const {
+        return m_settings ? m_settings->slot_density() : 1;
+    }
+
+    void ScheduleBridge::set_slot_density(int density) {
+        if (!m_settings) {
+            return;
+        }
+        QString error;
+        if (!m_settings->set_slot_density(density, &error)) {
+            report_error(error);
+            return;
+        }
+        emit displaySettingsChanged();
+    }
+
+    int ScheduleBridge::card_radius() const {
+        return m_settings ? m_settings->card_radius() : 1;
+    }
+
+    void ScheduleBridge::set_card_radius(int radius) {
+        if (!m_settings) {
+            return;
+        }
+        QString error;
+        if (!m_settings->set_card_radius(radius, &error)) {
+            report_error(error);
+            return;
+        }
+        emit displaySettingsChanged();
+    }
+
     QString ScheduleBridge::day_name(int day_of_week) const {
         return WeekCalculator::day_name(day_of_week);
     }

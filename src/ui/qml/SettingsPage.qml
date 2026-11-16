@@ -55,6 +55,53 @@ Item {
                 }
             }
 
+            // ------------------------------------------------------------ 显示设置
+            GroupBox {
+                Layout.fillWidth: true
+                Layout.margins: Metrics.spacing2xl
+                title: qsTr("显示")
+
+                GridLayout {
+                    anchors.fill: parent
+                    columns: settingsPage.pairColumns
+                    columnSpacing: Metrics.spacingLg
+                    rowSpacing: Metrics.spacingMd
+
+                    CheckBox {
+                        id: showWeekendCheck
+
+                        objectName: "showWeekendCheck"
+                        Layout.columnSpan: settingsPage.pairColumns
+                        text: qsTr("显示周六、周日")
+                        checked: schedule.showWeekend
+                    }
+
+                    Label {
+                        text: qsTr("格子高度")
+                    }
+                    ComboBox {
+                        id: slotDensitySelector
+
+                        objectName: "slotDensitySelector"
+                        Layout.fillWidth: true
+                        model: [qsTr("紧凑"), qsTr("标准"), qsTr("宽松")]
+                        currentIndex: schedule.slotDensity
+                    }
+
+                    Label {
+                        text: qsTr("卡片圆角")
+                    }
+                    ComboBox {
+                        id: cardRadiusSelector
+
+                        objectName: "cardRadiusSelector"
+                        Layout.fillWidth: true
+                        model: [qsTr("小"), qsTr("中"), qsTr("大")]
+                        currentIndex: schedule.cardRadius
+                    }
+                }
+            }
+
             // ------------------------------------------------------------ 目录设置
             GroupBox {
                 Layout.fillWidth: true

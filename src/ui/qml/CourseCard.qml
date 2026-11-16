@@ -38,7 +38,11 @@ Rectangle {
     readonly property bool dense: card.compact || card.width < card.denseWidth || card.height < card.denseHeight
     readonly property bool tight: card.width < card.tightWidth || card.height < card.tightHeight
 
-    radius: card.tight ? CourseCardStyle.tightRadius : CourseCardStyle.radius
+    // 显示设置“卡片圆角”：0 小 / 1 中 / 2 大；紧凑卡片不放大，避免文字贴边
+    radius: schedule.cardRadius === 0
+            ? CourseCardStyle.radiusSmall
+            : (schedule.cardRadius === 2 && !card.tight ? CourseCardStyle.radiusLarge
+               : (card.tight ? CourseCardStyle.tightRadius : CourseCardStyle.radius))
     color: cardColor
     border.width: CourseCardStyle.borderWidth
     border.color: Qt.darker(cardColor, CourseCardStyle.borderDarken)

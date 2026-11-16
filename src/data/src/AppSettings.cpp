@@ -169,6 +169,48 @@ namespace Schedule {
         return write_string(SettingsKeys::theme(), normalised, error_message);
     }
 
+    // ---------------------------------------------------------------- 显示设置
+
+    bool AppSettings::show_weekend() const {
+        return read_string(SettingsKeys::show_weekend(), QStringLiteral("1")) != QStringLiteral("0");
+    }
+
+    bool AppSettings::set_show_weekend(bool enabled, QString* error_message) {
+        return write_string(SettingsKeys::show_weekend(), enabled ? QStringLiteral("1") : QStringLiteral("0"), error_message);
+    }
+
+    int AppSettings::slot_density() const {
+        bool ok = false;
+        const int density = read_string(SettingsKeys::slot_density(), QStringLiteral("1")).toInt(&ok);
+        if (!ok || density < 0 || density > 2) {
+            return 1;
+        }
+        return density;
+    }
+
+    bool AppSettings::set_slot_density(int density, QString* error_message) {
+        if (density < 0 || density > 2) {
+            return fail(error_message, QStringLiteral("格子高度只支持 0 紧凑 / 1 标准 / 2 宽松"));
+        }
+        return write_string(SettingsKeys::slot_density(), QString::number(density), error_message);
+    }
+
+    int AppSettings::card_radius() const {
+        bool ok = false;
+        const int radius = read_string(SettingsKeys::card_radius(), QStringLiteral("1")).toInt(&ok);
+        if (!ok || radius < 0 || radius > 2) {
+            return 1;
+        }
+        return radius;
+    }
+
+    bool AppSettings::set_card_radius(int radius, QString* error_message) {
+        if (radius < 0 || radius > 2) {
+            return fail(error_message, QStringLiteral("课卡圆角只支持 0 小 / 1 中 / 2 大"));
+        }
+        return write_string(SettingsKeys::card_radius(), QString::number(radius), error_message);
+    }
+
     QString AppSettings::adapter_schedule_url() const {
         return read_string(SettingsKeys::adapter_schedule_url(), QString());
     }

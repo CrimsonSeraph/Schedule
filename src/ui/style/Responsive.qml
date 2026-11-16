@@ -50,7 +50,8 @@ QtObject {
     // 周视图：表头星期字号降一档的列宽，以及日期 / 节次时间的显示阈值
     readonly property int dayHeaderCompactWidth: 72
     readonly property int dayHeaderDateWidth: 52
-    readonly property int slotTimeVisibleHeight: 48
+    // 紧凑档（40dp）也尽量保留上下课时间；低于 36dp 才隐藏
+    readonly property int slotTimeVisibleHeight: 36
 
     // ---------------------------------------------------------------- 响应式尺寸
     // 日视图星期选择器：宽度随可用宽度收缩，再夹在上下限之间
@@ -63,6 +64,8 @@ QtObject {
     // 周视图节次高度 / 节次栏宽度：移动端竖屏与横屏（低高度）、极窄屏
     readonly property int mobileSlotHeight: 56
     readonly property int mobileSlotHeightCompact: 48
+    readonly property int mobileSlotHeightDense: 40
+    readonly property int mobileSlotHeightLoose: 64
     readonly property int mobileSlotColumnWidth: 56
     readonly property int mobileSlotColumnWidthNarrow: 44
 

@@ -206,7 +206,11 @@ ApplicationWindow {
         WeekView {
             id: weekPage
 
-            slotHeight: (root.shortHeight || root.landscape) ? Responsive.mobileSlotHeightCompact : Responsive.mobileSlotHeight
+            // 显示设置“格子高度”：紧凑 / 标准 / 宽松；横屏或分屏仍优先紧凑
+            slotHeight: (root.shortHeight || root.landscape) ? Responsive.mobileSlotHeightCompact
+                        : (schedule.slotDensity === 0 ? Responsive.mobileSlotHeightDense
+                           : schedule.slotDensity === 2 ? Responsive.mobileSlotHeightLoose
+                           : Responsive.mobileSlotHeight)
             slotColumnWidth: root.narrow ? Responsive.mobileSlotColumnWidthNarrow : Responsive.mobileSlotColumnWidth
             // 手机竖屏优先整周可见：允许 7 列压到 40dp，日期自动隐藏、课卡进入 tight 模式
             minDayWidth: Responsive.mobileMinDayWidth
