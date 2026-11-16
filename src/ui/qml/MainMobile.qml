@@ -56,14 +56,21 @@ ApplicationWindow {
         color: Theme.accent
         implicitHeight: SafeArea.margins.top + (root.shortHeight ? 0
             : (root.currentTab <= 1 ? Metrics.appBarHeight + Metrics.weekBarHeight + Metrics.spacingSm
+                                        + Metrics.weekSliderHeight + Metrics.spacingMd
                                     : Metrics.appBarHeight))
 
         ColumnLayout {
             id: headerColumn
 
             anchors.fill: parent
-            anchors.topMargin: SafeArea.margins.top
             spacing: 0
+
+            // 状态栏占位：用布局内的 spacer 而不是 anchors.topMargin，
+            // 避免 Android 窗口 header 的绘制与命中区域出现上下偏移。
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: SafeArea.margins.top
+            }
 
             // 页面标题：课表页显示学期名，课程 / 设置显示页面名
             RowLayout {
@@ -198,6 +205,53 @@ ApplicationWindow {
                         font.pixelSize: Typography.fontBodyLarge
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
+                    }
+                }
+            }
+
+            // 周数滑杆：左右拖动快速切换周次，与周条、上一周/下一周保持同步
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.spacingXl
+                Layout.rightMargin: Metrics.spacingXl
+                Layout.bottomMargin: Metrics.spacingMd
+                Layout.preferredHeight: Metrics.weekSliderHeight
+                visible: root.currentTab <= 1 && !root.shortHeight
+
+                Slider {
+                    id: weekSlider
+
+                    objectName: "weekSlider"
+                    Layout.fillWidth: true
+                    from: 1
+                    to: Math.max(1, schedule.totalWeeks)
+                    stepSize: 1
+                    snapMode: Slider.SnapAlways
+                    value: schedule.selectedWeek
+
+                    background: Rectangle {
+                        x: weekSlider.leftPadding
+                        y: weekSlider.topPadding + weekSlider.availableHeight / 2 - height / 2
+                        width: weekSlider.availableWidth
+                        height: 2
+                        radius: 1
+                        color: Qt.rgba(1, 1, 1, 0.35)
+
+                        Rectangle {
+                            width: weekSlider.visualPosition * parent.width
+                            height: parent.height
+                            radius: 1
+                            color: "#FFFFFF"
+                        }
+                    }
+
+                    handle: Rectangle {
+                        x: weekSlider.leftPadding + weekSlider.visualPosition * (weekSlider.availableWidth - width)
+                        y: weekSlider.topPadding + weekSlider.availableHeight / 2 - height / 2
+                        width: 14
+                        height: 14
+                        radius: 7
+                        color: "#FFFFFF"
                     }
                 }
             }

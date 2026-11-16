@@ -42,6 +42,7 @@ QtObject {
 
     // 移动端主界面：周条 / 状态条 / 底部导航
     readonly property int weekBarHeight: 46
+    readonly property int weekSliderHeight: 24
     readonly property int statusBarHeight: 28
     readonly property int navBarHeight: 56
 

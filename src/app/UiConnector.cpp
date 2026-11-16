@@ -288,12 +288,24 @@ namespace Schedule {
             }
         });
 
+        on_signal("weekSlider", "moved()", [this]() {
+            QObject* slider = find("weekSlider");
+            if (slider) {
+                m_bridge->select_week(slider->property("value").toInt());
+            }
+        });
+
         connect(m_bridge, &ScheduleBridge::selectedWeekChanged, this, [this]() {
+            const int week = m_bridge->property("selectedWeek").toInt();
+            if (QObject* slider = find("weekSlider")) {
+                if (slider->property("value").toInt() != week) {
+                    slider->setProperty("value", week);
+                }
+            }
             QObject* combo = find("weekSelector");
             if (!combo) {
                 return;
             }
-            const int week = m_bridge->property("selectedWeek").toInt();
             const int index = qMax(0, week - 1);
             if (combo->property("currentIndex").toInt() == index) {
                 return;
@@ -308,6 +320,9 @@ namespace Schedule {
             m_syncing_week_selector = true;
             combo->setProperty("currentIndex", qMax(0, week - 1));
             m_syncing_week_selector = false;
+            if (QObject* slider = find("weekSlider")) {
+                slider->setProperty("value", week);
+            }
         }
 
         on_signal("daySelector", "currentIndexChanged()", [this]() {
