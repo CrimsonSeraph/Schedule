@@ -187,6 +187,9 @@ namespace Schedule {
         /** @brief 在应用内横幅上展示一条提醒；`seconds` 秒后自动隐藏。 */
         void show_banner(const QString& title, const QString& message, int seconds = 8);
 
+        /** @brief 立即隐藏应用内提醒横幅。 */
+        void hide_banner();
+
         /** @brief 首次填充界面初值（学期表单、设置页文本框）。 */
         void prime_widgets();
 

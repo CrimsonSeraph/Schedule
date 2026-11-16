@@ -137,6 +137,21 @@ namespace Schedule {
         return write_string(SettingsKeys::reminder_enabled(), enabled ? QStringLiteral("1") : QStringLiteral("0"), error_message);
     }
 
+    bool AppSettings::course_reminder_enabled(const QString& course_id) const {
+        if (course_id.isEmpty()) {
+            return true;
+        }
+        return read_string(QStringLiteral("reminder/course/%1").arg(course_id), QStringLiteral("1")) != QStringLiteral("0");
+    }
+
+    bool AppSettings::set_course_reminder_enabled(const QString& course_id, bool enabled, QString* error_message) {
+        if (course_id.isEmpty()) {
+            return true;
+        }
+        return write_string(QStringLiteral("reminder/course/%1").arg(course_id),
+            enabled ? QStringLiteral("1") : QStringLiteral("0"), error_message);
+    }
+
     int AppSettings::reminder_minutes() const {
         bool ok = false;
         const int minutes = read_string(SettingsKeys::reminder_minutes(), QString::number(default_reminder_minutes())).toInt(&ok);

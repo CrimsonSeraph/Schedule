@@ -119,6 +119,15 @@ namespace Schedule {
         /** @brief 立刻弹出一条测试通知（用于验证权限与后端）。 */
         void show_test_notification();
 
+        /** @brief 把最近一条提醒推迟指定分钟数后再提醒一次。 */
+        Q_INVOKABLE void snooze(int minutes = 5);
+
+        /** @return 指定课程是否启用上课提醒（默认启用）。 */
+        Q_INVOKABLE bool course_reminder_enabled(const QString& course_id) const;
+
+        /** @brief 启用 / 停用指定课程的上课提醒。 */
+        Q_INVOKABLE void set_course_reminder_enabled(const QString& course_id, bool enabled);
+
     protected:
         /**
          * @brief 监听应用前后台切换事件。
@@ -183,6 +192,13 @@ namespace Schedule {
 
         /** 轮询定时器。 */
         QTimer m_timer;
+
+        /** 「稍后提醒」单次定时器。 */
+        QTimer m_snooze_timer;
+
+        /** 最近一次通知的标题 / 正文，供稍后提醒复用。 */
+        QString m_last_title;
+        QString m_last_message;
 
         /** 已通知过的提醒键，避免重复弹出。 */
         QSet<QString> m_notified_keys;

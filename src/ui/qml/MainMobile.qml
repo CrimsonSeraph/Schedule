@@ -400,7 +400,7 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: root.shortHeight ? Metrics.bannerBottomMarginShort : Metrics.bannerBottomMargin
         width: Responsive.bannerWidth(parent.width)
-        height: notificationBanner.bannerTitle.length > 0 ? Metrics.bannerHeight : 0
+        height: notificationBanner.bannerTitle.length > 0 ? Metrics.bannerHeight + 40 : 0
         visible: height > 0
         radius: Metrics.radiusLg
         color: Theme.bannerBg
@@ -426,6 +426,28 @@ ApplicationWindow {
                 color: Theme.bannerSubText
                 font.pixelSize: Typography.fontBody
                 elide: Text.ElideRight
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: Metrics.spacingSm
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                AppButton {
+                    objectName: "bannerSnoozeButton"
+                    text: qsTr("5 分钟后提醒")
+                    implicitHeight: 32
+                }
+
+                AppButton {
+                    objectName: "bannerDismissButton"
+                    text: qsTr("知道了")
+                    primary: true
+                    implicitHeight: 32
+                }
             }
         }
     }

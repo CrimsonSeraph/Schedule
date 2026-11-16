@@ -27,6 +27,9 @@ Dialog {
     // C++ 在打开详情窗前写入：本周备注（为空表示本周没有单独备注）
     property string weekNote: ""
 
+    // C++ 在打开详情窗前写入：该课程是否启用上课提醒
+    property bool reminderEnabled: true
+
     // 移动端用底部弹层呈现；桌面端保持居中对话框
     property bool sheetMode: false
 
@@ -96,6 +99,15 @@ Dialog {
                             font.pixelSize: Typography.fontHeading
                             color: Theme.textPrimary
                             wrapMode: Text.WordWrap
+                        }
+
+                        CheckBox {
+                            id: courseDetailReminderCheck
+
+                            objectName: "courseDetailReminderCheck"
+                            Layout.columnSpan: courseDetailDialog.narrowForm ? 1 : 2
+                            text: qsTr("上课提醒")
+                            checked: courseDetailDialog.reminderEnabled
                         }
 
                         Label {

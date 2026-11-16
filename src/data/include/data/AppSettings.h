@@ -80,6 +80,12 @@ namespace Schedule {
         /** @brief 设置是否启用提醒。 */
         bool set_reminder_enabled(bool enabled, QString* error_message = nullptr);
 
+        /** @return 指定课程是否启用上课提醒（默认 true）。 */
+        bool course_reminder_enabled(const QString& course_id) const;
+
+        /** @brief 设置指定课程的上课提醒开关。 */
+        bool set_course_reminder_enabled(const QString& course_id, bool enabled, QString* error_message = nullptr);
+
         /** @return 提前提醒分钟数；取值非法时回退为 `default_reminder_minutes()`。 */
         int reminder_minutes() const;
 

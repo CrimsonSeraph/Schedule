@@ -26,6 +26,13 @@ namespace Schedule {
         m_timer.setInterval(POLL_INTERVAL_MS);
         connect(&m_timer, &QTimer::timeout, this, &NotificationService::tick);
 
+        m_snooze_timer.setSingleShot(true);
+        connect(&m_snooze_timer, &QTimer::timeout, this, [this]() {
+            if (!m_last_title.isEmpty()) {
+                notify(m_last_title, m_last_message);
+            }
+        });
+
         if (m_service) {
             // 课表变化后立刻重算，保证设置页与状态栏展示的是最新数据
             connect(m_service, &ScheduleService::courses_changed, this, &NotificationService::refresh);
@@ -180,9 +187,24 @@ namespace Schedule {
     void NotificationService::refresh() {
         const int minutes = minutes_before();
 
-        m_today = ReminderScheduler::for_date(snapshot(), QDate::currentDate(), minutes);
+        const QList<Reminder> all_today = ReminderScheduler::for_date(snapshot(), QDate::currentDate(), minutes);
+        m_today.clear();
+        for (const Reminder& reminder : all_today) {
+            if (course_reminder_enabled(reminder.course_id)) {
+                m_today.append(reminder);
+            }
+        }
 
-        m_has_next = ReminderScheduler::next(snapshot(), QDateTime::currentDateTime(), minutes, &m_next);
+        // 逐条找第一条未静音课程的提醒，避免“下一次”显示已静音的课程
+        m_has_next = false;
+        const QList<Reminder> upcoming = ReminderScheduler::upcoming(snapshot(), QDateTime::currentDateTime(), minutes, 64);
+        for (const Reminder& reminder : upcoming) {
+            if (course_reminder_enabled(reminder.course_id)) {
+                m_next = reminder;
+                m_has_next = true;
+                break;
+            }
+        }
         if (!m_has_next) {
             m_next = Reminder();
         }
@@ -213,6 +235,9 @@ namespace Schedule {
             if (!ReminderScheduler::is_due(reminder, now)) {
                 continue;
             }
+            if (!course_reminder_enabled(reminder.course_id)) {
+                continue;
+            }
             const QString key = reminder.unique_key();
             if (m_notified_keys.contains(key)) {
                 continue;
@@ -228,9 +253,32 @@ namespace Schedule {
             QStringLiteral("如果看到系统通知，说明 %1 工作正常。").arg(backend_name()));
     }
 
+    void NotificationService::snooze(int minutes) {
+        if (!enabled() || m_last_title.isEmpty() || minutes <= 0) {
+            return;
+        }
+        m_snooze_timer.start(minutes * 60 * 1000);
+    }
+
+    bool NotificationService::course_reminder_enabled(const QString& course_id) const {
+        return !m_settings || m_settings->course_reminder_enabled(course_id);
+    }
+
+    void NotificationService::set_course_reminder_enabled(const QString& course_id, bool enabled) {
+        if (!m_settings) {
+            return;
+        }
+        QString error;
+        m_settings->set_course_reminder_enabled(course_id, enabled, &error);
+        refresh();
+    }
+
     // -------------------------------------------------------------------- 内部
 
     void NotificationService::notify(const QString& title, const QString& message) {
+        m_last_title = title;
+        m_last_message = message;
+
         // 1) 应用内横幅：即使系统通知不可用也不会丢失提醒
         m_last_notification_text = QStringLiteral("%1 · %2").arg(title, message);
         emit notificationRequested(title, message);

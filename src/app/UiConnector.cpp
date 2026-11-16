@@ -550,6 +550,13 @@ namespace Schedule {
             }
         });
 
+        on_signal("courseDetailReminderCheck", "toggled(bool)", [this]() {
+            QObject* check = find("courseDetailReminderCheck");
+            if (m_notifications && !m_detail_course_id.isEmpty()) {
+                m_notifications->set_course_reminder_enabled(m_detail_course_id, check && check->property("checked").toBool());
+            }
+        });
+
         on_click("courseDetailCopyButton", [this]() {
             const QString course_id = m_detail_course_id;
             invoke(m_course_detail, "close");
@@ -845,6 +852,7 @@ namespace Schedule {
         set_property(m_course_detail, "course", course);
         set_property(m_course_detail, "sessions", course.value(QStringLiteral("sessions")));
         set_property(m_course_detail, "weekNote", m_bridge->course_note(course_id, m_bridge->selected_week()));
+        set_property(m_course_detail, "reminderEnabled", m_notifications ? m_notifications->course_reminder_enabled(course_id) : true);
         invoke(m_course_detail, "open");
     }
 
@@ -1110,8 +1118,15 @@ namespace Schedule {
 
         // 系统通知不可用时，应用内横幅保证提醒不会丢失
         connect(service, &NotificationService::notificationRequested, this, [this](const QString& title, const QString& message) {
-            show_banner(title, message);
+            // 横幅带「稍后提醒 / 知道了」，停留久一点
+            show_banner(title, message, 15);
         });
+
+        on_click("bannerSnoozeButton", [this, service]() {
+            service->snooze(5);
+            hide_banner();
+        });
+        on_click("bannerDismissButton", [this]() { hide_banner(); });
     }
 
     void UiConnector::show_banner(const QString& title, const QString& message, int seconds) {
@@ -1132,6 +1147,14 @@ namespace Schedule {
                 current->setProperty("bannerMessage", QString());
             }
         });
+    }
+
+    void UiConnector::hide_banner() {
+        ++m_banner_generation;
+        if (QObject* banner = find("notificationBanner")) {
+            banner->setProperty("bannerTitle", QString());
+            banner->setProperty("bannerMessage", QString());
+        }
     }
 
     // ------------------------------------------------------------动态卡片
