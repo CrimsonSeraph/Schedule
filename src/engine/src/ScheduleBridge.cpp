@@ -5,6 +5,8 @@
 #include "core/service/WeekCalculator.h"
 
 #include <QDate>
+#include <QGuiApplication>
+#include <QStyleHints>
 
 namespace Schedule {
 
@@ -81,6 +83,15 @@ namespace Schedule {
         m_import_export = new ImportExportBridge(m_service, m_repository, m_settings, this);
 
         connect_service();
+
+        // "system" 主题跟随系统深浅色；系统切换时通知 QML 重新取色
+        if (QStyleHints* hints = QGuiApplication::styleHints()) {
+            connect(hints, &QStyleHints::colorSchemeChanged, this, [this](Qt::ColorScheme) {
+                if (theme() == QStringLiteral("system")) {
+                    emit themeChanged();
+                }
+            });
+        }
     }
 
     ScheduleBridge::~ScheduleBridge() = default;
@@ -353,6 +364,33 @@ namespace Schedule {
 
     QString ScheduleBridge::last_info() const {
         return m_last_info;
+    }
+
+    QString ScheduleBridge::theme() const {
+        return m_settings ? m_settings->theme() : QStringLiteral("system");
+    }
+
+    bool ScheduleBridge::dark_mode() const {
+        const QString current = theme();
+        if (current == QStringLiteral("dark")) {
+            return true;
+        }
+        if (current == QStringLiteral("light")) {
+            return false;
+        }
+        return QGuiApplication::styleHints() && QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+    }
+
+    void ScheduleBridge::set_theme(const QString& theme) {
+        if (!m_settings) {
+            return;
+        }
+        QString error;
+        if (!m_settings->set_theme(theme, &error)) {
+            report_error(error);
+            return;
+        }
+        emit themeChanged();
     }
 
     // ---------------------------------------------------------------- 显示设置

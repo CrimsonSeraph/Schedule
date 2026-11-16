@@ -412,6 +412,12 @@ namespace Schedule {
         on_signal("cardRadiusSelector", "currentIndexChanged()", [this]() {
             m_bridge->set_card_radius(combo_index(find("cardRadiusSelector")));
         });
+        on_signal("themeSelector", "currentIndexChanged()", [this]() {
+            const int index = combo_index(find("themeSelector"));
+            m_bridge->set_theme(index == 1 ? QStringLiteral("light")
+                                          : index == 2 ? QStringLiteral("dark")
+                                                       : QStringLiteral("system"));
+        });
 
         // --- 默认导入目录
         on_click("chooseImportDirButton", [this]() {

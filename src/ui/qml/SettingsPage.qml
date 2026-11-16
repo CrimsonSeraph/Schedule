@@ -77,6 +77,18 @@ Item {
                     }
 
                     Label {
+                        text: qsTr("主题")
+                    }
+                    ComboBox {
+                        id: themeSelector
+
+                        objectName: "themeSelector"
+                        Layout.fillWidth: true
+                        model: [qsTr("跟随系统"), qsTr("浅色"), qsTr("深色")]
+                        currentIndex: schedule.theme === "light" ? 1 : schedule.theme === "dark" ? 2 : 0
+                    }
+
+                    Label {
                         text: qsTr("格子高度")
                     }
                     ComboBox {

@@ -22,12 +22,21 @@ ApplicationWindow {
     width: 480
     height: 860
     visible: true
+    color: Theme.surface
     title: qsTr("Schedule - 课表")
 
     // Material 控件跟随项目主题色：默认 accent 是粉/橙，和蓝白设计冲突；
     // primary 同时决定顶部 ToolBar 的底色，与内嵌浏览器页的蓝色顶栏保持一致。
     Material.primary: Theme.accent
     Material.accent: Theme.accent
+    Material.theme: Theme.dark ? Material.Dark : Material.Light
+
+    // 主题：schedule.darkMode 解析 system / light / dark，驱动 Theme 的两套色板
+    Binding {
+        target: Theme
+        property: "dark"
+        value: schedule.darkMode
+    }
 
     // ------------------------------------------------------------ 响应式断点
     readonly property bool narrow: Responsive.isTiny(width)
@@ -340,7 +349,7 @@ ApplicationWindow {
         height: notificationBanner.bannerTitle.length > 0 ? Metrics.bannerHeight : 0
         visible: height > 0
         radius: Metrics.radiusLg
-        color: Theme.textPrimary
+        color: Theme.bannerBg
         opacity: Metrics.bannerOpacity
 
         Column {

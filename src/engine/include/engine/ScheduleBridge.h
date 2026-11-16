@@ -120,6 +120,12 @@ namespace Schedule {
         /** 课卡圆角档位（0 小 / 1 中 / 2 大）。 */
         Q_PROPERTY(int cardRadius READ card_radius NOTIFY displaySettingsChanged)
 
+        /** 界面主题（"system" / "light" / "dark"）。 */
+        Q_PROPERTY(QString theme READ theme NOTIFY themeChanged)
+
+        /** 当前是否使用深色配色（"system" 时跟随系统）。 */
+        Q_PROPERTY(bool darkMode READ dark_mode NOTIFY themeChanged)
+
     public:
         /**
          * @param service    课表服务（不持有所有权）
@@ -161,6 +167,15 @@ namespace Schedule {
 
         /** @brief 设置课卡圆角档位。 */
         Q_INVOKABLE void set_card_radius(int radius);
+
+        /** @return 界面主题（"system" / "light" / "dark"）。 */
+        QString theme() const;
+
+        /** @return 当前是否使用深色配色；"system" 时读取系统配色。 */
+        bool dark_mode() const;
+
+        /** @brief 设置界面主题。 */
+        Q_INVOKABLE void set_theme(const QString& theme);
 
         // ------------------------------------------------------------ 属性读取
 
@@ -304,6 +319,9 @@ namespace Schedule {
 
         /** 显示设置（周六日 / 格子高度 / 课卡圆角）变化后发出。 */
         void displaySettingsChanged();
+
+        /** 界面主题或系统配色变化后发出。 */
+        void themeChanged();
 
     private:
         /** @brief 建立内部信号连接（服务 → 模型刷新）。 */

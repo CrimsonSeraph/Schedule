@@ -29,6 +29,7 @@ target_link_libraries(ScheduleEngine
 		ScheduleCore
 		ScheduleData
 		Qt6::Core
+		Qt6::Gui
 		Qt6::Qml
 )
 
