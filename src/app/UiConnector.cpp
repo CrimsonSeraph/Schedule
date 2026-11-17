@@ -48,7 +48,7 @@ namespace Schedule {
          * 其 qtprovider_paths.xml 已覆盖 external-files 目录，无需再新增 provider。
          */
 #if defined(Q_OS_ANDROID)
-        bool share_image_android(const QString& path) {
+        bool share_file_android(const QString& path, const QString& mime, const QString& title) {
             QJniObject activity = QJniObject::callStaticObjectMethod(
                 "org/qtproject/qt/android/QtNative", "activity", "()Landroid/app/Activity;");
             if (!activity.isValid()) {
@@ -72,7 +72,7 @@ namespace Schedule {
             intent.callObjectMethod("setAction", "(Ljava/lang/String;)Landroid/content/Intent;",
                 QJniObject::fromString(QStringLiteral("android.intent.action.SEND")).object());
             intent.callObjectMethod("setType", "(Ljava/lang/String;)Landroid/content/Intent;",
-                QJniObject::fromString(QStringLiteral("image/png")).object());
+                QJniObject::fromString(mime).object());
             intent.callObjectMethod("putExtra", "(Ljava/lang/String;Landroid/os/Parcelable;)Landroid/content/Intent;",
                 QJniObject::fromString(QStringLiteral("android.intent.extra.STREAM")).object(), uri.object());
             intent.callObjectMethod("addFlags", "(I)Landroid/content/Intent;", 1); // FLAG_GRANT_READ_URI_PERMISSION
@@ -80,7 +80,7 @@ namespace Schedule {
             QJniObject chooser = QJniObject::callStaticObjectMethod(
                 "android/content/Intent", "createChooser",
                 "(Landroid/content/Intent;Ljava/lang/CharSequence;)Landroid/content/Intent;",
-                intent.object(), QJniObject::fromString(QStringLiteral("分享课表图片")).object());
+                intent.object(), QJniObject::fromString(title).object());
             activity.callMethod<void>("startActivity", "(Landroid/content/Intent;)V", chooser.object());
             qInfo() << "[share] 已打开系统分享面板" << path;
             return true;
@@ -704,6 +704,50 @@ namespace Schedule {
             else {
                 m_bridge->post_info(QStringLiteral("日志已导出：%1").arg(path));
             }
+        });
+
+        on_click("shareLogsButton", [this]() {
+            auto* io = import_export();
+            const QString target = QDir(io->default_export_dir()).filePath(QStringLiteral("logs"));
+            QString error;
+            const QString path = Logging::export_logs(target, &error);
+            if (path.isEmpty()) {
+                m_bridge->post_error(QStringLiteral("导出日志失败：%1").arg(error));
+                return;
+            }
+#if defined(Q_OS_ANDROID)
+            if (share_file_android(path, QStringLiteral("text/plain"), QStringLiteral("分享日志"))) {
+                m_bridge->post_info(QStringLiteral("日志已导出，已打开分享面板：%1").arg(path));
+            }
+            else {
+                m_bridge->post_error(QStringLiteral("日志已导出，但打开分享面板失败：%1").arg(path));
+            }
+#else
+            QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+            m_bridge->post_info(QStringLiteral("日志已导出：%1").arg(path));
+#endif
+        });
+
+        on_signal("logLevelSelector", "currentIndexChanged()", [this]() {
+            const int level = combo_index(find("logLevelSelector"));
+            if (level < 0) {
+                return;
+            }
+            m_bridge->set_log_level(level);
+            Logging::set_level(static_cast<Logging::Level>(level));
+            qInfo().noquote() << "[log] 日志级别切换为" << level;
+        });
+
+        on_signal("logRetentionSelector", "currentIndexChanged()", [this]() {
+            static const int retention_days[] = {1, 3, 7, 30};
+            const int index = combo_index(find("logRetentionSelector"));
+            if (index < 0 || index >= 4) {
+                return;
+            }
+            const int days = retention_days[index];
+            m_bridge->set_log_retention_days(days);
+            Logging::prune_old_logs(days);
+            qInfo().noquote() << "[log] 日志保留天数切换为" << days;
         });
     }
 
@@ -1568,7 +1612,7 @@ namespace Schedule {
                         m_bridge->post_info(QStringLiteral("课表图片已保存：%1").arg(path));
                     }
 #if defined(Q_OS_ANDROID)
-                    else if (share_image_android(path)) {
+                    else if (share_file_android(path, QStringLiteral("image/png"), QStringLiteral("分享课表图片"))) {
                         m_bridge->post_info(QStringLiteral("课表图片已保存，已打开分享面板：%1").arg(path));
                     }
                     else {

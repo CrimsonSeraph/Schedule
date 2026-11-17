@@ -202,6 +202,22 @@ namespace Schedule {
         return write_string(SettingsKeys::show_other_weeks(), enabled ? QStringLiteral("1") : QStringLiteral("0"), error_message);
     }
 
+    int AppSettings::log_level() const {
+        return qBound(0, read_string(SettingsKeys::log_level(), QStringLiteral("0")).toInt(), 3);
+    }
+
+    bool AppSettings::set_log_level(int level, QString* error_message) {
+        return write_string(SettingsKeys::log_level(), QString::number(qBound(0, level, 3)), error_message);
+    }
+
+    int AppSettings::log_retention_days() const {
+        return qBound(1, read_string(SettingsKeys::log_retention_days(), QStringLiteral("7")).toInt(), 365);
+    }
+
+    bool AppSettings::set_log_retention_days(int days, QString* error_message) {
+        return write_string(SettingsKeys::log_retention_days(), QString::number(qBound(1, days, 365)), error_message);
+    }
+
     int AppSettings::slot_density() const {
         bool ok = false;
         const int density = read_string(SettingsKeys::slot_density(), QStringLiteral("1")).toInt(&ok);

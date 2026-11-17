@@ -42,6 +42,14 @@ namespace Schedule {
         return QStringLiteral("ui/show_other_weeks");
     }
 
+    QString SettingsKeys::log_level() {
+        return QStringLiteral("log/level");
+    }
+
+    QString SettingsKeys::log_retention_days() {
+        return QStringLiteral("log/retention_days");
+    }
+
     QString SettingsKeys::slot_density() {
         return QStringLiteral("ui/slot_density");
     }
@@ -70,6 +78,8 @@ namespace Schedule {
             theme(),
             show_weekend(),
             show_other_weeks(),
+            log_level(),
+            log_retention_days(),
             slot_density(),
             card_radius(),
             adapter_schedule_url(),

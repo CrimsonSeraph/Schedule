@@ -31,6 +31,10 @@ Level level();
 /// @return 日志目录（未安装时为空）。
 QString log_directory();
 
+/// @brief 删除 keep_days 天之前的按天日志；启动与修改保留天数时调用。
+/// @return 实际删除的文件数。
+int prune_old_logs(int keep_days);
+
 /// @brief 把日志目录下全部日志按时间顺序合并导出到 target_directory。
 /// @param target_directory 目标目录（不存在则创建）。
 /// @param error_message 可选错误输出。

@@ -45,6 +45,12 @@ namespace Schedule {
         /** 是否显示非本周课程（"1" / "0"）。 */
         static QString show_other_weeks();
 
+        /** 日志落盘级别：0=调试 1=信息 2=警告 3=错误。 */
+        static QString log_level();
+
+        /** 日志保留天数（默认 7）。 */
+        static QString log_retention_days();
+
         /** 周视图格子高度档位（"0" 紧凑 / "1" 标准 / "2" 宽松）。 */
         static QString slot_density();
 

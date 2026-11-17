@@ -588,6 +588,38 @@ namespace Schedule {
         emit displaySettingsChanged();
     }
 
+    int ScheduleBridge::log_level() const {
+        return m_settings ? m_settings->log_level() : 0;
+    }
+
+    void ScheduleBridge::set_log_level(int level) {
+        if (!m_settings) {
+            return;
+        }
+        QString error;
+        if (!m_settings->set_log_level(level, &error)) {
+            report_error(error);
+            return;
+        }
+        emit logSettingsChanged();
+    }
+
+    int ScheduleBridge::log_retention_days() const {
+        return m_settings ? m_settings->log_retention_days() : 7;
+    }
+
+    void ScheduleBridge::set_log_retention_days(int days) {
+        if (!m_settings) {
+            return;
+        }
+        QString error;
+        if (!m_settings->set_log_retention_days(days, &error)) {
+            report_error(error);
+            return;
+        }
+        emit logSettingsChanged();
+    }
+
     void ScheduleBridge::set_card_radius(int radius) {
         if (!m_settings) {
             return;

@@ -86,6 +86,10 @@ int main(int argc, char* argv[]) {
     }
 
     Schedule::AppSettings app_settings(repository.get());
+    // 应用用户保存的日志级别与保留天数（日志在 AppSettings 之前就已开始落盘，这里补上偏好）
+    Schedule::Logging::set_level(static_cast<Schedule::Logging::Level>(app_settings.log_level()));
+    Schedule::Logging::prune_old_logs(app_settings.log_retention_days());
+    qInfo().noquote() << "[app] 日志级别" << app_settings.log_level() << "保留" << app_settings.log_retention_days() << "天";
     Schedule::ScheduleService schedule_service;
 
     // ------------------------------------------------------------ 教务适配器

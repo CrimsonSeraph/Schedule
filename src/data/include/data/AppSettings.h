@@ -114,6 +114,18 @@ namespace Schedule {
         /** @brief 设置是否显示非本周课程。 */
         bool set_show_other_weeks(bool enabled, QString* error_message = nullptr);
 
+        /** @return 日志落盘级别（0=调试 1=信息 2=警告 3=错误，默认 0）。 */
+        int log_level() const;
+
+        /** @brief 设置日志落盘级别。 */
+        bool set_log_level(int level, QString* error_message = nullptr);
+
+        /** @return 日志保留天数（默认 7）。 */
+        int log_retention_days() const;
+
+        /** @brief 设置日志保留天数。 */
+        bool set_log_retention_days(int days, QString* error_message = nullptr);
+
         /** @return 格子高度档位：0 紧凑 / 1 标准 / 2 宽松（默认 1）。 */
         int slot_density() const;
 

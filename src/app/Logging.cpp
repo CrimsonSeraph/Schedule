@@ -2,6 +2,7 @@
 
 #include <QDate>
 #include <QDateTime>
+#include <QRegularExpression>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -153,6 +154,37 @@ namespace Schedule::Logging {
     QString log_directory() {
         QMutexLocker lock(&g_mutex);
         return g_dir;
+    }
+
+    int prune_old_logs(int keep_days) {
+        const int days = qBound(1, keep_days, 365);
+        const QDate cutoff = QDate::currentDate().addDays(-days);
+        int removed = 0;
+        {
+            QMutexLocker lock(&g_mutex);
+            if (g_dir.isEmpty()) {
+                return 0;
+            }
+            const QDir dir(g_dir);
+            const QFileInfoList files = dir.entryInfoList(
+                QStringList{QStringLiteral("schedule-*.log"), QStringLiteral("schedule-*.log.1")},
+                QDir::Files, QDir::Name);
+            const QRegularExpression pattern(QStringLiteral("^schedule-(\\d{8})\\.log"));
+            for (const QFileInfo& info : files) {
+                const QRegularExpressionMatch match = pattern.match(info.fileName());
+                if (!match.hasMatch()) {
+                    continue;
+                }
+                const QDate date = QDate::fromString(match.captured(1), QStringLiteral("yyyyMMdd"));
+                if (date.isValid() && date < cutoff && QFile::remove(info.absoluteFilePath())) {
+                    ++removed;
+                }
+            }
+        }
+        if (removed > 0) {
+            qInfo().noquote() << "[log] 已清理" << removed << "个超过" << days << "天的日志文件";
+        }
+        return removed;
     }
 
     QString export_logs(const QString& target_directory, QString* error_message) {

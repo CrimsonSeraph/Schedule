@@ -123,6 +123,12 @@ namespace Schedule {
         /** 是否在周视图中显示非本周课程（幽灵卡）。 */
         Q_PROPERTY(bool showOtherWeeks READ show_other_weeks NOTIFY displaySettingsChanged)
 
+        /** 日志落盘级别：0=调试 1=信息 2=警告 3=错误。 */
+        Q_PROPERTY(int logLevel READ log_level NOTIFY logSettingsChanged)
+
+        /** 日志保留天数。 */
+        Q_PROPERTY(int logRetentionDays READ log_retention_days NOTIFY logSettingsChanged)
+
         /** 界面主题（"system" / "light" / "dark"）。 */
         Q_PROPERTY(QString theme READ theme NOTIFY themeChanged)
 
@@ -182,6 +188,18 @@ namespace Schedule {
 
         /** @brief 设置是否显示非本周课程。 */
         Q_INVOKABLE void set_show_other_weeks(bool enabled);
+
+        /** @return 日志落盘级别。 */
+        int log_level() const;
+
+        /** @brief 设置日志落盘级别（只持久化，实际 Logging 级别由 app 层同步设置）。 */
+        Q_INVOKABLE void set_log_level(int level);
+
+        /** @return 日志保留天数。 */
+        int log_retention_days() const;
+
+        /** @brief 设置日志保留天数。 */
+        Q_INVOKABLE void set_log_retention_days(int days);
 
         /** @return 界面主题（"system" / "light" / "dark"）。 */
         QString theme() const;
@@ -367,6 +385,9 @@ namespace Schedule {
 
         /** 学期 / 课表列表或当前学期变化后发出。 */
         void semestersChanged();
+
+        /** 日志级别 / 保留天数变化后发出。 */
+        void logSettingsChanged();
 
     private:
         /** @brief 建立内部信号连接（服务 → 模型刷新）。 */

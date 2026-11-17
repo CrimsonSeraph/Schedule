@@ -718,6 +718,30 @@ Item {
                             color: Theme.textSecondary
                             elide: Text.ElideMiddle
                         }
+
+                        Label {
+                            text: qsTr("日志级别")
+                        }
+                        ComboBox {
+                            id: logLevelSelector
+
+                            objectName: "logLevelSelector"
+                            Layout.fillWidth: true
+                            model: [qsTr("调试"), qsTr("信息"), qsTr("警告"), qsTr("错误")]
+                            currentIndex: schedule.logLevel
+                        }
+
+                        Label {
+                            text: qsTr("保留天数")
+                        }
+                        ComboBox {
+                            id: logRetentionSelector
+
+                            objectName: "logRetentionSelector"
+                            Layout.fillWidth: true
+                            model: [qsTr("1 天"), qsTr("3 天"), qsTr("7 天"), qsTr("30 天")]
+                            currentIndex: Math.max(0, [1, 3, 7, 30].indexOf(schedule.logRetentionDays))
+                        }
                     }
 
                     Flow {
@@ -728,6 +752,11 @@ Item {
                             objectName: "exportLogsButton"
                             text: qsTr("导出日志")
                             primary: true
+                        }
+
+                        AppButton {
+                            objectName: "shareLogsButton"
+                            text: qsTr("分享日志")
                         }
                     }
                 }
