@@ -39,6 +39,8 @@ Dialog {
 
     // 横屏高度紧张：默认收起入口 / 地址栏，把高度让给网页；顶栏“地址”可展开
     property bool addressVisible: false
+    // 横屏“全屏”模式：隐藏顶栏，让网页真正铺满；右上角悬浮“≡”可叫回顶栏
+    property bool headerVisible: true
     readonly property bool compactHeight: height < 620
     readonly property int horizontalInset: Metrics.spacing2xl
 
@@ -61,12 +63,43 @@ Dialog {
         height: browserDialog.availableHeight
         spacing: 0
 
+        // -------------------------------------------- 横屏全屏时的迷你恢复条
+        // Qt WebView 在 Android 上是原生视图、始终盖在 QML 之上，悬浮按钮无法显示；
+        // 因此全屏时保留一条 32dp 的恢复条（在 WebView 之外），点“显示工具栏”恢复。
+        Rectangle {
+            Layout.fillWidth: true
+            visible: browserDialog.compactHeight && !browserDialog.headerVisible
+            Layout.preferredHeight: SafeArea.margins.top + 32
+            color: Theme.accent
+
+            Text {
+                text: "≡"
+                color: "#FFFFFF"
+                font.pixelSize: Typography.fontHeading
+                anchors.right: parent.right
+                anchors.rightMargin: browserDialog.horizontalInset
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            MouseArea {
+                objectName: "browserHeaderHandle"
+                anchors.right: parent.right
+                anchors.rightMargin: browserDialog.horizontalInset
+                anchors.verticalCenter: parent.verticalCenter
+                width: 88
+                height: 44
+            }
+        }
+
         // ---------------------------------------------------------------- 顶栏
         Rectangle {
             Layout.fillWidth: true
+            // 横屏“全屏”模式隐藏顶栏；竖屏始终显示
+            visible: !browserDialog.compactHeight || browserDialog.headerVisible
             // 全屏时窗口是 edge-to-edge，顶栏内容要让开系统状态栏；
             // SafeArea 在桌面平台为 0，不影响对话框形态。
-            Layout.preferredHeight: Metrics.appBarHeight + SafeArea.margins.top
+            // 横屏用更矮的 48dp 顶栏，把高度让给网页。
+            Layout.preferredHeight: SafeArea.margins.top + (browserDialog.compactHeight ? 48 : Metrics.appBarHeight)
             // 顶栏用主题蓝：状态栏图标是浅色，白色顶栏会让时间/信号“消失”。
             color: Theme.accent
 
@@ -98,6 +131,7 @@ Dialog {
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    visible: !browserDialog.compactHeight
                     spacing: 0
 
                     Label {
@@ -129,6 +163,28 @@ Dialog {
                     Layout.preferredHeight: Metrics.toolButtonSize
                     contentItem: Text {
                         text: browserCompactReloadButton.text
+                        color: "#FFFFFF"
+                        font.pixelSize: Typography.fontSmall
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    visible: browserDialog.compactHeight
+                }
+
+                ToolButton {
+                    id: browserImmersiveButton
+
+                    objectName: "browserImmersiveButton"
+                    text: qsTr("全屏")
+                    visible: browserDialog.compactHeight
+                    flat: true
+                    Layout.preferredHeight: Metrics.toolButtonSize
+                    contentItem: Text {
+                        text: browserImmersiveButton.text
                         color: "#FFFFFF"
                         font.pixelSize: Typography.fontSmall
                         horizontalAlignment: Text.AlignHCenter
@@ -309,6 +365,7 @@ Dialog {
                 clip: true
                 layer.enabled: true
             }
+
         }
 
         // ---------------------------------------------------------------- 状态行

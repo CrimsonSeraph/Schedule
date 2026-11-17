@@ -87,6 +87,34 @@ namespace Schedule {
         }
 #endif
 
+        /**
+         * @brief 隐藏/恢复 Android 系统状态栏与导航栏（API 30+ 的 WindowInsetsController）。
+         *
+         * 横屏“全屏”模式使用：系统栏隐藏后网页可继续向上/向下延伸，
+         * 应用自身保留一条 32dp 的恢复条用于叫回工具栏。
+         */
+        void set_system_bars_hidden(bool hidden) {
+#if defined(Q_OS_ANDROID)
+            QJniObject activity = QJniObject::callStaticObjectMethod(
+                "org/qtproject/qt/android/QtNative", "activity", "()Landroid/app/Activity;");
+            if (!activity.isValid()) {
+                return;
+            }
+            QJniObject window = activity.callObjectMethod("getWindow", "()Landroid/view/Window;");
+            QJniObject decor = window.callObjectMethod("getDecorView", "()Landroid/view/View;");
+            QJniObject controller = decor.callObjectMethod("getWindowInsetsController", "()Landroid/view/WindowInsetsController;");
+            if (!controller.isValid()) {
+                qWarning() << "[browser] 当前系统不支持 WindowInsetsController，跳过系统栏切换";
+                return;
+            }
+            // WindowInsets.Type.statusBars() | navigationBars() = 1 | 2 = 3
+            controller.callMethod<void>(hidden ? "hide" : "show", "(I)V", 3);
+            qInfo() << "[browser] 系统栏" << (hidden ? "隐藏" : "恢复");
+#else
+            Q_UNUSED(hidden)
+#endif
+        }
+
         void request_screen_orientation(int orientation) {
 #if defined(Q_OS_ANDROID)
             QJniObject activity = QJniObject::callStaticObjectMethod(
@@ -899,6 +927,25 @@ namespace Schedule {
             set_text("browserAddressButton", expanded ? QStringLiteral("地址") : QStringLiteral("收起"));
         });
 
+        // 横屏“全屏”：收起顶栏与地址栏，只留网页；网页右上角的悬浮“≡”叫回顶栏
+        on_click("browserImmersiveButton", [this]() {
+            if (!m_browser_dialog) {
+                return;
+            }
+            m_browser_dialog->setProperty("addressVisible", false);
+            m_browser_dialog->setProperty("headerVisible", false);
+            set_text("browserAddressButton", QStringLiteral("地址"));
+            set_system_bars_hidden(true);
+            qInfo() << "[browser] 进入横屏全屏模式";
+        });
+        on_click("browserHeaderHandle", [this]() {
+            if (m_browser_dialog) {
+                m_browser_dialog->setProperty("headerVisible", true);
+                set_system_bars_hidden(false);
+                qInfo() << "[browser] 恢复横屏顶栏";
+            }
+        });
+
         // 教务页面按横屏设计：打开对话框时自动横屏，关闭时恢复系统方向；
         // 顶栏的“横屏/竖屏”按钮允许用户手动切回。
         on_signal("browserImportDialog", "opened()", [this]() {
@@ -907,13 +954,16 @@ namespace Schedule {
             set_text("browserRotateButton", QStringLiteral("竖屏"));
             if (m_browser_dialog) {
                 m_browser_dialog->setProperty("addressVisible", false);
+                m_browser_dialog->setProperty("headerVisible", true);
             }
             set_text("browserAddressButton", QStringLiteral("地址"));
+            set_system_bars_hidden(false);
             resize_browser_dialog();
             qInfo() << "[browser] 打开内嵌浏览器，请求横屏";
         });
         on_signal("browserImportDialog", "closed()", [this]() {
             m_browser_landscape = false;
+            set_system_bars_hidden(false);
             request_screen_orientation(-1);
             set_text("browserRotateButton", QStringLiteral("横屏"));
             qInfo() << "[browser] 关闭内嵌浏览器，恢复系统方向";
