@@ -8,6 +8,9 @@
 #include <QAbstractItemModel>
 #include <QDateTime>
 #include <QDebug>
+#if defined(Q_OS_ANDROID)
+#include <QJniObject>
+#endif
 #include <QFont>
 #include <QImage>
 #include <QPainter>
@@ -27,6 +30,27 @@
 namespace Schedule {
 
     namespace {
+
+        /**
+         * @brief Android 上请求屏幕方向。
+         * @param orientation 0=横屏，1=竖屏，-1=跟随系统传感器。
+         *
+         * 内嵌教务页面是横屏布局，进入浏览器时切横屏、退出时恢复系统方向；
+         * 桌面平台为空操作。
+         */
+        void request_screen_orientation(int orientation) {
+#if defined(Q_OS_ANDROID)
+            QJniObject activity = QJniObject::callStaticObjectMethod(
+                "org/qtproject/qt/android/QtNative", "activity", "()Landroid/app/Activity;");
+            if (!activity.isValid()) {
+                qWarning() << "[browser] 无法取得 Android Activity，忽略屏幕方向请求";
+                return;
+            }
+            activity.callMethod<void>("setRequestedOrientation", "(I)V", orientation);
+#else
+            Q_UNUSED(orientation)
+#endif
+        }
 
         /** @return 由本地目录字符串构造 QUrl。 */
         QUrl local_url(const QString& path) {
@@ -786,6 +810,27 @@ namespace Schedule {
         });
 
         on_click("browserCloseButton", [this]() { invoke(m_browser_dialog, "close"); });
+
+        // 教务页面按横屏设计：打开对话框时自动横屏，关闭时恢复系统方向；
+        // 顶栏的“横屏/竖屏”按钮允许用户手动切回。
+        on_signal("browserImportDialog", "opened()", [this]() {
+            m_browser_landscape = true;
+            request_screen_orientation(0);
+            set_text("browserRotateButton", QStringLiteral("竖屏"));
+            qInfo() << "[browser] 打开内嵌浏览器，请求横屏";
+        });
+        on_signal("browserImportDialog", "closed()", [this]() {
+            m_browser_landscape = false;
+            request_screen_orientation(-1);
+            set_text("browserRotateButton", QStringLiteral("横屏"));
+            qInfo() << "[browser] 关闭内嵌浏览器，恢复系统方向";
+        });
+        on_click("browserRotateButton", [this]() {
+            m_browser_landscape = !m_browser_landscape;
+            request_screen_orientation(m_browser_landscape ? 0 : 1);
+            set_text("browserRotateButton", m_browser_landscape ? QStringLiteral("竖屏") : QStringLiteral("横屏"));
+            qInfo() << "[browser] 手动切换方向" << (m_browser_landscape ? "横屏" : "竖屏");
+        });
 
         // 设置页的简化入口：与导入向导共用同一个对话框，只是先同步选中的教务入口
         on_click("settingsAdapterImportButton", [this]() {

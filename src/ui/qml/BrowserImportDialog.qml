@@ -34,7 +34,8 @@ Dialog {
 
     readonly property real parentW: parent ? parent.width : 480
     readonly property real parentH: parent ? parent.height : 800
-    readonly property bool fullScreenMode: parentW < 600
+    // Android / iOS 上横竖屏都全屏显示网页；桌面端窄窗口同样全屏
+    readonly property bool fullScreenMode: Qt.platform.os === "android" || Qt.platform.os === "ios" || parentW < 600
     readonly property int horizontalInset: Metrics.spacing2xl
 
     width: fullScreenMode ? parentW : Math.min(Responsive.browserDialogWidth, parentW - 40)
@@ -106,6 +107,25 @@ Dialog {
                         font.pixelSize: Typography.fontSmall
                         color: Theme.cardTextTertiary
                         elide: Text.ElideRight
+                    }
+                }
+
+                ToolButton {
+                    id: browserRotateButton
+
+                    objectName: "browserRotateButton"
+                    text: qsTr("横屏")
+                    flat: true
+                    Layout.preferredHeight: Metrics.toolButtonSize
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("切换横屏 / 竖屏")
+
+                    contentItem: Text {
+                        text: browserRotateButton.text
+                        color: "#FFFFFF"
+                        font.pixelSize: Typography.fontSmall
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
 

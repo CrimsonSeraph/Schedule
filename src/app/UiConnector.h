@@ -310,6 +310,9 @@ namespace Schedule {
         /** 「从教务导入」内嵌浏览器对话框。 */
         QPointer<QObject> m_browser_dialog;
 
+        /** 内嵌浏览器当前是否处于强制横屏（打开时默认横屏，可用按钮手动切回竖屏）。 */
+        bool m_browser_landscape = false;
+
         /** 已连接课卡热区，避免重复连接。 */
         QSet<QObject*> m_connected_cards;
 
