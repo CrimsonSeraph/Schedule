@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "你的配置名称 (Debug-x64)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/你的输出目录/你的可执行文件名.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/你的输出目录",
+            "environment": [
+                {
+                    "name": "PATH",
+                    "value": "你的Qt安装目录/mingw_64/bin;你的MinGW目录/bin;${env:PATH}"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "你的MinGW目录/bin/gdb.exe",
+            "setupCommands": [
+                {
+                    "description": "启用 gdb 整齐打印",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "cmake: build (Debug-x64)",
+            "visualizerFile": "你的VS Code工作区存储路径/qt.natvis.xml"
+        }
+    ]
+}

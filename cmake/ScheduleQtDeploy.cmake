@@ -18,9 +18,9 @@ function(schedule_deploy_qt_runtime target)
 	get_filename_component(qt_install_prefix "${Qt6_DIR}/../../.." ABSOLUTE)
 	find_program(SCHEDULE_WINDEPLOYQT_EXECUTABLE
 		NAMES
-			windeployqt
+		windeployqt
 		HINTS
-			"${qt_install_prefix}/bin"
+		"${qt_install_prefix}/bin"
 		NO_DEFAULT_PATH
 	)
 	if(NOT SCHEDULE_WINDEPLOYQT_EXECUTABLE)
@@ -35,15 +35,20 @@ function(schedule_deploy_qt_runtime target)
 		list(APPEND schedule_extra_arguments ${ARGN})
 	endif()
 
+	if(MSVC)
+		set(schedule_config_flag
+			"$<$<CONFIG:Debug>:--debug>$<$<NOT:$<CONFIG:Debug>>:--release>"
+		)
+	else()
+		set(schedule_config_flag "--release")
+	endif()
+
 	add_custom_command(
 		TARGET ${target}
 		POST_BUILD
-		COMMAND
-			"${SCHEDULE_WINDEPLOYQT_EXECUTABLE}" --no-translations
-			--no-system-d3d-compiler --no-opengl-sw --no-ffmpeg
-			"$<$<CONFIG:Debug>:--debug>$<$<NOT:$<CONFIG:Debug>>:--release>"
-			${schedule_extra_arguments}
-			"$<TARGET_FILE:${target}>"
+		COMMAND "${SCHEDULE_WINDEPLOYQT_EXECUTABLE}" --no-translations
+			--no-system-d3d-compiler --no-opengl-sw --no-ffmpeg ${schedule_config_flag}
+			${schedule_extra_arguments} "$<TARGET_FILE:${target}>"
 		COMMENT "windeployqt: deploying Qt runtime for ${target}"
 		VERBATIM
 	)

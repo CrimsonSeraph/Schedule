@@ -55,7 +55,10 @@ qt_standard_project_setup()
 # 都不一定包含它；套件里没有该模块时这里会静默落到 none，Android / iOS 又没有 WebEngine 可退，
 # 最终 APK 的「从教务导入」就只能走系统浏览器。CI 用 install-qt-action 的
 # `modules: qtwebview` 显式安装；手工装 Qt 请在 Maintenance Tool 里勾上 “Qt WebView”。
-option(SCHEDULE_ENABLE_EMBEDDED_BROWSER "启用内嵌浏览器抓取课表（关闭则回退系统浏览器 + 文件导入）" ON)
+option(SCHEDULE_ENABLE_EMBEDDED_BROWSER
+	"启用内嵌浏览器抓取课表（关闭则回退系统浏览器 + 文件导入）"
+	ON
+)
 
 set(SCHEDULE_BROWSER_BACKEND "none")
 
@@ -99,7 +102,9 @@ endif()
 if(SCHEDULE_BROWSER_BACKEND STREQUAL "none")
 	message(STATUS "内嵌浏览器：未启用（回退到系统浏览器 + 文件导入）")
 	if(SCHEDULE_ENABLE_EMBEDDED_BROWSER)
-		message(STATUS "  原因：当前 Qt 套件里找不到 WebView 模块，也没有 WebEngine；安装 qtwebview（或 qtwebengine）后重新配置即可启用")
+		message(STATUS
+			"  原因：当前 Qt 套件里找不到 WebView 模块，也没有 WebEngine；安装 qtwebview（或 qtwebengine）后重新配置即可启用"
+		)
 	endif()
 else()
 	message(STATUS "内嵌浏览器后端：${SCHEDULE_BROWSER_BACKEND}")

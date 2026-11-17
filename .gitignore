@@ -62,7 +62,10 @@ compile_commands.json
 *.user.*
 .idea/
 .vscode/*
-!vscode/setting.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/example_launch.json
+!.vscode/extensions.json
 .vs/
 *.VC.db
 *.VC.opendb
