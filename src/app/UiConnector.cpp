@@ -1,5 +1,6 @@
 #include "UiConnector.h"
 
+#include "Logging.h"
 #include "core/service/WeekCalculator.h"
 #include "engine/CourseListModel.h"
 #include "engine/NotificationService.h"
@@ -591,6 +592,18 @@ namespace Schedule {
         // --- 数据维护
         on_click("reloadButton", [this]() { m_bridge->reload_from_repository(); });
         on_click("saveNowButton", [this]() { m_bridge->save_to_repository(); });
+        on_click("exportLogsButton", [this]() {
+            auto* io = import_export();
+            const QString target = QDir(io->default_export_dir()).filePath(QStringLiteral("logs"));
+            QString error;
+            const QString path = Logging::export_logs(target, &error);
+            if (path.isEmpty()) {
+                m_bridge->post_error(QStringLiteral("导出日志失败：%1").arg(error));
+            }
+            else {
+                m_bridge->post_info(QStringLiteral("日志已导出：%1").arg(path));
+            }
+        });
     }
 
     // ----------------------------------------------------------课程编辑器
@@ -912,6 +925,7 @@ namespace Schedule {
         auto* io = import_export();
         set_text("importDirField", io->default_import_dir());
         set_text("exportDirField", io->default_export_dir());
+        set_text("logDirField", Logging::log_directory());
 
         const QVariantList periods = m_bridge->time_slots();
         if (!periods.isEmpty()) {
@@ -1063,19 +1077,72 @@ namespace Schedule {
     void UiConnector::append_session_row(const QVariantMap& row) {
         QObject* draft = find("sessionDraftModel");
         if (!draft) {
+            qWarning() << "[editor] 缺少 sessionDraftModel，无法添加时间段";
             return;
         }
-        // 从课程数据回填的行没有 summary（那是表单侧的展示字段），补齐后列表文本才一致
+
+        // 同一 星期 + 起始节次 + 连续节数 + 周次 视为同一时间段：
+        // 重复点击“添加时间段”时选中已有行并提示，避免累积重复行后被冲突检测报告成多处问题。
+        const int existing_rows = session_row_count();
+        for (int index = 0; index < existing_rows; ++index) {
+            const QVariantMap existing = session_row_at(index);
+            if (existing.isEmpty()) {
+                continue;
+            }
+            const bool same = existing.value(QStringLiteral("dayOfWeek")).toInt() == row.value(QStringLiteral("dayOfWeek")).toInt()
+                && existing.value(QStringLiteral("startSlot")).toInt() == row.value(QStringLiteral("startSlot")).toInt()
+                && existing.value(QStringLiteral("slotCount")).toInt() == row.value(QStringLiteral("slotCount")).toInt()
+                && existing.value(QStringLiteral("weeks")).toString().trimmed() == row.value(QStringLiteral("weeks")).toString().trimmed();
+            if (!same) {
+                continue;
+            }
+            set_int("sessionList", index);
+            if (QObject* list = find("sessionList")) {
+                QMetaObject::invokeMethod(list, "positionViewAtEnd");
+            }
+            set_property(m_course_editor, "conflictHint",
+                QStringLiteral("该时间段已在列表中（第 %1 行），已为你选中；修改后点“更新选中时间段”").arg(index + 1));
+            if (m_course_editor) {
+                QMetaObject::invokeMethod(m_course_editor, "scrollToBottom");
+            }
+            qInfo().noquote() << "[editor] 重复时间段，选中已有行" << index << existing.value(QStringLiteral("summary")).toString();
+            return;
+        }
+
         QVariantMap entry = row;
         if (entry.value(QStringLiteral("summary")).toString().isEmpty()) {
             entry.insert(QStringLiteral("summary"), session_summary_text(entry));
         }
-        // Qt 6 的 QQmlListModel::append 只接受 QQmlV4FunctionPtr，C++ 传 QVariantMap 会静默失败；
-        // 改走 QML 侧的 appendDraft(row) 封装
         if (!QMetaObject::invokeMethod(draft, "appendDraft", Q_ARG(QVariant, QVariant(entry)))) {
-            qWarning() << "[app] 无法向列表模型追加时间段草稿";
+            set_property(m_course_editor, "conflictHint", QStringLiteral("添加时间段失败，请查看日志"));
+            qWarning() << "[editor] 无法向列表模型追加时间段草稿";
+            return;
         }
+
+        const int new_index = session_row_count() - 1;
+        set_int("sessionList", new_index);
+        if (QObject* list = find("sessionList")) {
+            QMetaObject::invokeMethod(list, "positionViewAtEnd");
+        }
+        set_property(m_course_editor, "conflictHint", QString());
+        if (m_course_editor) {
+            QMetaObject::invokeMethod(m_course_editor, "scrollToBottom");
+        }
+        qInfo().noquote() << "[editor] 已添加时间段" << new_index << entry.value(QStringLiteral("summary")).toString();
     }
+
+    QVariantMap UiConnector::session_row_at(int row) const {
+        QObject* draft = find("sessionDraftModel");
+        if (!draft || row < 0) {
+            return QVariantMap();
+        }
+        QVariant result;
+        if (QMetaObject::invokeMethod(draft, "rowDraft", Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, row))) {
+            return result.toMap();
+        }
+        return QVariantMap();
+    }
+
 
     void UiConnector::update_session_row(int row, const QVariantMap& row_data) {
         QObject* draft = find("sessionDraftModel");
@@ -1124,21 +1191,25 @@ namespace Schedule {
 
         // 时间段来自 QML 的草稿列表模型
         QVariantList sessions;
-        QObject* draft = find("sessionDraftModel");
         const int rows = session_row_count();
+        qInfo().noquote() << "[editor] 保存课程" << data.value(QStringLiteral("name")).toString() << "，时间段数" << rows;
         for (int row = 0; row < rows; ++row) {
-            if (!draft) {
-                break;
+            const QVariantMap row_data = session_row_at(row);
+            if (row_data.isEmpty()) {
+                qWarning() << "[editor] 时间段行读取失败" << row;
+                continue;
             }
-            QVariant result;
-            if (QMetaObject::invokeMethod(draft, "rowDraft", Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, row))) {
-                sessions.append(result.toMap());
-            }
+            sessions.append(row_data);
+            qInfo().noquote() << "[editor]   时间段" << row
+                              << row_data.value(QStringLiteral("summary")).toString()
+                              << "周次" << row_data.value(QStringLiteral("weeks")).toString();
         }
         data.insert(QStringLiteral("sessions"), sessions);
 
         // 只有在业务层确实写入成功时才关闭对话框，以免校验失败时用户丢失已填内容
-        if (m_bridge->save_course(data)) {
+        const bool saved = m_bridge->save_course(data);
+        qInfo().noquote() << "[editor] 保存结果" << saved;
+        if (saved) {
             if (week_only) {
                 m_bridge->set_course_note(editing_id, m_bridge->selected_week(), note_text);
             }

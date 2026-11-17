@@ -219,6 +219,9 @@ namespace Schedule {
         /** @return 由编辑器的时间段表单生成一行草稿。 */
         QVariantMap session_row_from_form() const;
 
+        /** @return 草稿列表中第 row 行的数据；越界或模型缺失返回空 map。 */
+        QVariantMap session_row_at(int row) const;
+
         /** @brief 把时间段草稿行回填到表单。 */
         void load_session_row_into_form(int row);
 

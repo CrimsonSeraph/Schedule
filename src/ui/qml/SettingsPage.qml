@@ -693,6 +693,46 @@ Item {
                 }
             }
 
+            // ------------------------------------------------------------ 诊断
+            GroupBox {
+                Layout.fillWidth: true
+                Layout.margins: Metrics.spacing2xl
+                title: qsTr("诊断")
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: Metrics.spacingLg
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: settingsPage.pairColumns
+                        columnSpacing: Metrics.spacingLg
+                        rowSpacing: Metrics.spacingLg
+
+                        Label {
+                            text: qsTr("日志目录")
+                        }
+                        Label {
+                            objectName: "logDirField"
+                            Layout.fillWidth: true
+                            color: Theme.textSecondary
+                            elide: Text.ElideMiddle
+                        }
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: Metrics.spacingLg
+
+                        AppButton {
+                            objectName: "exportLogsButton"
+                            text: qsTr("导出日志")
+                            primary: true
+                        }
+                    }
+                }
+            }
+
             Label {
                 Layout.margins: Metrics.spacing2xl
                 Layout.fillWidth: true

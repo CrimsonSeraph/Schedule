@@ -9,6 +9,7 @@
 #include "data/adapter/GenericSchoolAdapter.h"
 #include "data/adapter/NetworkScheduleFetcher.h"
 
+#include "Logging.h"
 #include "UiConnector.h"
 
 #if Schedule_HAS_TRAY_NOTIFICATIONS
@@ -25,6 +26,7 @@
 #include <QDir>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QStandardPaths>
 #include <QTranslator>
 #include <QUrl>
 
@@ -53,6 +55,14 @@ int main(int argc, char* argv[]) {
     gui_app.setOrganizationName(QStringLiteral("Schedule"));
     gui_app.setApplicationName(QStringLiteral("Schedule"));
     gui_app.setApplicationVersion(QStringLiteral("1.0.0"));
+
+    // ------------------------------------------------------------------ 日志
+    // 日志落在用户可见的导出目录旁（Documents/Schedule/logs），便于在设置页
+    // 一键导出，也便于用 adb pull 直接取回排查问题。
+    const QString log_dir = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
+                                .filePath(QStringLiteral("Schedule/logs"));
+    Schedule::Logging::install(log_dir);
+    qInfo().noquote() << "[app] Schedule" << gui_app.applicationVersion() << "启动，日志目录" << log_dir;
 
     // ------------------------------------------------------------------ 国际化
     // 源语言是简体中文；若存在与系统语言匹配的 .qm（由 qt_add_translations 嵌入 :/i18n），

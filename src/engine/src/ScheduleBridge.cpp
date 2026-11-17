@@ -113,6 +113,9 @@ namespace Schedule {
                 if (m_repository->load_snapshot(current.id, &snapshot, &error)) {
                     m_service->load_snapshot(snapshot);
                     loaded = true;
+                    // 载入时 normalise_course 会去掉完全重复的时间段，回写一次让数据库同步修复结果
+                    save_to_repository();
+                    qInfo() << "[bridge] 已回写规范化后的课表";
                 }
                 else {
                     report_error(QStringLiteral("加载课表失败：%1").arg(error));
@@ -484,10 +487,12 @@ namespace Schedule {
     }
 
     void ScheduleBridge::post_info(const QString& message) {
+        qInfo().noquote() << "[ui]" << message;
         report_info(message);
     }
 
     void ScheduleBridge::post_error(const QString& message) {
+        qWarning().noquote() << "[ui]" << message;
         report_error(message);
     }
 
@@ -641,6 +646,15 @@ namespace Schedule {
 
     void ScheduleBridge::recompute_conflicts() {
         m_conflicts = m_service ? m_service->detect_conflicts() : QList<Conflict>();
+        if (m_conflicts.isEmpty()) {
+            qInfo() << "[conflicts] 未发现冲突";
+        }
+        else {
+            qInfo().noquote() << "[conflicts] 共" << m_conflicts.size() << "处问题";
+            for (const Conflict& conflict : m_conflicts) {
+                qInfo().noquote() << "[conflicts]  -" << conflict.message;
+            }
+        }
         emit conflictsChanged();
     }
 
@@ -896,13 +910,16 @@ namespace Schedule {
 
         const QVariantList sessions = data.value(QStringLiteral("sessions")).toList();
         const Semester semester = m_service->semester();
+        qInfo().noquote() << "[bridge] 保存课程" << course.name << "，时间段" << sessions.size();
         for (const QVariant& entry : sessions) {
             CourseSession session;
             QString error;
             if (!session_from_map(entry.toMap(), semester, &error, &session)) {
+                qWarning().noquote() << "[bridge] 时间段不合法：" << error << "原始数据" << entry;
                 report_error(QStringLiteral("课程“%1”的上课时间不合法：%2").arg(course.name, error));
                 return false;
             }
+            qInfo().noquote() << "[bridge]   时间段 周" << session.day_of_week << "第" << session.start_slot << "-" << session.end_slot() << "周次" << session.weeks.to_expression();
             course.sessions.append(session);
         }
 
@@ -916,12 +933,14 @@ namespace Schedule {
         QString error;
         const bool ok = is_update ? m_service->update_course(course, &error) : m_service->add_course(course, &error);
         if (!ok) {
+            qWarning().noquote() << "[bridge] 课程写入失败：" << error;
             if (!error.isEmpty()) {
                 report_error(error);
             }
             return false;
         }
 
+        qInfo().noquote() << "[bridge] 课程已写入" << (is_update ? "更新" : "新增") << course.name;
         save_to_repository();
         report_info(is_update ? QStringLiteral("课程“%1”已更新").arg(course.name)
                               : QStringLiteral("课程“%1”已添加").arg(course.name));

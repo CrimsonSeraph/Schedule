@@ -37,6 +37,8 @@ Item {
             SplitView.minimumWidth: semesterPage.wideLayout ? Metrics.sidePanelMinWidth : -1
             SplitView.preferredHeight: semesterPage.wideLayout ? -1 : Metrics.stackedPanelHeight
             SplitView.minimumHeight: semesterPage.wideLayout ? -1 : Metrics.stackedPanelHeight
+            // 窄屏必须限高：表单内容较高时若放任其按隐式高度撑开，下方课程列表会被压成 0 高
+            SplitView.maximumHeight: semesterPage.wideLayout ? -1 : Metrics.stackedPanelHeight
             clip: true
 
             ColumnLayout {
@@ -150,6 +152,8 @@ Item {
             // 宽屏：占满右侧剩余宽度；窄屏：占满下方剩余高度
             SplitView.fillWidth: semesterPage.wideLayout
             SplitView.fillHeight: !semesterPage.wideLayout
+            SplitView.minimumHeight: semesterPage.wideLayout ? -1 : 320
+            SplitView.preferredHeight: semesterPage.wideLayout ? -1 : Math.max(320, semesterPage.height - Metrics.stackedPanelHeight)
             spacing: 0
 
             ColumnLayout {
@@ -216,6 +220,7 @@ Item {
                 objectName: "courseList"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.minimumHeight: 200
                 Layout.margins: Metrics.spacing2xl
                 clip: true
                 spacing: ListItemStyle.spacing

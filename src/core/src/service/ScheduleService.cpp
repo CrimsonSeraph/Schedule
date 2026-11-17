@@ -3,6 +3,7 @@
 #include "core/service/ConflictDetector.h"
 #include "core/service/WeekCalculator.h"
 
+#include <QDebug>
 #include <QUuid>
 
 #include <algorithm>
@@ -140,6 +141,32 @@ namespace Schedule {
         }
         if (course->semester_id.isEmpty()) {
             course->semester_id = m_semester.id;
+        }
+
+        // 同一课程内完全相同的 星期 + 起始节次 + 连续节数 + 周次 视为重复录入：
+        // 常见于用户连续点击「添加时间段」，去重后只保留第一条，避免冲突检测把重复行放大成多处问题。
+        if (course->sessions.size() > 1) {
+            QList<CourseSession> unique_sessions;
+            for (const CourseSession& session : course->sessions) {
+                bool duplicate = false;
+                for (const CourseSession& kept : unique_sessions) {
+                    if (kept.day_of_week == session.day_of_week
+                        && kept.start_slot == session.start_slot
+                        && kept.slot_count == session.slot_count
+                        && kept.weeks.to_expression() == session.weeks.to_expression()) {
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (!duplicate) {
+                    unique_sessions.append(session);
+                }
+            }
+            if (unique_sessions.size() != course->sessions.size()) {
+                qWarning().noquote() << "[core] 课程" << course->name << "存在重复时间段，已去重"
+                                     << course->sessions.size() << "->" << unique_sessions.size();
+                course->sessions = unique_sessions;
+            }
         }
         course->ensure_session_ids();
         if (course->color.isEmpty()) {

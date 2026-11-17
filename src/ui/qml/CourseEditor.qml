@@ -32,6 +32,13 @@ Dialog {
     // C++ 在打开编辑器时写入：冲突提示文本（为空表示无冲突）
     property string conflictHint: ""
 
+    // C++ 在添加时间段 / 命中重复后调用，把列表与提示滚到可见区域
+    function scrollToBottom() {
+        if (editorScroll.contentItem) {
+            editorScroll.contentItem.contentY = Math.max(0, editorScroll.contentItem.contentHeight - editorScroll.contentItem.height);
+        }
+    }
+
     // 表单断点：宽表单 4 列、中等 2 列、窄屏 1 列（输入框一律 fillWidth），断点来自 Responsive
     readonly property int formColumns: Responsive.editorColumns(courseEditor.width)
     readonly property bool wideForm: courseEditor.formColumns === 4
@@ -221,7 +228,10 @@ Dialog {
 
                             objectName: "sessionList"
                             Layout.fillWidth: true
-                            Layout.preferredHeight: ListItemStyle.preferredHeight
+                            // 随行数增长到 5 行，更多时在列表内滚动，让“已添加”立即可见
+                            Layout.preferredHeight: Math.max(ListItemStyle.preferredHeight,
+                                Math.min(sessionDraft.count, 5) * ListItemStyle.height
+                                + Math.max(0, Math.min(sessionDraft.count, 5) - 1) * ListItemStyle.spacing)
                             clip: true
                             spacing: ListItemStyle.spacing
                             model: sessionDraft
@@ -384,24 +394,23 @@ Dialog {
 
                             Label {
                                 Layout.fillWidth: true
-                                // 窄屏优先保证按钮可用，操作提示省略
-                                visible: courseEditor.wideForm
-                                text: qsTr("选中列表中的行可回填到表单")
-                                color: Theme.textMuted
+                                // 重复添加 / 添加失败时直接占用同一行位置，避免提示被挤到滚动区外
+                                text: courseEditor.conflictHint.length > 0
+                                    ? courseEditor.conflictHint
+                                    : sessionDraft.count > 0
+                                        ? qsTr("已添加 %1 个时间段，点击列表行可回填；重复添加会自动选中已有行").arg(sessionDraft.count)
+                                        : qsTr("还没有时间段：填好下方信息后点“添加时间段”")
+                                color: courseEditor.conflictHint.length > 0
+                                    ? Theme.danger
+                                    : sessionDraft.count > 0 ? Theme.success : Theme.textMuted
                                 font.pixelSize: Typography.fontSmall
-                                elide: Text.ElideRight
+                                wrapMode: Text.WordWrap
                             }
                         }
                     }
                 }
 
-                Label {
-                    Layout.fillWidth: true
-                    visible: courseEditor.conflictHint.length > 0
-                    text: courseEditor.conflictHint
-                    color: Theme.danger
-                    wrapMode: Text.WordWrap
-                }
+
             }
         }
 

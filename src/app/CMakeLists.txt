@@ -6,6 +6,8 @@
 #     cmake --build 结束时不生成 APK，也不生成 *deployment-settings.json。
 qt_add_executable(
 	Schedule
+	Logging.cpp
+	Logging.h
 	main.cpp
 	UiConnector.cpp
 	UiConnector.h
