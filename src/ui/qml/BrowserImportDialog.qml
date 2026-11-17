@@ -36,6 +36,10 @@ Dialog {
     readonly property real parentH: parent ? parent.height : 800
     // Android / iOS 上横竖屏都全屏显示网页；桌面端窄窗口同样全屏
     readonly property bool fullScreenMode: Qt.platform.os === "android" || Qt.platform.os === "ios" || parentW < 600
+
+    // 横屏高度紧张：默认收起入口 / 地址栏，把高度让给网页；顶栏“地址”可展开
+    property bool addressVisible: false
+    readonly property bool compactHeight: height < 620
     readonly property int horizontalInset: Metrics.spacing2xl
 
     width: fullScreenMode ? parentW : Math.min(Responsive.browserDialogWidth, parentW - 40)
@@ -51,6 +55,10 @@ Dialog {
     }
 
     contentItem: ColumnLayout {
+        // Dialog 的 contentItem 默认按隐式高度布局，横屏时底部会留出一大块空白；
+        // 显式撑满可用区域，让网页区拿到全部剩余高度。
+        width: browserDialog.availableWidth
+        height: browserDialog.availableHeight
         spacing: 0
 
         // ---------------------------------------------------------------- 顶栏
@@ -103,10 +111,48 @@ Dialog {
 
                     Label {
                         Layout.fillWidth: true
+                        visible: !browserDialog.compactHeight
                         text: qsTr("登录后停在课表页")
                         font.pixelSize: Typography.fontSmall
                         color: Theme.cardTextTertiary
                         elide: Text.ElideRight
+                    }
+                }
+
+                ToolButton {
+                    id: browserCompactReloadButton
+
+                    objectName: "browserCompactReloadButton"
+                    text: qsTr("刷新")
+                    visible: browserDialog.compactHeight
+                    flat: true
+                    Layout.preferredHeight: Metrics.toolButtonSize
+                    contentItem: Text {
+                        text: browserCompactReloadButton.text
+                        color: "#FFFFFF"
+                        font.pixelSize: Typography.fontSmall
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                ToolButton {
+                    id: browserAddressButton
+
+                    objectName: "browserAddressButton"
+                    text: qsTr("地址")
+                    visible: browserDialog.compactHeight
+                    flat: true
+                    Layout.preferredHeight: Metrics.toolButtonSize
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("展开 / 收起地址栏")
+
+                    contentItem: Text {
+                        text: browserAddressButton.text
+                        color: "#FFFFFF"
+                        font.pixelSize: Typography.fontSmall
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
 
@@ -171,6 +217,8 @@ Dialog {
             Layout.rightMargin: browserDialog.horizontalInset
             Layout.topMargin: Metrics.spacingMd
             spacing: Metrics.spacingMd
+            // 横屏默认收起，避免入口/地址挤占网页高度
+            visible: !browserDialog.compactHeight || browserDialog.addressVisible
 
             RowLayout {
                 Layout.fillWidth: true
@@ -266,6 +314,7 @@ Dialog {
         // ---------------------------------------------------------------- 状态行
         Label {
             Layout.fillWidth: true
+            visible: !browserDialog.compactHeight
             Layout.leftMargin: browserDialog.horizontalInset
             Layout.rightMargin: browserDialog.horizontalInset
             Layout.topMargin: Metrics.spacingSm
@@ -288,6 +337,8 @@ Dialog {
         // ---------------------------------------------------------------- 底栏
         Rectangle {
             Layout.fillWidth: true
+            // 横屏高度紧张：收起底栏，把刷新放到顶栏，网页区拿到全部剩余高度
+            visible: !browserDialog.compactHeight
             Layout.preferredHeight: Metrics.bottomBarHeight
             color: Theme.surface
 

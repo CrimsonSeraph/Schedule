@@ -163,6 +163,9 @@ namespace Schedule {
         /** @brief 「从教务导入」内嵌浏览器对话框。 */
         void connect_browser_import();
 
+        /** @brief 让全屏浏览器对话框跟随窗口尺寸（横竖屏切换后必须显式同步）。 */
+        void resize_browser_dialog();
+
         /** @brief 打开「从教务导入」对话框并导航到当前选中入口。 */
         void open_browser_import();
 

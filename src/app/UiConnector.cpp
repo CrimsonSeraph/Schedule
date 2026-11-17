@@ -20,6 +20,7 @@
 #include <QMetaObject>
 #include <QQuickItem>
 #include <QQuickItemGrabResult>
+#include <QQuickWindow>
 #include <QSharedPointer>
 #include <QTimer>
 #include <QUrl>
@@ -781,6 +782,24 @@ namespace Schedule {
         navigate_browser_to_entry();
     }
 
+    void UiConnector::resize_browser_dialog() {
+        if (!m_browser_dialog || !m_browser_dialog->property("visible").toBool()) {
+            return;
+        }
+        auto* window = qobject_cast<QQuickWindow*>(find("mainWindow"));
+        if (!window) {
+            return;
+        }
+        if (!m_browser_dialog->property("fullScreenMode").toBool()) {
+            return;
+        }
+        m_browser_dialog->setProperty("width", window->width());
+        m_browser_dialog->setProperty("height", window->height());
+        m_browser_dialog->setProperty("x", 0);
+        m_browser_dialog->setProperty("y", 0);
+        qInfo() << "[browser] 对话框跟随窗口尺寸" << window->width() << "x" << window->height();
+    }
+
     void UiConnector::connect_browser_import() {
         // 切换入口 → 回填地址栏（不自动导航，避免选中即请求）
         on_signal("browserEntrySelector", "currentIndexChanged()", [this]() { sync_browser_url_field(); });
@@ -789,6 +808,11 @@ namespace Schedule {
         on_click("browserGoButton", [this]() { navigate_browser_to_entry(); });
 
         on_click("browserReloadButton", [this]() {
+            if (QObject* browser = find("scheduleBrowser")) {
+                QMetaObject::invokeMethod(browser, "reload");
+            }
+        });
+        on_click("browserCompactReloadButton", [this]() {
             if (QObject* browser = find("scheduleBrowser")) {
                 QMetaObject::invokeMethod(browser, "reload");
             }
@@ -811,12 +835,33 @@ namespace Schedule {
 
         on_click("browserCloseButton", [this]() { invoke(m_browser_dialog, "close"); });
 
+        // 窗口尺寸变化（横竖屏切换）后，Popup 自己不会重新按父级尺寸布局，
+        // 必须显式把全屏对话框的宽高同步到新窗口尺寸，否则会保留竖屏高度、底部被截掉。
+        if (auto* window = qobject_cast<QQuickWindow*>(find("mainWindow"))) {
+            connect(window, &QWindow::widthChanged, this, [this]() { resize_browser_dialog(); });
+            connect(window, &QWindow::heightChanged, this, [this]() { resize_browser_dialog(); });
+        }
+
+        on_click("browserAddressButton", [this]() {
+            if (!m_browser_dialog) {
+                return;
+            }
+            const bool expanded = m_browser_dialog->property("addressVisible").toBool();
+            m_browser_dialog->setProperty("addressVisible", !expanded);
+            set_text("browserAddressButton", expanded ? QStringLiteral("地址") : QStringLiteral("收起"));
+        });
+
         // 教务页面按横屏设计：打开对话框时自动横屏，关闭时恢复系统方向；
         // 顶栏的“横屏/竖屏”按钮允许用户手动切回。
         on_signal("browserImportDialog", "opened()", [this]() {
             m_browser_landscape = true;
             request_screen_orientation(0);
             set_text("browserRotateButton", QStringLiteral("竖屏"));
+            if (m_browser_dialog) {
+                m_browser_dialog->setProperty("addressVisible", false);
+            }
+            set_text("browserAddressButton", QStringLiteral("地址"));
+            resize_browser_dialog();
             qInfo() << "[browser] 打开内嵌浏览器，请求横屏";
         });
         on_signal("browserImportDialog", "closed()", [this]() {
@@ -829,6 +874,8 @@ namespace Schedule {
             m_browser_landscape = !m_browser_landscape;
             request_screen_orientation(m_browser_landscape ? 0 : 1);
             set_text("browserRotateButton", m_browser_landscape ? QStringLiteral("竖屏") : QStringLiteral("横屏"));
+            // 窗口尺寸变化后 Popup 不会自动重排，等系统完成旋转再同步一次
+            QTimer::singleShot(400, this, [this]() { resize_browser_dialog(); });
             qInfo() << "[browser] 手动切换方向" << (m_browser_landscape ? "横屏" : "竖屏");
         });
 
