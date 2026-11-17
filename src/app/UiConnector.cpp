@@ -39,6 +39,54 @@ namespace Schedule {
          * 内嵌教务页面是横屏布局，进入浏览器时切横屏、退出时恢复系统方向；
          * 桌面平台为空操作。
          */
+        /**
+         * @brief Android 上通过系统分享面板发送图片。
+         * @param path 图片在本机的绝对路径（位于应用 external files 目录下）。
+         * @return 成功拉起分享面板返回 true。
+         *
+         * 复用 Qt 模板自带的 FileProvider（authority = <package>.qtprovider），
+         * 其 qtprovider_paths.xml 已覆盖 external-files 目录，无需再新增 provider。
+         */
+#if defined(Q_OS_ANDROID)
+        bool share_image_android(const QString& path) {
+            QJniObject activity = QJniObject::callStaticObjectMethod(
+                "org/qtproject/qt/android/QtNative", "activity", "()Landroid/app/Activity;");
+            if (!activity.isValid()) {
+                qWarning() << "[share] 无法取得 Android Activity";
+                return false;
+            }
+
+            const QString package = activity.callObjectMethod("getPackageName", "()Ljava/lang/String;").toString();
+            const QString authority = package + QStringLiteral(".qtprovider");
+            QJniObject file("java/io/File", "(Ljava/lang/String;)V", QJniObject::fromString(path).object());
+            QJniObject uri = QJniObject::callStaticObjectMethod(
+                "androidx/core/content/FileProvider", "getUriForFile",
+                "(Landroid/content/Context;Ljava/lang/String;Ljava/io/File;)Landroid/net/Uri;",
+                activity.object(), QJniObject::fromString(authority).object(), file.object());
+            if (!uri.isValid()) {
+                qWarning() << "[share] FileProvider 返回空 URI" << authority << path;
+                return false;
+            }
+
+            QJniObject intent("android/content/Intent", "()V");
+            intent.callObjectMethod("setAction", "(Ljava/lang/String;)Landroid/content/Intent;",
+                QJniObject::fromString(QStringLiteral("android.intent.action.SEND")).object());
+            intent.callObjectMethod("setType", "(Ljava/lang/String;)Landroid/content/Intent;",
+                QJniObject::fromString(QStringLiteral("image/png")).object());
+            intent.callObjectMethod("putExtra", "(Ljava/lang/String;Landroid/os/Parcelable;)Landroid/content/Intent;",
+                QJniObject::fromString(QStringLiteral("android.intent.extra.STREAM")).object(), uri.object());
+            intent.callObjectMethod("addFlags", "(I)Landroid/content/Intent;", 1); // FLAG_GRANT_READ_URI_PERMISSION
+
+            QJniObject chooser = QJniObject::callStaticObjectMethod(
+                "android/content/Intent", "createChooser",
+                "(Landroid/content/Intent;Ljava/lang/CharSequence;)Landroid/content/Intent;",
+                intent.object(), QJniObject::fromString(QStringLiteral("分享课表图片")).object());
+            activity.callMethod<void>("startActivity", "(Landroid/content/Intent;)V", chooser.object());
+            qInfo() << "[share] 已打开系统分享面板" << path;
+            return true;
+        }
+#endif
+
         void request_screen_orientation(int orientation) {
 #if defined(Q_OS_ANDROID)
             QJniObject activity = QJniObject::callStaticObjectMethod(
@@ -711,7 +759,7 @@ namespace Schedule {
             set_text("exportDirField", io->default_export_dir());
             invoke(m_export_dialog, "open");
         });
-        on_signal("shareImageMenuItem", "triggered()", [this]() { save_week_image(); });
+        on_signal("shareImageMenuItem", "triggered()", [this]() { save_week_image(true); });
     }
 
     void UiConnector::connect_import_wizard() {
@@ -1410,12 +1458,12 @@ namespace Schedule {
         }
     }
 
-    void UiConnector::save_week_image() {
+    void UiConnector::save_week_image(bool share_after) {
         if (QObject* stack = find("pageStack")) {
             stack->setProperty("currentIndex", 0);
         }
         // 等 QML 完成页面切换与布局后再截图
-        QTimer::singleShot(200, this, [this]() {
+        QTimer::singleShot(200, this, [this, share_after]() {
             auto* week = qobject_cast<QQuickItem*>(find("weekView"));
             if (!week) {
                 m_bridge->post_error(QStringLiteral("找不到课表视图"));
@@ -1426,7 +1474,7 @@ namespace Schedule {
                 m_bridge->post_error(QStringLiteral("课表截图失败"));
                 return;
             }
-            connect(result.data(), &QQuickItemGrabResult::ready, this, [this, result]() {
+            connect(result.data(), &QQuickItemGrabResult::ready, this, [this, result, share_after]() {
                 const QString base = import_export() ? import_export()->default_export_dir() : QDir::currentPath();
                 const QString dir = QDir(base).filePath(QStringLiteral("share"));
                 QDir().mkpath(dir);
@@ -1466,7 +1514,22 @@ namespace Schedule {
                 painter.end();
 
                 if (output.save(path)) {
-                    m_bridge->post_info(QStringLiteral("课表图片已保存：%1").arg(path));
+                    if (!share_after) {
+                        m_bridge->post_info(QStringLiteral("课表图片已保存：%1").arg(path));
+                    }
+#if defined(Q_OS_ANDROID)
+                    else if (share_image_android(path)) {
+                        m_bridge->post_info(QStringLiteral("课表图片已保存，已打开分享面板：%1").arg(path));
+                    }
+                    else {
+                        m_bridge->post_error(QStringLiteral("图片已保存，但打开分享面板失败：%1").arg(path));
+                    }
+#else
+                    else {
+                        QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+                        m_bridge->post_info(QStringLiteral("课表图片已保存：%1").arg(path));
+                    }
+#endif
                 }
                 else {
                     m_bridge->post_error(QStringLiteral("保存课表图片失败"));
