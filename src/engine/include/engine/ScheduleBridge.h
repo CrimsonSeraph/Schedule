@@ -60,6 +60,9 @@ namespace Schedule {
         /** 学期总周数。 */
         Q_PROPERTY(int totalWeeks READ total_weeks NOTIFY semesterChanged)
 
+        /** 每周起始日（1=周一，7=周日）。 */
+        Q_PROPERTY(int semesterWeekStartDay READ semester_week_start_day NOTIFY semesterChanged)
+
         /** 今天所在周次；不在学期内为 0。 */
         Q_PROPERTY(int currentWeek READ current_week NOTIFY currentWeekChanged)
 
@@ -266,6 +269,9 @@ namespace Schedule {
         QString semester_start_date() const;
         QString semester_end_date() const;
         int total_weeks() const;
+
+        /** @return 每周起始日（1=周一，7=周日）。 */
+        int semester_week_start_day() const;
         int current_week() const;
         int selected_week() const;
         int selected_day() const;
@@ -306,12 +312,14 @@ namespace Schedule {
          * @param start_date  第 1 周起始日（`yyyy-MM-dd`）
          * @param total_weeks 总周数（1..64）
          */
-        void create_semester(const QString& name, const QString& start_date, int total_weeks);
+        void create_semester(const QString& name, const QString& start_date, int total_weeks,
+            int week_start_day = 1);
 
         /**
          * @brief 修改当前学期元数据（名称 / 起始日 / 周数）。
          */
-        void update_semester(const QString& name, const QString& start_date, int total_weeks);
+        void update_semester(const QString& name, const QString& start_date, int total_weeks,
+            int week_start_day = 1);
 
         /** 把当前学期的作息表重置为内置默认值（11 节）。 */
         void reset_time_slots_to_default();

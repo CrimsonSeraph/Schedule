@@ -126,7 +126,7 @@ void TestSqliteRepository::opens_and_migrates() {
     QVERIFY(repository.is_open());
     QCOMPARE(repository.location(), QStringLiteral(":memory:"));
     QCOMPARE(repository.schema_version(), SqliteScheduleRepository::latest_schema_version());
-    QCOMPARE(repository.schema_version(), 1);
+    QCOMPARE(repository.schema_version(), 2);
 
     // 全新库应为空
     QVERIFY(repository.load_semesters(&error).isEmpty());
@@ -157,7 +157,7 @@ void TestSqliteRepository::migration_is_idempotent() {
         SqliteScheduleRepository repository(path);
         QString error;
         QVERIFY2(repository.open(&error), qPrintable(error));
-        QCOMPARE(repository.schema_version(), 1);
+        QCOMPARE(repository.schema_version(), 2);
 
         ScheduleSnapshot snapshot;
         QVERIFY2(repository.load_snapshot(QStringLiteral("s1"), &snapshot, &error), qPrintable(error));

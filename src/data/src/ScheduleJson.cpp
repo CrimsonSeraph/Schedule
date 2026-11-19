@@ -102,6 +102,7 @@ namespace Schedule {
         object.insert(QStringLiteral("name"), semester.name);
         object.insert(QStringLiteral("start_date"), date_to_text(semester.start_date));
         object.insert(QStringLiteral("total_weeks"), semester.total_weeks);
+        object.insert(QStringLiteral("week_start_day"), semester.week_start_day);
         object.insert(QStringLiteral("is_current"), semester.is_current);
         object.insert(QStringLiteral("created_at"), datetime_to_text(semester.created_at));
         object.insert(QStringLiteral("updated_at"), datetime_to_text(semester.updated_at));
@@ -184,6 +185,7 @@ namespace Schedule {
         semester.name = string_value(object, QStringLiteral("name"));
         semester.start_date = parse_date(string_value(object, QStringLiteral("start_date")));
         semester.total_weeks = int_value(object, QStringLiteral("total_weeks"), 20);
+        semester.week_start_day = int_value(object, QStringLiteral("week_start_day"), 1);
         semester.is_current = bool_value(object, QStringLiteral("is_current"));
         semester.created_at = parse_datetime(string_value(object, QStringLiteral("created_at")));
         semester.updated_at = parse_datetime(string_value(object, QStringLiteral("updated_at")));

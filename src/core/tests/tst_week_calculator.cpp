@@ -42,6 +42,9 @@ private slots:
     /** 起始日不是周一时，仍按自然周对齐。 */
     void aligns_to_calendar_week();
 
+    /** 每周起始日可配置为周日，周次与日期随之旋转。 */
+    void supports_custom_week_start();
+
     /** 星期文本解析覆盖中英文与 ICS 缩写。 */
     void parses_day_of_week();
 
@@ -71,9 +74,15 @@ void TestWeekCalculator::validates_semester() {
     too_long.total_weeks = 65;
     QVERIFY(!too_long.is_valid(&error));
 
+    Semester bad_week_start = make_semester();
+    bad_week_start.week_start_day = 8;
+    QVERIFY(!bad_week_start.is_valid(&error));
+
     // create() 会把周数夹取到合法区间
     QCOMPARE(Semester::create(QStringLiteral("x"), SEMESTER_START, 999).total_weeks, 64);
     QCOMPARE(Semester::create(QStringLiteral("x"), SEMESTER_START, -3).total_weeks, 1);
+    QCOMPARE(Semester::create(QStringLiteral("x"), SEMESTER_START, 16, 9).week_start_day, 7);
+    QCOMPARE(Semester::create(QStringLiteral("x"), SEMESTER_START, 16, 0).week_start_day, 1);
 }
 
 void TestWeekCalculator::converts_date_to_week() {
@@ -134,6 +143,22 @@ void TestWeekCalculator::aligns_to_calendar_week() {
     QCOMPARE(semester.week_of(QDate(2024, 9, 4)), 1);
     QCOMPARE(semester.week_of(QDate(2024, 9, 9)), 2);
     QCOMPARE(semester.week_of(QDate(2024, 9, 1)), 0); // 上一个自然周不属于本学期
+}
+
+void TestWeekCalculator::supports_custom_week_start() {
+    // 学期从周三（09-04）开始、每周从周日算起：第 1 周应从包含 09-04 的周日（09-01）起
+    Semester semester = Semester::create(QStringLiteral("周日起"), QDate(2024, 9, 4), 16, 7);
+
+    QCOMPARE(semester.week_start_date(1), QDate(2024, 9, 1));
+    QCOMPARE(semester.week_start_date(2), QDate(2024, 9, 8));
+    QCOMPARE(semester.week_of(QDate(2024, 9, 1)), 1);
+    QCOMPARE(semester.week_of(QDate(2024, 9, 7)), 1); // 周六
+    QCOMPARE(semester.week_of(QDate(2024, 9, 8)), 2); // 下一个周日
+    QCOMPARE(semester.week_of(QDate(2024, 8, 31)), 0);
+
+    QCOMPARE(WeekCalculator::date_of(semester, 1, 7), QDate(2024, 9, 1)); // 周日
+    QCOMPARE(WeekCalculator::date_of(semester, 1, 1), QDate(2024, 9, 2)); // 周一
+    QCOMPARE(WeekCalculator::date_of(semester, 2, 7), QDate(2024, 9, 8));
 }
 
 void TestWeekCalculator::parses_day_of_week() {

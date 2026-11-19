@@ -110,7 +110,7 @@ Item {
 
                         objectName: "semesterStartField"
                         Layout.fillWidth: true
-                        placeholderText: qsTr("yyyy-MM-dd（第 1 周周一）")
+                        placeholderText: qsTr("yyyy-MM-dd（第 1 周起始日）")
                     }
 
                     Label {
@@ -125,6 +125,17 @@ Item {
                         to: 64
                         value: 20
                         editable: true
+                    }
+
+                    Label {
+                        text: qsTr("每周起始日")
+                    }
+                    ComboBox {
+                        id: semesterWeekStartSelector
+
+                        objectName: "semesterWeekStartSelector"
+                        Layout.fillWidth: true
+                        model: [qsTr("周一"), qsTr("周日")]
                     }
                 }
 

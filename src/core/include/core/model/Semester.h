@@ -9,9 +9,9 @@ namespace Schedule {
     /**
      * @brief 学期：课表的时间基准。
      *
-     * 关键约定：周次按**自然周（周一为第 1 天）**对齐，第 1 周是包含 `start_date`
-     * 的那个自然周：第 N 周 = `monday_of(start_date) + 7 * (N - 1)` 起连续 7 天，
-     * 到周日结束。`start_date` 通常就是第 1 周周一，但不强制。
+     * 关键约定：周次按 `week_start_day`（默认周一）对齐，第 1 周是包含 `start_date`
+     * 的那个周：第 N 周 = `week_start_day 对齐后的 start_date + 7 * (N - 1)` 起连续
+     * 7 天。`start_date` 通常就是第 1 周的起始日，但不强制。
      * 所有周次计算都以本字段为锚点，因此“当前周”无需在数据库中维护，可随时由日期推导。
      */
     struct Semester {
@@ -26,6 +26,14 @@ namespace Schedule {
 
         /** 学期总周数，通常为 16~20；合法范围 1..64（与 WeekMask 上限一致）。 */
         int total_weeks = 20;
+
+        /**
+         * @brief 每周起始日：1=周一，7=周日（与 QDate::dayOfWeek() 一致）。
+         *
+         * 第 1 周从包含 `start_date` 的那个“每周起始日”开始，之后每 7 天一周。
+         * 默认周一，保持与旧数据、导入格式兼容。
+         */
+        int week_start_day = 1;
 
         /** 是否为当前使用的学期；同一时刻应只有一个学期为 true，由仓库层保证。 */
         bool is_current = false;
@@ -68,7 +76,8 @@ namespace Schedule {
          *
          * 自动生成 UUID、填充创建 / 修改时间；`total_weeks` 会被夹取到 1..64。
          */
-        static Semester create(const QString& name, const QDate& start_date, int total_weeks);
+        static Semester create(const QString& name, const QDate& start_date, int total_weeks,
+            int week_start_day = 1);
 
         bool operator==(const Semester& other) const;
         bool operator!=(const Semester& other) const;

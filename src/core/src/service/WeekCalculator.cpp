@@ -62,9 +62,10 @@ namespace Schedule {
         if (!start.isValid() || day_of_week < 1 || day_of_week > DAYS_PER_WEEK) {
             return QDate();
         }
-        // 星期取值与 QDate::dayOfWeek() 一致：1=周一。`week_start_date()` 返回的是
-        // 该自然周的周一，因此 day_of_week=1 恰好落在周首，day_of_week=7 落在周日。
-        return start.addDays(day_of_week - 1);
+        // 星期取值与 QDate::dayOfWeek() 一致：1=周一。周首是 semester.week_start_day，
+        // 因此需要按起始日把“周一..周日”旋转到这一周的列位置上。
+        const int offset = (day_of_week - semester.week_start_day + DAYS_PER_WEEK) % DAYS_PER_WEEK;
+        return start.addDays(offset);
     }
 
     QDate WeekCalculator::monday_of(const QDate& date) {

@@ -226,8 +226,13 @@ namespace Schedule {
         if (!object) {
             return fallback;
         }
+        // SpinBox 用 value，ComboBox 用 currentIndex；两者都支持的控件按 value 优先。
         const QVariant value = object->property("value");
-        return value.isValid() ? value.toInt() : fallback;
+        if (value.isValid()) {
+            return value.toInt();
+        }
+        const QVariant index = object->property("currentIndex");
+        return index.isValid() ? index.toInt() : fallback;
     }
 
     void UiConnector::set_int(const char* name, int value) {
@@ -512,13 +517,14 @@ namespace Schedule {
             const QString name = text_of("semesterNameField");
             const QString start = text_of("semesterStartField");
             const int weeks = int_of("semesterWeeksSpin", 20);
+            const int week_start = combo_index(find("semesterWeekStartSelector")) == 1 ? 7 : 1;
 
             const bool creating = m_creating_semester || !m_bridge->has_semester();
             if (creating) {
-                m_bridge->create_semester(name, start, weeks);
+                m_bridge->create_semester(name, start, weeks, week_start);
             }
             else {
-                m_bridge->update_semester(name, start, weeks);
+                m_bridge->update_semester(name, start, weeks, week_start);
             }
             m_creating_semester = false;
             refresh_semester_form();
@@ -570,6 +576,7 @@ namespace Schedule {
             set_text("semesterNameField", QString());
             set_text("semesterStartField", WeekCalculator::monday_of(QDate::currentDate()).toString(Qt::ISODate));
             set_int("semesterWeeksSpin", 20);
+            set_property(find("semesterWeekStartSelector"), "currentIndex", 0);
             set_int("semesterSelector", -1);
             set_text("saveSemesterButton", QStringLiteral("创建学期"));
         });
@@ -587,6 +594,8 @@ namespace Schedule {
             set_text("semesterNameField", m_bridge->semester_name());
             set_text("semesterStartField", m_bridge->semester_start_date());
             set_int("semesterWeeksSpin", m_bridge->total_weeks());
+            set_property(find("semesterWeekStartSelector"), "currentIndex",
+                m_bridge->semester_week_start_day() == 7 ? 1 : 0);
             set_int("semesterSelector", m_bridge->current_semester_index());
             set_text("saveSemesterButton", QStringLiteral("保存学期信息"));
         }
@@ -594,6 +603,7 @@ namespace Schedule {
             set_text("semesterNameField", QStringLiteral("我的课表"));
             set_text("semesterStartField", WeekCalculator::monday_of(QDate::currentDate()).toString(Qt::ISODate));
             set_int("semesterWeeksSpin", 20);
+            set_property(find("semesterWeekStartSelector"), "currentIndex", 0);
             set_int("semesterSelector", -1);
             set_text("saveSemesterButton", QStringLiteral("创建学期"));
         }

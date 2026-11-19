@@ -3,6 +3,7 @@
 #include "core/model/WeekMask.h"
 
 #include <QDateTime>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -98,6 +99,14 @@ namespace Schedule {
                                ")"),
             };
             steps.append(version_1);
+
+            // v2：每周起始日（1=周一，7=周日）；旧库默认周一，保持原有周次口径。
+            MigrationStep version_2;
+            version_2.version = 2;
+            version_2.statements = QStringList{
+                QStringLiteral("ALTER TABLE semesters ADD COLUMN week_start_day INTEGER NOT NULL DEFAULT 1"),
+            };
+            steps.append(version_2);
 
             return steps;
         }
@@ -352,7 +361,7 @@ namespace Schedule {
         }
 
         QSqlQuery query(m_database);
-        if (!query.exec(QStringLiteral("SELECT id, name, start_date, total_weeks, is_current, created_at, updated_at "
+        if (!query.exec(QStringLiteral("SELECT id, name, start_date, total_weeks, week_start_day, is_current, created_at, updated_at "
                                        "FROM semesters ORDER BY start_date ASC, name ASC"))) {
             fail(error_message, QStringLiteral("读取学期失败：%1").arg(query.lastError().text()));
             return semesters;
@@ -364,9 +373,10 @@ namespace Schedule {
             semester.name = query.value(1).toString();
             semester.start_date = QDate::fromString(query.value(2).toString(), Qt::ISODate);
             semester.total_weeks = query.value(3).toInt();
-            semester.is_current = query.value(4).toInt() != 0;
-            semester.created_at = QDateTime::fromString(query.value(5).toString(), Qt::ISODate);
-            semester.updated_at = QDateTime::fromString(query.value(6).toString(), Qt::ISODate);
+            semester.week_start_day = query.value(4).toInt();
+            semester.is_current = query.value(5).toInt() != 0;
+            semester.created_at = QDateTime::fromString(query.value(6).toString(), Qt::ISODate);
+            semester.updated_at = QDateTime::fromString(query.value(7).toString(), Qt::ISODate);
             semesters.append(semester);
         }
 
@@ -392,14 +402,16 @@ namespace Schedule {
 
         QSqlQuery query(m_database);
         query.prepare(QStringLiteral(
-            "INSERT INTO semesters (id, name, start_date, total_weeks, is_current, created_at, updated_at) "
-            "VALUES (:id, :name, :start_date, :total_weeks, :is_current, :created_at, :updated_at) "
+            "INSERT INTO semesters (id, name, start_date, total_weeks, week_start_day, is_current, created_at, updated_at) "
+            "VALUES (:id, :name, :start_date, :total_weeks, :week_start_day, :is_current, :created_at, :updated_at) "
             "ON CONFLICT(id) DO UPDATE SET name = excluded.name, start_date = excluded.start_date, "
-            "total_weeks = excluded.total_weeks, is_current = excluded.is_current, updated_at = excluded.updated_at"));
+            "total_weeks = excluded.total_weeks, week_start_day = excluded.week_start_day, "
+            "is_current = excluded.is_current, updated_at = excluded.updated_at"));
         query.bindValue(QStringLiteral(":id"), non_null(stored.id));
         query.bindValue(QStringLiteral(":name"), non_null(stored.name));
         query.bindValue(QStringLiteral(":start_date"), non_null(stored.start_date.toString(Qt::ISODate)));
         query.bindValue(QStringLiteral(":total_weeks"), stored.total_weeks);
+        query.bindValue(QStringLiteral(":week_start_day"), stored.week_start_day);
         query.bindValue(QStringLiteral(":is_current"), stored.is_current ? 1 : 0);
         query.bindValue(QStringLiteral(":created_at"), non_null(stored.created_at.toString(Qt::ISODate)));
         query.bindValue(QStringLiteral(":updated_at"), non_null(stored.updated_at.toString(Qt::ISODate)));
@@ -503,7 +515,7 @@ namespace Schedule {
         }
 
         QSqlQuery query(m_database);
-        if (!query.exec(QStringLiteral("SELECT id, name, start_date, total_weeks, is_current, created_at, updated_at "
+        if (!query.exec(QStringLiteral("SELECT id, name, start_date, total_weeks, week_start_day, is_current, created_at, updated_at "
                                        "FROM semesters WHERE is_current <> 0 ORDER BY start_date DESC LIMIT 1"))) {
             return Semester();
         }
@@ -516,9 +528,10 @@ namespace Schedule {
         semester.name = query.value(1).toString();
         semester.start_date = QDate::fromString(query.value(2).toString(), Qt::ISODate);
         semester.total_weeks = query.value(3).toInt();
+        semester.week_start_day = query.value(4).toInt();
         semester.is_current = true;
-        semester.created_at = QDateTime::fromString(query.value(5).toString(), Qt::ISODate);
-        semester.updated_at = QDateTime::fromString(query.value(6).toString(), Qt::ISODate);
+        semester.created_at = QDateTime::fromString(query.value(6).toString(), Qt::ISODate);
+        semester.updated_at = QDateTime::fromString(query.value(7).toString(), Qt::ISODate);
 
         if (found) {
             *found = true;
@@ -540,7 +553,7 @@ namespace Schedule {
 
         QSqlQuery semester_query(m_database);
         semester_query.prepare(QStringLiteral(
-            "SELECT id, name, start_date, total_weeks, is_current, created_at, updated_at FROM semesters WHERE id = :id"));
+            "SELECT id, name, start_date, total_weeks, week_start_day, is_current, created_at, updated_at FROM semesters WHERE id = :id"));
         semester_query.bindValue(QStringLiteral(":id"), semester_id);
         if (!semester_query.exec()) {
             return fail(error_message, QStringLiteral("读取学期失败：%1").arg(semester_query.lastError().text()));
@@ -552,9 +565,10 @@ namespace Schedule {
         snapshot.semester.name = semester_query.value(1).toString();
         snapshot.semester.start_date = QDate::fromString(semester_query.value(2).toString(), Qt::ISODate);
         snapshot.semester.total_weeks = semester_query.value(3).toInt();
-        snapshot.semester.is_current = semester_query.value(4).toInt() != 0;
-        snapshot.semester.created_at = QDateTime::fromString(semester_query.value(5).toString(), Qt::ISODate);
-        snapshot.semester.updated_at = QDateTime::fromString(semester_query.value(6).toString(), Qt::ISODate);
+        snapshot.semester.week_start_day = semester_query.value(4).toInt();
+        snapshot.semester.is_current = semester_query.value(5).toInt() != 0;
+        snapshot.semester.created_at = QDateTime::fromString(semester_query.value(6).toString(), Qt::ISODate);
+        snapshot.semester.updated_at = QDateTime::fromString(semester_query.value(7).toString(), Qt::ISODate);
 
         // 作息表
         QSqlQuery slot_query(m_database);

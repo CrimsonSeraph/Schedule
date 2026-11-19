@@ -41,6 +41,18 @@ Item {
     readonly property int dayCount: schedule.showWeekend ? 7 : 5
     readonly property var periods: schedule.timeSlots
 
+    // 每周起始日（1=周一，7=周日）。周视图的列顺序随之旋转；
+    // 隐藏周末时仍固定显示周一..周五，避免周日排到第一列。
+    readonly property int weekStartDay: schedule.semesterWeekStartDay
+
+    /** @return 第 column 列（0 起）对应的星期（1..7）。 */
+    function day_of_week_at(column) {
+        if (!schedule.showWeekend) {
+            return column + 1;
+        }
+        return ((weekView.weekStartDay - 1 + column) % 7) + 1;
+    }
+
     // 实际节次高度：按可用高度收缩，让“整周”尽量一屏可见
     readonly property int effectiveSlotHeight: {
         const count = Math.max(1, weekView.periods.length);
@@ -119,7 +131,7 @@ Item {
                     delegate: Rectangle {
                         id: dayHeader
 
-                        property int dayIndex: index + 1
+                        property int dayIndex: weekView.day_of_week_at(index)
 
                         width: weekView.dayWidth
                         height: weekView.headerHeight
@@ -239,7 +251,7 @@ Item {
                     delegate: Item {
                         id: dayColumn
 
-                        property int dayIndex: index + 1
+                        property int dayIndex: weekView.day_of_week_at(index)
 
                         width: weekView.dayWidth
                         height: parent.height

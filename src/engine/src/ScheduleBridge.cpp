@@ -245,6 +245,10 @@ namespace Schedule {
         return m_service ? m_service->total_weeks() : 0;
     }
 
+    int ScheduleBridge::semester_week_start_day() const {
+        return (m_service && m_service->has_semester()) ? m_service->semester().week_start_day : 1;
+    }
+
     int ScheduleBridge::current_week() const {
         return m_service ? m_service->current_week() : 0;
     }
@@ -876,14 +880,15 @@ namespace Schedule {
         report_info(QStringLiteral("已保存到数据库"));
     }
 
-    void ScheduleBridge::create_semester(const QString& name, const QString& start_date, int total_weeks) {
+    void ScheduleBridge::create_semester(const QString& name, const QString& start_date, int total_weeks,
+        int week_start_day) {
         const QDate date = QDate::fromString(start_date.trimmed(), Qt::ISODate);
         if (!date.isValid()) {
             report_error(QStringLiteral("学期起始日期无效，应为 yyyy-MM-dd"));
             return;
         }
 
-        Semester semester = Semester::create(name.trimmed(), date, total_weeks);
+        Semester semester = Semester::create(name.trimmed(), date, total_weeks, week_start_day);
         semester.is_current = true;
         QString error;
         if (!m_service->set_semester(semester)) {
@@ -913,7 +918,8 @@ namespace Schedule {
         emit semestersChanged();
     }
 
-    void ScheduleBridge::update_semester(const QString& name, const QString& start_date, int total_weeks) {
+    void ScheduleBridge::update_semester(const QString& name, const QString& start_date, int total_weeks,
+        int week_start_day) {
         if (!m_service->has_semester()) {
             report_error(QStringLiteral("尚未设置学期"));
             return;
@@ -929,6 +935,7 @@ namespace Schedule {
         semester.name = name.trimmed();
         semester.start_date = date;
         semester.total_weeks = qBound(1, total_weeks, WeekMask::MAX_WEEKS);
+        semester.week_start_day = qBound(1, week_start_day, WeekCalculator::DAYS_PER_WEEK);
         semester.updated_at = QDateTime::currentDateTime();
 
         if (!m_service->set_semester(semester)) {
