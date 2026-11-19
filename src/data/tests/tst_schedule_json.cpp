@@ -27,6 +27,7 @@ namespace {
     ScheduleSnapshot make_snapshot() {
         ScheduleSnapshot snapshot;
         snapshot.semester = Semester::create(QStringLiteral("2024-2025 学年第一学期"), SEMESTER_START, 16);
+        snapshot.semester.week_start_day = 7;
         snapshot.semester.is_current = true;
         snapshot.time_slots = TimeSlot::default_slots();
 
@@ -120,6 +121,7 @@ void TestScheduleJson::round_trips_snapshot() {
     QCOMPARE(restored.semester.name, source.semester.name);
     QCOMPARE(restored.semester.start_date, SEMESTER_START);
     QCOMPARE(restored.semester.total_weeks, 16);
+    QCOMPARE(restored.semester.week_start_day, 7);
     QVERIFY(restored.semester.is_current);
     QCOMPARE(restored.time_slots.size(), source.time_slots.size());
     QCOMPARE(restored.courses.size(), 2);

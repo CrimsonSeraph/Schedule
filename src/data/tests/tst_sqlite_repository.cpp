@@ -36,6 +36,7 @@ namespace {
         snapshot.semester.name = semester_name;
         snapshot.semester.start_date = start_date;
         snapshot.semester.total_weeks = 16;
+        snapshot.semester.week_start_day = 7;
         snapshot.time_slots = TimeSlot::default_slots();
 
         for (int i = 0; i < course_count; ++i) {
