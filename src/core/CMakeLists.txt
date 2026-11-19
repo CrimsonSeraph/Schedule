@@ -9,6 +9,7 @@ add_library(ScheduleCore STATIC
 	src/model/ScheduleSnapshot.cpp
 	src/model/Semester.cpp
 	src/model/TimeSlot.cpp
+	src/model/Todo.cpp
 	src/model/WeekMask.cpp
 	src/service/ConflictDetector.cpp
 	src/service/ReminderScheduler.cpp
@@ -21,6 +22,7 @@ add_library(ScheduleCore STATIC
 	include/core/model/ScheduleSnapshot.h
 	include/core/model/Semester.h
 	include/core/model/TimeSlot.h
+	include/core/model/Todo.h
 	include/core/model/WeekMask.h
 	include/core/service/ConflictDetector.h
 	include/core/service/ReminderScheduler.h

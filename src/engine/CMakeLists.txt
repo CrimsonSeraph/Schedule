@@ -9,6 +9,7 @@ add_library(ScheduleEngine STATIC
 	src/NotificationService.cpp
 	src/ScheduleBridge.cpp
 	src/SessionListModel.cpp
+	src/TodoListModel.cpp
 	include/engine/AndroidNotificationBackend.h
 	include/engine/AppBridge.h
 	include/engine/BrowserCaptureScript.h
@@ -18,6 +19,7 @@ add_library(ScheduleEngine STATIC
 	include/engine/NotificationService.h
 	include/engine/ScheduleBridge.h
 	include/engine/SessionListModel.h
+	include/engine/TodoListModel.h
 )
 
 target_include_directories(ScheduleEngine

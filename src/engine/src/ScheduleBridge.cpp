@@ -6,6 +6,7 @@
 
 #include <QDate>
 #include <QDir>
+#include <QTimer>
 #include <QFile>
 #include <QGuiApplication>
 #include <QStandardPaths>
@@ -103,6 +104,12 @@ namespace Schedule {
         // 周视图始终展示整周，因此固定不过滤星期
         m_week_model->set_day_filter(0);
 
+        m_todo_model = new TodoListModel(this);
+        m_todo_timer = new QTimer(this);
+        m_todo_timer->setInterval(30 * 1000);
+        connect(m_todo_timer, &QTimer::timeout, this, &ScheduleBridge::check_todo_reminders);
+        m_todo_timer->start();
+
         if (m_settings) {
             m_week_model->set_include_other_weeks(m_settings->show_other_weeks());
             m_session_model->set_include_other_weeks(m_settings->show_other_weeks());
@@ -147,6 +154,7 @@ namespace Schedule {
         }
 
         load_holidays();
+        load_todos();
 
         // 没有历史数据时给一个可用的默认学期，避免界面空转
         if (!m_service->has_semester()) {
@@ -352,6 +360,189 @@ namespace Schedule {
             }
         }
         return parts.join(QStringLiteral(" · "));
+    }
+
+    // -------------------------------------------------------------------- 待办
+
+    QAbstractItemModel* ScheduleBridge::todo_model() const {
+        return m_todo_model;
+    }
+
+    int ScheduleBridge::todo_count() const {
+        return m_todos.size();
+    }
+
+    int ScheduleBridge::open_todo_count() const {
+        int count = 0;
+        for (const Todo& todo : m_todos) {
+            if (!todo.done) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    void ScheduleBridge::load_todos() {
+        m_todos.clear();
+        if (m_repository && m_repository->is_open()) {
+            QString error;
+            m_todos = m_repository->load_todos(&error);
+            if (!error.isEmpty()) {
+                qWarning() << "[todo] 读取待办失败：" << error;
+            }
+        }
+        if (m_todo_model) {
+            m_todo_model->set_todos(m_todos);
+        }
+    }
+
+    void ScheduleBridge::refresh_todo_model() {
+        if (m_todo_model) {
+            m_todo_model->set_todos(m_todos);
+        }
+        emit todosChanged();
+    }
+
+    bool ScheduleBridge::save_todo(const QString& id, const QString& title, const QString& notes,
+        const QString& due, bool done) {
+        const QString trimmed = title.trimmed();
+        if (trimmed.isEmpty()) {
+            report_error(QStringLiteral("待办标题不能为空"));
+            return false;
+        }
+
+        QDateTime due_at;
+        const QString due_text = due.trimmed();
+        if (!due_text.isEmpty()) {
+            due_at = QDateTime::fromString(due_text, QStringLiteral("yyyy-MM-dd HH:mm"));
+            if (!due_at.isValid()) {
+                due_at = QDateTime::fromString(due_text, Qt::ISODate);
+            }
+            if (!due_at.isValid()) {
+                report_error(QStringLiteral("截止时间格式应为 yyyy-MM-dd HH:mm"));
+                return false;
+            }
+        }
+
+        const bool creating = id.isEmpty();
+        Todo todo;
+        int row = -1;
+        if (creating) {
+            todo = Todo::create(trimmed, notes, due_at);
+        }
+        else {
+            row = m_todo_model ? m_todo_model->index_of(id) : -1;
+            if (row < 0) {
+                report_error(QStringLiteral("待办不存在"));
+                return false;
+            }
+            todo = m_todos.at(row);
+            todo.title = trimmed;
+            todo.notes = notes;
+            todo.due_at = due_at;
+            todo.updated_at = QDateTime::currentDateTime();
+        }
+        todo.done = done;
+
+        if (m_repository && m_repository->is_open()) {
+            QString error;
+            if (!m_repository->save_todo(todo, &error)) {
+                report_error(QStringLiteral("保存待办失败：%1").arg(error));
+                return false;
+            }
+            m_todos = m_repository->load_todos(&error);
+            if (!error.isEmpty()) {
+                qWarning() << "[todo] 重新读取待办失败：" << error;
+            }
+        }
+        else if (creating) {
+            m_todos.append(todo);
+        }
+        else {
+            m_todos[row] = todo;
+        }
+
+        refresh_todo_model();
+        report_info(QStringLiteral("%1：%2").arg(creating ? QStringLiteral("已新增待办") : QStringLiteral("已更新待办"), trimmed));
+        return true;
+    }
+
+    bool ScheduleBridge::remove_todo(const QString& id) {
+        const int row = m_todo_model ? m_todo_model->index_of(id) : -1;
+        if (row < 0) {
+            report_error(QStringLiteral("待办不存在"));
+            return false;
+        }
+        const QString title = m_todos.at(row).title;
+        if (m_repository && m_repository->is_open()) {
+            QString error;
+            if (!m_repository->remove_todo(id, &error)) {
+                report_error(QStringLiteral("删除待办失败：%1").arg(error));
+                return false;
+            }
+            m_todos = m_repository->load_todos(&error);
+            if (!error.isEmpty()) {
+                qWarning() << "[todo] 重新读取待办失败：" << error;
+            }
+        }
+        else {
+            m_todos.removeAt(row);
+        }
+        refresh_todo_model();
+        report_info(QStringLiteral("已删除待办：%1").arg(title));
+        return true;
+    }
+
+    bool ScheduleBridge::set_todo_done(const QString& id, bool done) {
+        const int row = m_todo_model ? m_todo_model->index_of(id) : -1;
+        if (row < 0) {
+            report_error(QStringLiteral("待办不存在"));
+            return false;
+        }
+        Todo todo = m_todos.at(row);
+        todo.done = done;
+        todo.updated_at = QDateTime::currentDateTime();
+        if (m_repository && m_repository->is_open()) {
+            QString error;
+            if (!m_repository->save_todo(todo, &error)) {
+                report_error(QStringLiteral("保存待办失败：%1").arg(error));
+                return false;
+            }
+            m_todos = m_repository->load_todos(&error);
+            if (!error.isEmpty()) {
+                qWarning() << "[todo] 重新读取待办失败：" << error;
+            }
+        }
+        else {
+            m_todos[row] = todo;
+        }
+        refresh_todo_model();
+        report_info(QStringLiteral("%1：%2").arg(done ? QStringLiteral("已完成") : QStringLiteral("已取消完成"), todo.title));
+        return true;
+    }
+
+    void ScheduleBridge::check_todo_reminders() {
+        const QDateTime now = QDateTime::currentDateTime();
+        for (const Todo& todo : m_todos) {
+            if (todo.done || !todo.due_at.isValid()) {
+                continue;
+            }
+            // 到点前 1 分钟到过点 5 分钟之间提醒；同一 (id, 截止时间) 只提醒一次
+            if (todo.due_at > now.addSecs(60) || todo.due_at < now.addSecs(-300)) {
+                continue;
+            }
+            const QString key = todo.id + QLatin1Char('|') + todo.due_at.toString(Qt::ISODate);
+            if (m_reminded_todos.contains(key)) {
+                continue;
+            }
+            m_reminded_todos.insert(key);
+            QString message = todo.due_at.toString(QStringLiteral("MM-dd HH:mm"));
+            if (!todo.notes.trimmed().isEmpty()) {
+                message += QStringLiteral(" · ") + todo.notes.trimmed();
+            }
+            qInfo().noquote() << "[todo] 到点提醒" << todo.title << message;
+            emit todoReminder(QStringLiteral("待办：%1").arg(todo.title), message);
+        }
     }
 
     void ScheduleBridge::connect_service() {

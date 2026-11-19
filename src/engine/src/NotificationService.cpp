@@ -253,6 +253,10 @@ namespace Schedule {
             QStringLiteral("如果看到系统通知，说明 %1 工作正常。").arg(backend_name()));
     }
 
+    void NotificationService::post_notification(const QString& title, const QString& message) {
+        notify(title, message);
+    }
+
     void NotificationService::snooze(int minutes) {
         if (!enabled() || m_last_title.isEmpty() || minutes <= 0) {
             return;

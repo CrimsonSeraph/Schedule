@@ -119,6 +119,9 @@ namespace Schedule {
         /** @brief 立刻弹出一条测试通知（用于验证权限与后端）。 */
         void show_test_notification();
 
+        /** @brief 直接投递一条通知：应用内横幅 + 系统通知（待办提醒复用）。 */
+        void post_notification(const QString& title, const QString& message);
+
         /** @brief 把最近一条提醒推迟指定分钟数后再提醒一次。 */
         Q_INVOKABLE void snooze(int minutes = 5);
 

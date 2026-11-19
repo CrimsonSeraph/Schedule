@@ -148,6 +148,9 @@ namespace Schedule {
         /** @brief 设置页（目录、作息表、数据维护）。 */
         void connect_settings_page();
 
+        /** @brief 待办页：新增 / 编辑 / 完成 / 删除与到点提醒。 */
+        void connect_todo_page();
+
         /** @brief 课程编辑器。 */
         void connect_course_editor();
 
@@ -309,6 +312,9 @@ namespace Schedule {
 
         /** 应用内备份文件路径列表（与恢复选择器的下标一一对应）。 */
         QStringList m_restore_backups;
+
+        /** 待办编辑器正在编辑的 id；空串表示新增。 */
+        QString m_editing_todo_id;
 
         /** 导入向导对话框。 */
         QPointer<QObject> m_import_wizard;

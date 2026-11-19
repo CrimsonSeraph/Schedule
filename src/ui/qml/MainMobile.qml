@@ -91,7 +91,8 @@ ApplicationWindow {
                     leftPadding: Metrics.spacingLg
                     verticalAlignment: Text.AlignVCenter
                     text: root.currentTab === 2 ? qsTr("课程")
-                          : root.currentTab === 3 ? qsTr("设置")
+                          : root.currentTab === 3 ? qsTr("待办")
+                          : root.currentTab === 4 ? qsTr("设置")
                           : (schedule.hasSemester ? schedule.semesterName : qsTr("尚未设置学期"))
                     font.pixelSize: Typography.fontHeading
                     font.bold: true
@@ -313,6 +314,10 @@ ApplicationWindow {
             id: semesterPage
         }
 
+        TodoPage {
+            id: todoPage
+        }
+
         SettingsPage {
             id: settingsPage
         }
@@ -395,11 +400,19 @@ ApplicationWindow {
                 }
 
                 NavButton {
+                    objectName: "navTodoButton"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    label: qsTr("待办")
+                    selected: root.currentTab === 3
+                }
+
+                NavButton {
                     objectName: "navSettingsButton"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     label: qsTr("设置")
-                    selected: root.currentTab === 3
+                    selected: root.currentTab === 4
                 }
 
                 NavButton {

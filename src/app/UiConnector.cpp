@@ -4,6 +4,7 @@
 #include "core/service/WeekCalculator.h"
 #include "engine/CourseListModel.h"
 #include "engine/NotificationService.h"
+#include "engine/TodoListModel.h"
 
 #include <QAbstractItemModel>
 #include <QDateTime>
@@ -343,6 +344,7 @@ namespace Schedule {
         connect_course_actions();
         connect_semester_page();
         connect_settings_page();
+        connect_todo_page();
         connect_course_editor();
         connect_course_detail();
         connect_import_wizard();
@@ -380,7 +382,8 @@ namespace Schedule {
         on_click("navWeekButton", [go_to_page]() { go_to_page(0); });
         on_click("navDayButton", [go_to_page]() { go_to_page(1); });
         on_click("navSemesterButton", [go_to_page]() { go_to_page(2); });
-        on_click("navSettingsButton", [go_to_page]() { go_to_page(3); });
+        on_click("navTodoButton", [go_to_page]() { go_to_page(3); });
+        on_click("navSettingsButton", [go_to_page]() { go_to_page(4); });
     }
 
     void UiConnector::connect_week_navigation() {
@@ -875,6 +878,92 @@ namespace Schedule {
     }
 
     // ----------------------------------------------------------课程编辑器
+
+    void UiConnector::connect_todo_page() {
+        const auto selected_row = [this]() {
+            QObject* list = find("todoList");
+            return list ? list->property("currentIndex").toInt() : -1;
+        };
+
+        on_click("todoAddButton", [this]() {
+            m_editing_todo_id.clear();
+            set_text("todoTitleField", QString());
+            set_text("todoNotesField", QString());
+            set_text("todoDueField", QString());
+            set_property(find("todoDoneCheck"), "checked", false);
+            if (QObject* dialog = find("todoDialog")) {
+                invoke(dialog, "open");
+            }
+        });
+
+        on_click("todoEditButton", [this, selected_row]() {
+            auto* model = qobject_cast<TodoListModel*>(m_bridge->todo_model());
+            const int row = selected_row();
+            if (!model || row < 0 || row >= model->rowCount()) {
+                m_bridge->post_error(QStringLiteral("请先选择一条待办"));
+                return;
+            }
+            const QVariantMap todo = model->get(row);
+            m_editing_todo_id = todo.value(QStringLiteral("todoId")).toString();
+            set_text("todoTitleField", todo.value(QStringLiteral("title")).toString());
+            set_text("todoNotesField", todo.value(QStringLiteral("notes")).toString());
+            const QDateTime due = QDateTime::fromString(todo.value(QStringLiteral("dueAt")).toString(), Qt::ISODate);
+            set_text("todoDueField", due.isValid() ? due.toString(QStringLiteral("yyyy-MM-dd HH:mm")) : QString());
+            set_property(find("todoDoneCheck"), "checked", todo.value(QStringLiteral("done")).toBool());
+            if (QObject* dialog = find("todoDialog")) {
+                invoke(dialog, "open");
+            }
+        });
+
+        on_click("todoSaveButton", [this]() {
+            QObject* done = find("todoDoneCheck");
+            if (m_bridge->save_todo(m_editing_todo_id, text_of("todoTitleField"),
+                    text_of("todoNotesField"), text_of("todoDueField"),
+                    done && done->property("checked").toBool())) {
+                if (QObject* dialog = find("todoDialog")) {
+                    invoke(dialog, "close");
+                }
+            }
+        });
+
+        on_click("todoCancelButton", [this]() {
+            if (QObject* dialog = find("todoDialog")) {
+                invoke(dialog, "close");
+            }
+        });
+
+        on_click("todoToggleButton", [this, selected_row]() {
+            auto* model = qobject_cast<TodoListModel*>(m_bridge->todo_model());
+            const int row = selected_row();
+            if (!model || row < 0 || row >= model->rowCount()) {
+                m_bridge->post_error(QStringLiteral("请先选择一条待办"));
+                return;
+            }
+            const QVariantMap todo = model->get(row);
+            m_bridge->set_todo_done(todo.value(QStringLiteral("todoId")).toString(),
+                !todo.value(QStringLiteral("done")).toBool());
+        });
+
+        on_click("todoDeleteButton", [this, selected_row]() {
+            auto* model = qobject_cast<TodoListModel*>(m_bridge->todo_model());
+            const int row = selected_row();
+            if (!model || row < 0 || row >= model->rowCount()) {
+                m_bridge->post_error(QStringLiteral("请先选择一条待办"));
+                return;
+            }
+            m_bridge->remove_todo(model->get(row).value(QStringLiteral("todoId")).toString());
+        });
+
+        connect(m_bridge, &ScheduleBridge::todoReminder, this, [this](const QString& title, const QString& message) {
+            qInfo().noquote() << "[todo] 展示提醒" << title << message;
+            if (m_notifications) {
+                m_notifications->post_notification(title, message);
+            }
+            else {
+                show_banner(title, message, 8);
+            }
+        });
+    }
 
     void UiConnector::connect_course_editor() {
         on_click("courseCancelButton", [this]() { invoke(m_course_editor, "close"); });
@@ -1887,6 +1976,7 @@ namespace Schedule {
             connect_session_cards();
             connect_list_selection("courseList", "courseListItemClick", "itemIndex");
             connect_list_selection("sessionList", "sessionRowClick", "rowIndex");
+            connect_list_selection("todoList", "todoListItemClick", "itemIndex");
         });
     }
 

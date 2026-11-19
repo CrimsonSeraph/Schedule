@@ -108,6 +108,23 @@ namespace Schedule {
             };
             steps.append(version_2);
 
+            // v3：全局待办 / 日程（不挂在学期下）；截止时间为空表示没有截止时间。
+            MigrationStep version_3;
+            version_3.version = 3;
+            version_3.statements = QStringList{
+                QStringLiteral("CREATE TABLE IF NOT EXISTS todos ("
+                               "  id TEXT PRIMARY KEY,"
+                               "  title TEXT NOT NULL DEFAULT '',"
+                               "  notes TEXT NOT NULL DEFAULT '',"
+                               "  due_at TEXT NOT NULL DEFAULT '',"
+                               "  done INTEGER NOT NULL DEFAULT 0,"
+                               "  created_at TEXT NOT NULL DEFAULT '',"
+                               "  updated_at TEXT NOT NULL DEFAULT ''"
+                               ")"),
+                QStringLiteral("CREATE INDEX IF NOT EXISTS idx_todos_done_due ON todos(done, due_at)"),
+            };
+            steps.append(version_3);
+
             return steps;
         }
 
@@ -859,6 +876,90 @@ namespace Schedule {
             return fail(error_message, QStringLiteral("写入导入记录失败：%1").arg(query.lastError().text()));
         }
 
+        if (error_message) {
+            error_message->clear();
+        }
+        return true;
+    }
+
+    // -------------------------------------------------------------------- 待办
+
+    QList<Todo> SqliteScheduleRepository::load_todos(QString* error_message) const {
+        QList<Todo> todos;
+        if (!m_open) {
+            fail(error_message, QStringLiteral("数据库尚未打开"));
+            return todos;
+        }
+        QSqlQuery query(m_database);
+        if (!query.exec(QStringLiteral(
+                "SELECT id, title, notes, due_at, done, created_at, updated_at FROM todos "
+                "ORDER BY done ASC, CASE WHEN due_at = '' THEN 1 ELSE 0 END ASC, due_at ASC, created_at ASC"))) {
+            fail(error_message, QStringLiteral("读取待办失败：%1").arg(query.lastError().text()));
+            return todos;
+        }
+        while (query.next()) {
+            Todo todo;
+            todo.id = query.value(0).toString();
+            todo.title = query.value(1).toString();
+            todo.notes = query.value(2).toString();
+            todo.due_at = QDateTime::fromString(query.value(3).toString(), Qt::ISODate);
+            todo.done = query.value(4).toInt() != 0;
+            todo.created_at = QDateTime::fromString(query.value(5).toString(), Qt::ISODate);
+            todo.updated_at = QDateTime::fromString(query.value(6).toString(), Qt::ISODate);
+            todos.append(todo);
+        }
+        if (error_message) {
+            error_message->clear();
+        }
+        return todos;
+    }
+
+    bool SqliteScheduleRepository::save_todo(const Todo& todo, QString* error_message) {
+        if (!m_open) {
+            return fail(error_message, QStringLiteral("数据库尚未打开"));
+        }
+        if (!todo.is_valid(error_message)) {
+            return false;
+        }
+        Todo stored = todo;
+        if (!stored.created_at.isValid()) {
+            stored.created_at = QDateTime::currentDateTime();
+        }
+        stored.updated_at = QDateTime::currentDateTime();
+
+        QSqlQuery query(m_database);
+        query.prepare(QStringLiteral(
+            "INSERT INTO todos (id, title, notes, due_at, done, created_at, updated_at) "
+            "VALUES (:id, :title, :notes, :due_at, :done, :created_at, :updated_at) "
+            "ON CONFLICT(id) DO UPDATE SET title = excluded.title, notes = excluded.notes, "
+            "due_at = excluded.due_at, done = excluded.done, updated_at = excluded.updated_at"));
+        query.bindValue(QStringLiteral(":id"), stored.id);
+        query.bindValue(QStringLiteral(":title"), non_null(stored.title));
+        query.bindValue(QStringLiteral(":notes"), non_null(stored.notes));
+        query.bindValue(QStringLiteral(":due_at"),
+            non_null(stored.due_at.isValid() ? stored.due_at.toString(Qt::ISODate) : QString()));
+        query.bindValue(QStringLiteral(":done"), stored.done ? 1 : 0);
+        query.bindValue(QStringLiteral(":created_at"), non_null(stored.created_at.toString(Qt::ISODate)));
+        query.bindValue(QStringLiteral(":updated_at"), non_null(stored.updated_at.toString(Qt::ISODate)));
+        if (!query.exec()) {
+            return fail(error_message, QStringLiteral("保存待办失败：%1").arg(query.lastError().text()));
+        }
+        if (error_message) {
+            error_message->clear();
+        }
+        return true;
+    }
+
+    bool SqliteScheduleRepository::remove_todo(const QString& todo_id, QString* error_message) {
+        if (!m_open) {
+            return fail(error_message, QStringLiteral("数据库尚未打开"));
+        }
+        QSqlQuery query(m_database);
+        query.prepare(QStringLiteral("DELETE FROM todos WHERE id = :id"));
+        query.bindValue(QStringLiteral(":id"), todo_id);
+        if (!query.exec()) {
+            return fail(error_message, QStringLiteral("删除待办失败：%1").arg(query.lastError().text()));
+        }
         if (error_message) {
             error_message->clear();
         }

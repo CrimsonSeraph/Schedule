@@ -2,6 +2,7 @@
 
 #include "core/model/ScheduleSnapshot.h"
 #include "core/model/Semester.h"
+#include "core/model/Todo.h"
 
 #include <QList>
 #include <QMap>
@@ -105,6 +106,17 @@ namespace Schedule {
 
         /** @brief 追加一条导入来源记录。 */
         virtual bool add_import_source(const ImportSource& source, QString* error_message = nullptr) = 0;
+
+        // ---------------------------------------------------------------- 待办
+
+        /** @return 全部待办，未完成的在前、按截止时间升序。 */
+        virtual QList<Todo> load_todos(QString* error_message = nullptr) const = 0;
+
+        /** @brief 新增或整体更新一条待办（按 id upsert）。 */
+        virtual bool save_todo(const Todo& todo, QString* error_message = nullptr) = 0;
+
+        /** @brief 删除一条待办。 */
+        virtual bool remove_todo(const QString& todo_id, QString* error_message = nullptr) = 0;
 
         // ---------------------------------------------------------------- 维护
 

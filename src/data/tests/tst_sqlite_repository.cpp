@@ -2,6 +2,7 @@
 #include "core/model/ScheduleSnapshot.h"
 #include "core/model/Semester.h"
 #include "core/model/TimeSlot.h"
+#include "core/model/Todo.h"
 #include "data/AppSettings.h"
 #include "data/ImportSource.h"
 #include "data/SettingsKeys.h"
@@ -23,6 +24,7 @@ using Schedule::Semester;
 using Schedule::SettingsKeys;
 using Schedule::SqliteScheduleRepository;
 using Schedule::TimeSlot;
+using Schedule::Todo;
 using Schedule::WeekMask;
 
 namespace {
@@ -97,6 +99,9 @@ private slots:
     /** 当前学期唯一性。 */
     void keeps_single_current_semester();
 
+    /** 待办新增 / 更新 / 删除与排序。 */
+    void stores_todos();
+
     /** 设置读写与全量读取。 */
     void reads_and_writes_settings();
 
@@ -127,7 +132,7 @@ void TestSqliteRepository::opens_and_migrates() {
     QVERIFY(repository.is_open());
     QCOMPARE(repository.location(), QStringLiteral(":memory:"));
     QCOMPARE(repository.schema_version(), SqliteScheduleRepository::latest_schema_version());
-    QCOMPARE(repository.schema_version(), 2);
+    QCOMPARE(repository.schema_version(), 3);
 
     // 全新库应为空
     QVERIFY(repository.load_semesters(&error).isEmpty());
@@ -158,7 +163,7 @@ void TestSqliteRepository::migration_is_idempotent() {
         SqliteScheduleRepository repository(path);
         QString error;
         QVERIFY2(repository.open(&error), qPrintable(error));
-        QCOMPARE(repository.schema_version(), 2);
+        QCOMPARE(repository.schema_version(), 3);
 
         ScheduleSnapshot snapshot;
         QVERIFY2(repository.load_snapshot(QStringLiteral("s1"), &snapshot, &error), qPrintable(error));
@@ -372,6 +377,36 @@ void TestSqliteRepository::keeps_single_current_semester() {
 
     // 设置项同步写入，便于不查表快速读取
     QCOMPARE(repository.setting(SettingsKeys::current_semester_id()), QStringLiteral("s2"));
+}
+
+void TestSqliteRepository::stores_todos() {
+    SqliteScheduleRepository repository(QStringLiteral(":memory:"));
+    QString error;
+    QVERIFY2(repository.open(&error), qPrintable(error));
+
+    Todo first = Todo::create(QStringLiteral("写报告"), QStringLiteral("第三章"),
+        QDateTime(QDate(2026, 11, 20), QTime(18, 0)));
+    QVERIFY2(repository.save_todo(first, &error), qPrintable(error));
+
+    Todo second = Todo::create(QStringLiteral("买书"), QString(), QDateTime());
+    QVERIFY2(repository.save_todo(second, &error), qPrintable(error));
+
+    // 完成第二条后重新读取：未完成的应排在前面
+    second.done = true;
+    QVERIFY2(repository.save_todo(second, &error), qPrintable(error));
+
+    const QList<Todo> todos = repository.load_todos(&error);
+    QCOMPARE(todos.size(), 2);
+    QCOMPARE(todos.at(0).id, first.id);
+    QCOMPARE(todos.at(0).title, QStringLiteral("写报告"));
+    QCOMPARE(todos.at(0).due_at, first.due_at);
+    QVERIFY(!todos.at(0).done);
+    QCOMPARE(todos.at(1).id, second.id);
+    QVERIFY(todos.at(1).done);
+    QVERIFY(!todos.at(1).due_at.isValid());
+
+    QVERIFY2(repository.remove_todo(first.id, &error), qPrintable(error));
+    QCOMPARE(repository.load_todos(&error).size(), 1);
 }
 
 void TestSqliteRepository::reads_and_writes_settings() {

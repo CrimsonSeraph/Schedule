@@ -86,6 +86,14 @@ namespace Schedule {
 
         bool add_import_source(const ImportSource& source, QString* error_message = nullptr) override;
 
+        // ---------------------------------------------------------------- 待办
+
+        QList<Todo> load_todos(QString* error_message = nullptr) const override;
+
+        bool save_todo(const Todo& todo, QString* error_message = nullptr) override;
+
+        bool remove_todo(const QString& todo_id, QString* error_message = nullptr) override;
+
         // ---------------------------------------------------------------- 维护
 
         bool backup_to(const QString& target_path, QString* error_message = nullptr) const override;

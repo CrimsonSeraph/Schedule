@@ -70,6 +70,7 @@ qt6_add_qml_module(
 	qml/ImportWizard.qml
 	qml/ExportDialog.qml
 	qml/SettingsPage.qml
+	qml/TodoPage.qml
 	qml/SemesterPage.qml
 	qml/BrowserImportDialog.qml
 	qml/EmbeddedBrowser.qml

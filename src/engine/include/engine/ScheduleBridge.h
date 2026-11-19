@@ -1,14 +1,18 @@
 #pragma once
 
 #include "core/model/Conflict.h"
+#include "core/model/Todo.h"
 #include "core/service/ScheduleService.h"
 #include "data/AppSettings.h"
 #include "data/IScheduleRepository.h"
 #include "engine/CourseListModel.h"
 #include "engine/ImportExportBridge.h"
 #include "engine/SessionListModel.h"
+#include "engine/TodoListModel.h"
 
 #include <QObject>
+#include <QSet>
+#include <QTimer>
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
@@ -156,6 +160,15 @@ namespace Schedule {
         /** 节假日版本号：QML 绑定据此在增删后重新求值。 */
         Q_PROPERTY(int holidayRevision READ holiday_revision NOTIFY holidaysChanged)
 
+        /** 待办列表模型（todoId / title / notes / dueAt / dueText / overdue / done）。 */
+        Q_PROPERTY(QAbstractItemModel* todoModel READ todo_model CONSTANT)
+
+        /** 待办总数。 */
+        Q_PROPERTY(int todoCount READ todo_count NOTIFY todosChanged)
+
+        /** 未完成待办数。 */
+        Q_PROPERTY(int openTodoCount READ open_todo_count NOTIFY todosChanged)
+
     public:
         /**
          * @param service    课表服务（不持有所有权）
@@ -197,6 +210,28 @@ namespace Schedule {
 
         /** @return 第 week 周内的节假日摘要（如 "11-20 周五 休"）；没有返回空串。 */
         Q_INVOKABLE QString week_holiday_summary(int week) const;
+
+        // ------------------------------------------------------------ 待办
+
+        /** @return 待办列表模型。 */
+        QAbstractItemModel* todo_model() const;
+
+        int todo_count() const;
+
+        int open_todo_count() const;
+
+        /**
+         * @brief 新增（id 为空）或更新一条待办。
+         * @param due 截止时间文本（`yyyy-MM-dd HH:mm`，可空）
+         */
+        Q_INVOKABLE bool save_todo(const QString& id, const QString& title, const QString& notes,
+            const QString& due, bool done);
+
+        /** @brief 删除一条待办。 */
+        Q_INVOKABLE bool remove_todo(const QString& id);
+
+        /** @brief 设置完成状态。 */
+        Q_INVOKABLE bool set_todo_done(const QString& id, bool done);
 
         // ------------------------------------------------------------ 显示设置
 
@@ -444,6 +479,12 @@ namespace Schedule {
         /** 节假日 / 调休数据变化后发出。 */
         void holidaysChanged();
 
+        /** 待办数据变化后发出。 */
+        void todosChanged();
+
+        /** 待办到点提醒（由 app 层转成应用内横幅 / 系统通知）。 */
+        void todoReminder(const QString& title, const QString& message);
+
         /** 日志级别 / 保留天数变化后发出。 */
         void logSettingsChanged();
 
@@ -517,6 +558,20 @@ namespace Schedule {
 
         /** @brief 把节假日列表写回仓库设置。 */
         bool persist_holidays(QString* error_message = nullptr);
+
+        TodoListModel* m_todo_model = nullptr;
+        QList<Todo> m_todos;
+        QTimer* m_todo_timer = nullptr;
+        QSet<QString> m_reminded_todos;
+
+        /** @brief 从仓库读取待办并刷新模型。 */
+        void load_todos();
+
+        /** @brief 把 m_todos 刷进模型并发出 todosChanged。 */
+        void refresh_todo_model();
+
+        /** @brief 每 30 秒检查一次到点待办。 */
+        void check_todo_reminders();
 
         /** 最近一次错误。 */
         QString m_last_error;
