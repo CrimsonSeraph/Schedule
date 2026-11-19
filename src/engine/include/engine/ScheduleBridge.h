@@ -123,6 +123,12 @@ namespace Schedule {
         /** 是否在周视图中显示非本周课程（幽灵卡）。 */
         Q_PROPERTY(bool showOtherWeeks READ show_other_weeks NOTIFY displaySettingsChanged)
 
+        /** 字体大小档位（0 小 / 1 标准 / 2 大 / 3 特大）。 */
+        Q_PROPERTY(int fontScaleIndex READ font_scale_index NOTIFY displaySettingsChanged)
+
+        /** 字体实际缩放系数。 */
+        Q_PROPERTY(qreal fontScale READ font_scale NOTIFY displaySettingsChanged)
+
         /** 日志落盘级别：0=调试 1=信息 2=警告 3=错误。 */
         Q_PROPERTY(int logLevel READ log_level NOTIFY logSettingsChanged)
 
@@ -189,6 +195,15 @@ namespace Schedule {
         /** @brief 设置是否显示非本周课程。 */
         Q_INVOKABLE void set_show_other_weeks(bool enabled);
 
+        /** @return 字体大小档位。 */
+        int font_scale_index() const;
+
+        /** @return 字体实际缩放系数。 */
+        qreal font_scale() const;
+
+        /** @brief 设置字体大小档位。 */
+        Q_INVOKABLE void set_font_scale_index(int index);
+
         /** @return 日志落盘级别。 */
         int log_level() const;
 
@@ -227,6 +242,12 @@ namespace Schedule {
 
         /** @brief 删除指定学期 / 课表（至少保留一个；删除当前学期时先切到另一个）。 */
         Q_INVOKABLE void remove_semester(const QString& semester_id);
+
+        /** @brief 备份数据库到指定路径（VACUUM INTO 快照）。 */
+        Q_INVOKABLE bool backup_database(const QString& path);
+
+        /** @brief 从备份文件恢复数据库并重新加载界面。 */
+        Q_INVOKABLE bool restore_database(const QString& path);
 
         /** @brief 在状态栏显示一条提示（供 app 层复用桥接的通知通道）。 */
         Q_INVOKABLE void post_info(const QString& message);

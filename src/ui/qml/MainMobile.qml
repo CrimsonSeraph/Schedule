@@ -38,6 +38,13 @@ ApplicationWindow {
         value: schedule.darkMode
     }
 
+    // 字体大小：设置页切换后，Typography 全部字号按比例缩放
+    Binding {
+        target: Typography
+        property: "scale"
+        value: schedule.fontScale
+    }
+
     // ------------------------------------------------------------ 响应式断点
     readonly property bool narrow: Responsive.isTiny(width)
     readonly property bool shortHeight: Responsive.isShort(height)

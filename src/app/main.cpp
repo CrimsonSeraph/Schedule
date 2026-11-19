@@ -26,6 +26,9 @@
 #include <QDir>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
+#include <QQuickStyle>
+#endif
 #include <QStandardPaths>
 #include <QTranslator>
 #include <QUrl>
@@ -63,6 +66,17 @@ int main(int argc, char* argv[]) {
                                 .filePath(QStringLiteral("Schedule/logs"));
     Schedule::Logging::install(log_dir);
     qInfo().noquote() << "[app] Schedule" << gui_app.applicationVersion() << "启动，日志目录" << log_dir;
+
+    // ------------------------------------------------------------------ 控件样式
+    // 桌面端默认样式是各平台原生外观（Windows 11 + Qt 6 为 FluentWinUI3），原生样式
+    // **不支持**自定义 background / contentItem：AppButton 之类的自绘控件的圆角底色会被
+    // 忽略，并反复打出 "does not support customization" 警告。本项目所有控件外观都来自
+    // 自绘 + Theme 令牌，因此在加载任何 QML 之前固定为 Basic（非原生样式）。
+    // 移动端继续使用 Material：MainMobile.qml 依赖 Material.primary / Material.theme 附加属性。
+#if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
+    QQuickStyle::setStyle(QStringLiteral("Basic"));
+    qInfo().noquote() << "[app] QML 控件样式：Basic（非原生，自绘 background / contentItem 生效）";
+#endif
 
     // ------------------------------------------------------------------ 国际化
     // 源语言是简体中文；若存在与系统语言匹配的 .qm（由 qt_add_translations 嵌入 :/i18n），

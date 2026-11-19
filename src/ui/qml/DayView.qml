@@ -19,7 +19,8 @@ Item {
     objectName: "dayView"
 
     // 卡片高度：按可用高度与“一屏目标卡片数”推导，上下限与目标张数都在 CourseCardStyle 里
-    readonly property int cardHeight: Responsive.dayCardHeight(dayView.height)
+    readonly property int cardHeight: Math.round(Responsive.dayCardHeight(dayView.height)
+        * Math.max(1.0, Typography.scale))
 
     // 窄屏（手机竖屏 / 分屏）：压缩选择栏
     readonly property bool narrowBar: Responsive.isTiny(dayView.width)

@@ -3,7 +3,7 @@
     "tasks": [
         {
             "label": "cmake: configure (Debug-x64)",
-            "detail": "cmake --preset Debug-x64",
+            "detail": "cmake --preset Debug-x64（MinGW 6.9.3 + Ninja，无内嵌浏览器）",
             "type": "shell",
             "command": "cmake",
             "args": ["--preset", "Debug-x64"],
@@ -26,11 +26,44 @@
         },
         {
             "label": "cmake: run (Debug-x64)",
-            "detail": "构建后启动 Schedule.exe",
+            "detail": "构建后启动 Schedule.exe（MinGW，回退系统浏览器）",
             "type": "process",
             "command": "${workspaceFolder}/out/build/debug/Schedule.exe",
             "options": { "cwd": "${workspaceFolder}/out/build/debug" },
             "dependsOn": ["cmake: build (Debug-x64)"],
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        {
+            "label": "cmake: configure (windows-msvc)",
+            "detail": "cmake --preset windows-msvc（Qt 6.9.3 msvc2022_64 + Visual Studio 18 2026 生成器，启用内嵌浏览器）",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--preset", "windows-msvc"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "silent", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "cmake: build (windows-msvc-debug)",
+            "detail": "cmake --build --preset windows-msvc-debug",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "--preset", "windows-msvc-debug"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "dependsOn": ["cmake: configure (windows-msvc)"],
+            "dependsOrder": "sequence",
+            "group": "build",
+            "problemMatcher": ["$msCompile"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "cmake: run (windows-msvc-debug)",
+            "detail": "构建后启动 Schedule.exe（MSVC，内嵌浏览器可用）",
+            "type": "process",
+            "command": "${workspaceFolder}/out/build/msvc/Debug/Schedule.exe",
+            "options": { "cwd": "${workspaceFolder}/out/build/msvc/Debug" },
+            "dependsOn": ["cmake: build (windows-msvc-debug)"],
             "dependsOrder": "sequence",
             "problemMatcher": []
         }

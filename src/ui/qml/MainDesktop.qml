@@ -32,7 +32,45 @@ ApplicationWindow {
     minimumWidth: Responsive.minWindowWidth
     minimumHeight: Responsive.minWindowHeight
     visible: true
+    // 窗口底色跟随主题：日 / 学期 / 设置页是没有自带底色的 Item，
+    // 不显式给底色的话深色主题下会露出 Basic 样式默认的白底。
+    color: Theme.surface
     title: qsTr("Schedule - 课表")
+
+    // 主题：schedule.darkMode 解析 system / light / dark，驱动 Theme 的两套色板。
+    // 与 MainMobile 一致，只做只读绑定，切主题由 C++ 侧发 themeChanged 信号驱动。
+    Binding {
+        target: Theme
+        property: "dark"
+        value: schedule.darkMode
+    }
+
+    Binding {
+        target: Typography
+        property: "scale"
+        value: schedule.fontScale
+    }
+
+    // Basic 样式（见 app/main.cpp）自带一套系统色：ToolBar 底色取 palette.button、
+    // Label 与 ToolButton 文字取 palette.windowText / palette.buttonText、对话框与菜单
+    // 底色取 palette.window、输入框取 palette.base，都不会跟着 Theme 变化。
+    // 把窗口级 palette 逐项绑到同一套令牌，Basic 控件的外壳才会跟随深浅色；
+    // 显式写了 Theme 颜色的控件优先级更高，不受这里的覆盖影响。
+    palette.window: Theme.surface
+    palette.windowText: Theme.textPrimary
+    palette.base: Theme.surfaceSubtle
+    palette.alternateBase: Theme.surfaceAlt
+    palette.text: Theme.textPrimary
+    palette.placeholderText: Theme.textMuted
+    palette.button: Theme.surfaceAlt
+    palette.buttonText: Theme.textPrimary
+    palette.mid: Theme.border
+    palette.midlight: Theme.divider
+    palette.dark: Theme.border
+    palette.light: Theme.surface
+    palette.shadow: Theme.divider
+    palette.highlight: Theme.accent
+    palette.highlightedText: Theme.cardTextPrimary
 
     // ------------------------------------------------------------ 响应式断点
     // 全部来自 Responsive 单例：完整工具栏需要约 1400px 才不裁切，

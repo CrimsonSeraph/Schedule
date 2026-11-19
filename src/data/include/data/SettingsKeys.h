@@ -51,6 +51,9 @@ namespace Schedule {
         /** 日志保留天数（默认 7）。 */
         static QString log_retention_days();
 
+        /** 字体大小档位：0=小 1=标准 2=大 3=特大。 */
+        static QString font_scale();
+
         /** 周视图格子高度档位（"0" 紧凑 / "1" 标准 / "2" 宽松）。 */
         static QString slot_density();
 

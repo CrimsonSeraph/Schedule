@@ -728,6 +728,13 @@ namespace Schedule {
 #endif
         });
 
+        on_signal("fontScaleSelector", "currentIndexChanged()", [this]() {
+            const int index = combo_index(find("fontScaleSelector"));
+            if (index >= 0) {
+                m_bridge->set_font_scale_index(index);
+            }
+        });
+
         on_signal("logLevelSelector", "currentIndexChanged()", [this]() {
             const int level = combo_index(find("logLevelSelector"));
             if (level < 0) {
@@ -748,6 +755,79 @@ namespace Schedule {
             m_bridge->set_log_retention_days(days);
             Logging::prune_old_logs(days);
             qInfo().noquote() << "[log] 日志保留天数切换为" << days;
+        });
+
+        on_click("backupDatabaseButton", [this]() {
+            auto* io = import_export();
+            const QString dir = QDir(io->default_export_dir()).filePath(QStringLiteral("backup"));
+            QDir().mkpath(dir);
+            const QString path = QDir(dir).filePath(QStringLiteral("schedule-%1.db")
+                .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"))));
+            m_bridge->backup_database(path);
+        });
+
+        on_click("restoreDatabaseButton", [this]() {
+            auto* io = import_export();
+            const QString dir = QDir(io->default_export_dir()).filePath(QStringLiteral("backup"));
+            const QFileInfoList files = QDir(dir).entryInfoList(
+                QStringList{QStringLiteral("*.db")}, QDir::Files, QDir::Time);
+            m_restore_backups.clear();
+            QVariantList model;
+            for (const QFileInfo& info : files) {
+                m_restore_backups.append(info.absoluteFilePath());
+                model.append(info.fileName());
+            }
+            if (QObject* combo = find("restoreBackupSelector")) {
+                combo->setProperty("model", model);
+                combo->setProperty("currentIndex", files.isEmpty() ? -1 : 0);
+            }
+            if (QObject* empty = find("restorePickerEmptyLabel")) {
+                empty->setProperty("visible", files.isEmpty());
+            }
+            if (QObject* confirm = find("restorePickerConfirmButton")) {
+                confirm->setProperty("enabled", !files.isEmpty());
+            }
+            if (QObject* dialog = find("restorePickerDialog")) {
+                invoke(dialog, "open");
+            }
+        });
+
+        on_click("restorePickerCancelButton", [this]() {
+            if (QObject* dialog = find("restorePickerDialog")) {
+                invoke(dialog, "close");
+            }
+        });
+        on_click("restorePickerFileButton", [this]() {
+            if (QObject* picker = find("restorePickerDialog")) {
+                invoke(picker, "close");
+            }
+            if (QObject* dialog = find("restoreDatabaseDialog")) {
+                invoke(dialog, "open");
+            }
+        });
+        on_click("restorePickerConfirmButton", [this]() {
+            const int index = combo_index(find("restoreBackupSelector"));
+            if (index < 0 || index >= m_restore_backups.size()) {
+                m_bridge->post_error(QStringLiteral("请选择一个备份文件"));
+                return;
+            }
+            const QString path = m_restore_backups.at(index);
+            if (QObject* picker = find("restorePickerDialog")) {
+                invoke(picker, "close");
+            }
+            m_bridge->restore_database(path);
+        });
+        on_signal("restoreDatabaseDialog", "accepted()", [this]() {
+            QObject* dialog = find("restoreDatabaseDialog");
+            if (!dialog) {
+                return;
+            }
+            const QString path = dialog->property("selectedFile").toUrl().toLocalFile();
+            if (path.isEmpty()) {
+                m_bridge->post_error(QStringLiteral("无法读取所选备份文件路径"));
+                return;
+            }
+            m_bridge->restore_database(path);
         });
     }
 

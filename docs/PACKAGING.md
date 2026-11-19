@@ -49,9 +49,9 @@ ctest --preset <preset> -C Release             # 可选：先跑一遍测试
 
 ```powershell
 $env:QTDIR = "D:/Qt/6.9.3/msvc2022_64"
-cmake --preset windows-msvc -DCMAKE_BUILD_TYPE=Release
+cmake --preset windows-msvc
 cmake --build --preset windows-msvc-release
-# 产物目录：build/windows-msvc/Release
+# 产物目录：out/build/msvc/Release（Visual Studio 生成器多配置，Release 由构建预设的 configuration 决定）
 ```
 
 关键参数说明：

@@ -94,7 +94,7 @@ Schedule/
 $env:QTDIR = "D:/Qt/6.9.3/msvc2022_64"        # PowerShell；Linux/macOS 用 export
 cmake --preset windows-msvc
 cmake --build --preset windows-msvc-debug
-./build/windows-msvc/Debug/Schedule.exe
+./out/build/msvc/Debug/Schedule.exe
 
 # ------------------------------------------------------------------------ Linux
 export QTDIR=/opt/Qt/6.9.3/gcc_64
@@ -116,6 +116,24 @@ cmake --build build/android --target apk        # 打 APK（--target aab 出 Goo
 ```
 
 > `windows-msvc` / `android` 属于**本机预设**，定义在已被 `.gitignore` 忽略的 `CMakeUserPresets.json` 中；新克隆的仓库需自行创建该文件，继承 `CMakePresets.json` 里的基础预设并填入本机 Qt / NDK 路径（`android` 预设还需要 `QT_HOST_PATH`）。Android 打包必须走 Qt 自带的 `qt.toolchain.cmake`（预设里已配置），只用 NDK 工具链只能编译出 `.so`，详见 [docs/PACKAGING.md](docs/PACKAGING.md) 第 4 节。
+
+### Windows 两套 Qt 套件怎么选
+
+本机同时装了 MinGW 与 MSVC 两套 Qt 6.9.3 桌面套件，仓库为两者都准备了预设和 `.vscode` 任务，差别只有一处是功能性的：**内嵌浏览器只在 MSVC 套件里可用**。
+
+| | MinGW（`D:/Qt/6.9.3/mingw_64`） | MSVC（`D:/Qt/6.9.3/msvc2022_64`） |
+| --- | --- | --- |
+| 预设 | `Debug-x64` / `debug-x64`、`Release-x64` / `release-x64`（Ninja，单配置） | `windows-msvc` / `windows-msvc-debug`（`Visual Studio 18 2026` 生成器，多配置） |
+| 产物 | `out/build/debug/Schedule.exe` | `out/build/msvc/Debug/Schedule.exe` |
+| 构建耗时 | 快，日常改代码首选 | 首次全量约 4 分钟（实测 239 秒）；无改动增量命中也只要几秒 |
+| 内嵌浏览器 | 无：套件缺 `WebView` 模块与 `plugins/webview` 后端插件，配置期判定为 `none`，界面回退到系统浏览器 | 有：配置期输出 `内嵌浏览器后端：webview`，可在应用内打开教务系统并抓取课表 |
+| VS Code | 任务 `cmake: build (Debug-x64)`，调试配置 `Schedule (Debug-x64)`（默认 F5） | 任务 `cmake: build (windows-msvc-debug)`，调试配置 `Schedule (windows-msvc Debug)` |
+
+怎么选：改 C++ / 调 QML 用 MinGW，编译快、和默认 F5 一致；要验证或使用「从教务导入」的内嵌浏览器，切到 MSVC 套件。
+
+MSVC 这套**不需要**先打开 Developer PowerShell：`Visual Studio 18 2026` 生成器由 CMake 自己定位 VC 工具链，普通 shell（或 VS Code 任务）里直接 `cmake --preset windows-msvc` 就能配置和构建。构建末尾由 `windeployqt` 把 Qt 运行库、插件与 QML 模块部署到 exe 同级目录，`out/build/msvc/Debug/` 下会看到 `platforms/`、`webview/`、`qml/`、`styles/`、`translations/` 等目录，把 `PATH` 清到只剩 `C:\Windows\System32` 也能直接运行。
+
+> Visual Studio 生成器是多配置的：`--preset windows-msvc-debug` 里已带 `configuration: Debug`；手写原生命令时对应 `cmake --build out/build/msvc --config Debug`。
 
 ### 构建选项
 
@@ -156,7 +174,7 @@ ctest --preset windows-msvc -C Debug
 ```bash
 cmake --preset windows-msvc -DBUILD_TESTS=ON -DBUILD_SELFTEST=ON
 cmake --build --preset windows-msvc-debug
-./build/windows-msvc/Debug/Schedule.exe --selftest
+./out/build/msvc/Debug/Schedule.exe --selftest
 ```
 
 自检会：点击导航按钮 → 点击设置页“自检”按钮（验证 C++ 侧连接）→ 导入 `samples/schedule_sample.json` → 导出 JSON / CSV / ICS 到临时目录并**校验文件确实存在** → 把导出的 JSON 再导入回来校验往返一致性。共 22 项断言，全部通过退出码 `0`，失败 `2`。

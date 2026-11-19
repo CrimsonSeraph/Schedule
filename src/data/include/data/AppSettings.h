@@ -123,6 +123,12 @@ namespace Schedule {
         /** @return 日志保留天数（默认 7）。 */
         int log_retention_days() const;
 
+        /** @return 字体大小档位（0=小 1=标准 2=大 3=特大，默认 1）。 */
+        int font_scale() const;
+
+        /** @brief 设置字体大小档位。 */
+        bool set_font_scale(int index, QString* error_message = nullptr);
+
         /** @brief 设置日志保留天数。 */
         bool set_log_retention_days(int days, QString* error_message = nullptr);
 

@@ -80,6 +80,13 @@ target_link_libraries(Schedule
 		ScheduleCore
 )
 
+# QQuickStyle（main.cpp 用来固定 Basic 样式）在 QtQuickControls2 模块里。
+# 只有桌面端需要：移动端的 QML 直接 import QtQuick.Controls.Material。
+if(NOT ANDROID AND NOT IOS)
+	find_package(Qt6 6.9.3 REQUIRED COMPONENTS QuickControls2)
+	target_link_libraries(Schedule PRIVATE Qt6::QuickControls2)
+endif()
+
 # 内嵌浏览器后端：main.cpp 需要调用 QtWebView::initialize()
 if(SCHEDULE_BROWSER_BACKEND STREQUAL "webview")
 	target_compile_definitions(Schedule PRIVATE Schedule_HAS_WEBVIEW=1)

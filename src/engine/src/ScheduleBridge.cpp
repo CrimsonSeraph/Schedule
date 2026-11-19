@@ -486,6 +486,42 @@ namespace Schedule {
         report_info(QStringLiteral("已切换到“%1”").arg(snapshot.semester.name));
     }
 
+    bool ScheduleBridge::backup_database(const QString& path) {
+        if (!m_repository || !m_repository->is_open()) {
+            report_error(QStringLiteral("数据库尚未打开，无法备份"));
+            return false;
+        }
+        QString error;
+        if (!m_repository->backup_to(path, &error)) {
+            report_error(QStringLiteral("备份数据库失败：%1").arg(error));
+            qWarning() << "[db] 备份失败" << path << error;
+            return false;
+        }
+        qInfo() << "[db] 数据库已备份" << path;
+        report_info(QStringLiteral("数据库已备份：%1").arg(path));
+        return true;
+    }
+
+    bool ScheduleBridge::restore_database(const QString& path) {
+        if (!m_repository || !m_repository->is_open()) {
+            report_error(QStringLiteral("数据库尚未打开，无法恢复"));
+            return false;
+        }
+        QString error;
+        if (!m_repository->restore_from(path, &error)) {
+            report_error(QStringLiteral("恢复数据库失败：%1").arg(error));
+            qWarning() << "[db] 恢复失败" << path << error;
+            return false;
+        }
+        reload_from_repository();
+        emit themeChanged();
+        emit displaySettingsChanged();
+        emit logSettingsChanged();
+        qInfo() << "[db] 数据库已恢复" << path;
+        report_info(QStringLiteral("数据库已恢复：%1").arg(path));
+        return true;
+    }
+
     void ScheduleBridge::post_info(const QString& message) {
         qInfo().noquote() << "[ui]" << message;
         report_info(message);
@@ -584,6 +620,35 @@ namespace Schedule {
         }
         if (m_session_model) {
             m_session_model->set_include_other_weeks(enabled);
+        }
+        emit displaySettingsChanged();
+    }
+
+    int ScheduleBridge::font_scale_index() const {
+        return m_settings ? m_settings->font_scale() : 1;
+    }
+
+    qreal ScheduleBridge::font_scale() const {
+        switch (font_scale_index()) {
+        case 0:
+            return 0.9;
+        case 2:
+            return 1.15;
+        case 3:
+            return 1.3;
+        default:
+            return 1.0;
+        }
+    }
+
+    void ScheduleBridge::set_font_scale_index(int index) {
+        if (!m_settings) {
+            return;
+        }
+        QString error;
+        if (!m_settings->set_font_scale(index, &error)) {
+            report_error(error);
+            return;
         }
         emit displaySettingsChanged();
     }

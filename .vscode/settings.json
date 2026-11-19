@@ -1,6 +1,8 @@
 {
     // CMake Tools：统一使用 CMakePresets.json / CMakeUserPresets.json 里的预设
-    // （桌面 = Debug-x64 / Release-x64，MinGW 6.9.3 kit，Ninja 生成器）
+    // 桌面两套并存：Debug-x64 / Release-x64（MinGW 6.9.3 + Ninja，日常默认）
+    //              windows-msvc（MSVC 6.9.3 + Visual Studio 18 2026，含内嵌浏览器）
+    // 切换：状态栏「CMake: 选择一个配置预设」，或直接跑 .vscode/tasks.json 里的对应任务
     "cmake.useCMakePresets": "always",
     "cmake.configureOnOpen": true,
 

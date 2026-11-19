@@ -24,6 +24,7 @@ namespace Schedule::Logging {
         qint64 g_bytes = 0;
         Level g_level = Level::Debug;
         bool g_installed = false;
+        bool g_open_failure_reported = false;
         QtMessageHandler g_previous = nullptr;
 
         /** @return 单字符级别标记。 */
@@ -57,6 +58,25 @@ namespace Schedule::Logging {
             return Level::Debug;
         }
 
+        /**
+         * @brief 把日志文件打不开的原因交给上一级处理器，同一次连续失败只输出一条。
+         *
+         * 不走 qWarning：本函数由 write_line 调用，而 write_line 自己就是当前安装的处理器，
+         * 再发 qWarning 会原地递归。直接转发给 g_previous（Qt 默认处理器 / WebEngine 之后
+         * 的链条），消息会出现在 stderr、OutputDebugString 或调试器输出里。
+         * 日志文件本身就是坏的那一端，这条提示只能走文件之外的通路，因此不受“日志格式”约束。
+         */
+        void report_open_failure_locked(const QString& file_path) {
+            if (g_open_failure_reported || !g_previous) {
+                return;
+            }
+            g_open_failure_reported = true;
+            const QMessageLogContext context;
+            g_previous(QtWarningMsg, context,
+                QStringLiteral("[log] 无法写入日志文件 %1：%2（写不进去时会一直重试，本条提示只输出一次）")
+                    .arg(file_path, g_file.errorString()));
+        }
+
         /** @brief 确保当前日期对应的日志文件已打开（调用方需持有 g_mutex）。 */
         void ensure_file_locked() {
             const QString date = QDate::currentDate().toString(QStringLiteral("yyyyMMdd"));
@@ -74,6 +94,10 @@ namespace Schedule::Logging {
             if (g_file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
                 g_date = date;
                 g_bytes = g_file.size();
+                g_open_failure_reported = false;
+            }
+            else {
+                report_open_failure_locked(g_file.fileName());
             }
         }
 

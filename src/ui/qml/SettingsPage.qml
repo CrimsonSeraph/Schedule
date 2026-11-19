@@ -120,6 +120,18 @@ Item {
                         model: [qsTr("小"), qsTr("中"), qsTr("大")]
                         currentIndex: schedule.cardRadius
                     }
+
+                    Label {
+                        text: qsTr("字体大小")
+                    }
+                    ComboBox {
+                        id: fontScaleSelector
+
+                        objectName: "fontScaleSelector"
+                        Layout.fillWidth: true
+                        model: [qsTr("小"), qsTr("标准"), qsTr("大"), qsTr("特大")]
+                        currentIndex: schedule.fontScaleIndex
+                    }
                 }
             }
 
@@ -689,6 +701,17 @@ Item {
                             primary: true
                             text: qsTr("立即保存")
                         }
+
+                        AppButton {
+                            objectName: "backupDatabaseButton"
+                            text: qsTr("备份数据库")
+                        }
+
+                        AppButton {
+                            objectName: "restoreDatabaseButton"
+                            text: qsTr("恢复数据库…")
+                            danger: true
+                        }
                     }
                 }
             }
@@ -789,5 +812,89 @@ Item {
 
         objectName: "exportDirDialog"
         title: qsTr("选择默认导出目录")
+    }
+
+    // 数据库恢复：先选应用内备份，再二次确认（覆盖式操作）
+    Dialog {
+        id: restorePickerDialog
+
+        objectName: "restorePickerDialog"
+        title: qsTr("恢复数据库")
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(400, parent ? parent.width - 2 * Metrics.spacing2xl : 360)
+
+        contentItem: ColumnLayout {
+            spacing: Metrics.spacingLg
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("选择应用内的备份（最近的在前）：")
+                wrapMode: Text.WordWrap
+                color: Theme.textPrimary
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("恢复会用备份文件覆盖当前数据库；当前数据会先自动保存为 .bak。")
+                wrapMode: Text.WordWrap
+                color: Theme.warning
+            }
+
+            ComboBox {
+                objectName: "restoreBackupSelector"
+                Layout.fillWidth: true
+            }
+
+            Label {
+                objectName: "restorePickerEmptyLabel"
+                Layout.fillWidth: true
+                visible: false
+                text: qsTr("还没有备份，请先点“备份数据库”")
+                color: Theme.warning
+                wrapMode: Text.WordWrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Metrics.spacingLg
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                AppButton {
+                    objectName: "restorePickerCancelButton"
+                    text: qsTr("取消")
+                    implicitHeight: Metrics.controlHeight
+                }
+
+                AppButton {
+                    objectName: "restorePickerFileButton"
+                    text: qsTr("从文件选择…")
+                    visible: Qt.platform.os !== "android"
+                    implicitHeight: Metrics.controlHeight
+                }
+
+                AppButton {
+                    objectName: "restorePickerConfirmButton"
+                    text: qsTr("恢复")
+                    danger: true
+                    implicitHeight: Metrics.controlHeight
+                }
+            }
+        }
+    }
+
+    FileDialog {
+        id: restoreDatabaseDialog
+
+        objectName: "restoreDatabaseDialog"
+        title: qsTr("选择数据库备份")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("数据库备份 (*.db)"), qsTr("全部文件 (*)")]
+        currentFolder: schedule.importExport.defaultExportDir.length > 0
+            ? "file:///" + schedule.importExport.defaultExportDir.replace(/\\/g, "/")
+            : ""
     }
 }

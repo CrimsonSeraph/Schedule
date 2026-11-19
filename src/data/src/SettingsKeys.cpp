@@ -50,6 +50,10 @@ namespace Schedule {
         return QStringLiteral("log/retention_days");
     }
 
+    QString SettingsKeys::font_scale() {
+        return QStringLiteral("ui/font_scale");
+    }
+
     QString SettingsKeys::slot_density() {
         return QStringLiteral("ui/slot_density");
     }
@@ -80,6 +84,7 @@ namespace Schedule {
             show_other_weeks(),
             log_level(),
             log_retention_days(),
+            font_scale(),
             slot_density(),
             card_radius(),
             adapter_schedule_url(),

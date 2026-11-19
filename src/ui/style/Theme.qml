@@ -3,7 +3,7 @@ import QtQuick
 
 // 颜色令牌：浅色 / 深色两套。
 //
-// `dark` 由 MainMobile 中的 Binding 绑定到 schedule.darkMode；
+// `dark` 由 MainDesktop / MainMobile 中的 Binding 绑定到 schedule.darkMode；
 // 所有颜色都是只读绑定，切换主题时自动重算，QML 无需手工刷新。
 QtObject {
     property bool dark: false

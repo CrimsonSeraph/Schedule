@@ -45,10 +45,17 @@ Item {
     readonly property int effectiveSlotHeight: {
         const count = Math.max(1, weekView.periods.length);
         const usable = Math.max(0, weekView.height - weekView.headerHeight);
-        const wanted = Math.max(weekView.minSlotHeight, weekView.slotHeight);
+        // 字号放大时同步拉高节次，避免三行时间文字（节次 + 起止时间）挤进下一节
+        const wanted = Math.round(Math.max(weekView.minSlotHeight, weekView.slotHeight)
+            * Math.max(1.0, Typography.scale));
         // 宽松档：保持用户选择的行高，整周放不下时交给纵向滚动；
         // 紧凑 / 标准档仍尽量压到一屏，避免默认视图出现滚动条。
         if (weekView.slotHeight >= Responsive.mobileSlotHeightLoose) {
+            return wanted;
+        }
+        // 字号放大后不再压缩到一屏：三行时间文字至少需要按缩放后的行高，
+        // 放不下就交给纵向滚动，避免文字互相压叠。
+        if (Typography.scale > 1.001) {
             return wanted;
         }
         const fitted = Math.floor(usable / count);

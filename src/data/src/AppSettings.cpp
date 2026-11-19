@@ -214,6 +214,14 @@ namespace Schedule {
         return qBound(1, read_string(SettingsKeys::log_retention_days(), QStringLiteral("7")).toInt(), 365);
     }
 
+    int AppSettings::font_scale() const {
+        return qBound(0, read_string(SettingsKeys::font_scale(), QStringLiteral("1")).toInt(), 3);
+    }
+
+    bool AppSettings::set_font_scale(int index, QString* error_message) {
+        return write_string(SettingsKeys::font_scale(), QString::number(qBound(0, index, 3)), error_message);
+    }
+
     bool AppSettings::set_log_retention_days(int days, QString* error_message) {
         return write_string(SettingsKeys::log_retention_days(), QString::number(qBound(1, days, 365)), error_message);
     }

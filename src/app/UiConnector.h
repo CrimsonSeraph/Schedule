@@ -304,6 +304,12 @@ namespace Schedule {
         /** 是否处于“新建学期”模式（保存时创建而不是更新当前学期）。 */
         bool m_creating_semester = false;
 
+        /** 恢复数据库前暂存的文件路径（确认对话框使用）。 */
+        QString m_pending_restore_path;
+
+        /** 应用内备份文件路径列表（与恢复选择器的下标一一对应）。 */
+        QStringList m_restore_backups;
+
         /** 导入向导对话框。 */
         QPointer<QObject> m_import_wizard;
 
