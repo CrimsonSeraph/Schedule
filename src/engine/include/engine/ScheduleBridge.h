@@ -417,6 +417,9 @@ namespace Schedule {
         /** @brief 刷新全部模型与派生属性，并发出相应信号。 */
         void refresh_all();
 
+        /** @brief 把「今天」的课程推送给 Android 桌面小组件（其他平台为空操作）。 */
+        void update_android_widget();
+
         /** @brief 刷新课程模型与当前周模型。 */
         void refresh_models();
 

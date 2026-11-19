@@ -5,8 +5,17 @@
 #include "core/service/WeekCalculator.h"
 
 #include <QDate>
+#include <QDir>
+#include <QFile>
 #include <QGuiApplication>
+#include <QStandardPaths>
 #include <QStyleHints>
+#if defined(Q_OS_ANDROID)
+#include <QJniObject>
+#endif
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 namespace Schedule {
 
@@ -758,10 +767,66 @@ namespace Schedule {
     void ScheduleBridge::refresh_all() {
         refresh_models();
         recompute_conflicts();
+        update_android_widget();
         emit semesterChanged();
         emit timeSlotsChanged();
         emit coursesChanged();
         emit currentWeekChanged();
+    }
+
+    void ScheduleBridge::update_android_widget() {
+#if defined(Q_OS_ANDROID)
+        if (!m_service || !m_service->has_semester()) {
+            return;
+        }
+        const int week = current_week();
+        QJsonArray array;
+        if (week > 0) {
+            const int day = QDate::currentDate().dayOfWeek();
+            const QList<ScheduleService::PlacedSession> sessions = m_service->sessions_at(day, week);
+            for (const ScheduleService::PlacedSession& placed : sessions) {
+                QJsonObject item;
+                QString line = QStringLiteral("%1-%2  %3").arg(
+                    WeekCalculator::format_time(placed.start_time()),
+                    WeekCalculator::format_time(placed.end_time()),
+                    placed.course_name);
+                if (!placed.location.isEmpty()) {
+                    line += QStringLiteral("  ·  ") + placed.location;
+                }
+                item.insert(QStringLiteral("line"), line);
+                array.append(item);
+            }
+        }
+        const QByteArray json = QJsonDocument(array).toJson(QJsonDocument::Compact);
+
+        // 小组件不读数据库：主程序把今日课程写成 JSON，放在应用私有 files 目录，
+        // 再用一条应用内广播通知桌面小组件刷新；这样 Java 侧不需要理解周次/学期。
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+        QDir().mkpath(dir);
+        const QString path = dir + QStringLiteral("/widget_today.json");
+        QFile file(path);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            qWarning().noquote() << "[widget] 无法写入" << path;
+            return;
+        }
+        file.write(json);
+        file.close();
+
+        QJniObject activity = QJniObject::callStaticObjectMethod(
+            "org/qtproject/qt/android/QtNative", "activity", "()Landroid/app/Activity;");
+        if (!activity.isValid()) {
+            qWarning() << "[widget] 无法取得 Activity";
+            return;
+        }
+        const QString package = activity.callObjectMethod(
+            "getPackageName", "()Ljava/lang/String;").toString();
+        QJniObject intent("android/content/Intent", "(Ljava/lang/String;)V",
+            QJniObject::fromString(QStringLiteral("org.qtproject.example.Schedule.WIDGET_REFRESH")).object());
+        intent.callObjectMethod("setPackage", "(Ljava/lang/String;)Landroid/content/Intent;",
+            QJniObject::fromString(package).object());
+        activity.callMethod<void>("sendBroadcast", "(Landroid/content/Intent;)V", intent.object());
+        qInfo().noquote() << "[widget] 已写入" << path << "并广播刷新";
+#endif
     }
 
     // -------------------------------------------------------------------- 槽
