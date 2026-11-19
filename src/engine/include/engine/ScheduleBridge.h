@@ -150,6 +150,12 @@ namespace Schedule {
         /** 当前学期在 `semesterOptions` 中的下标；没有学期时为 -1。 */
         Q_PROPERTY(int currentSemesterIndex READ current_semester_index NOTIFY semestersChanged)
 
+        /** 节假日 / 调休列表（map：date / name / workday / label，按日期升序）。 */
+        Q_PROPERTY(QVariantList holidays READ holidays NOTIFY holidaysChanged)
+
+        /** 节假日版本号：QML 绑定据此在增删后重新求值。 */
+        Q_PROPERTY(int holidayRevision READ holiday_revision NOTIFY holidaysChanged)
+
     public:
         /**
          * @param service    课表服务（不持有所有权）
@@ -171,6 +177,26 @@ namespace Schedule {
          * @return 是否成功（仓库为空或没有学期时返回 false，但不视为错误）
          */
         bool initialize();
+
+        // ------------------------------------------------------------ 节假日
+
+        /** @return 节假日 / 调休列表。 */
+        QVariantList holidays() const;
+
+        /** @return 节假日版本号（每次增删递增）。 */
+        int holiday_revision() const;
+
+        /** @brief 新增或覆盖某天的节假日 / 调休。 */
+        Q_INVOKABLE bool add_holiday(const QString& date, const QString& name, bool workday);
+
+        /** @brief 删除某天的节假日 / 调休。 */
+        Q_INVOKABLE bool remove_holiday(const QString& date);
+
+        /** @return 第 week 周星期 day_of_week 的标记（"休" / "班" / 空）。 */
+        Q_INVOKABLE QString holiday_badge(int week, int day_of_week) const;
+
+        /** @return 第 week 周内的节假日摘要（如 "11-20 周五 休"）；没有返回空串。 */
+        Q_INVOKABLE QString week_holiday_summary(int week) const;
 
         // ------------------------------------------------------------ 显示设置
 
@@ -415,6 +441,9 @@ namespace Schedule {
         /** 学期 / 课表列表或当前学期变化后发出。 */
         void semestersChanged();
 
+        /** 节假日 / 调休数据变化后发出。 */
+        void holidaysChanged();
+
         /** 日志级别 / 保留天数变化后发出。 */
         void logSettingsChanged();
 
@@ -472,6 +501,22 @@ namespace Schedule {
 
         /** 缓存的冲突列表。 */
         QList<Conflict> m_conflicts;
+
+        /** 一条节假日 / 调休记录。 */
+        struct HolidayEntry {
+            QDate date;
+            QString name;
+            bool is_workday = false;
+        };
+
+        QList<HolidayEntry> m_holidays;
+        int m_holiday_revision = 0;
+
+        /** @brief 从仓库设置里读取节假日列表。 */
+        void load_holidays();
+
+        /** @brief 把节假日列表写回仓库设置。 */
+        bool persist_holidays(QString* error_message = nullptr);
 
         /** 最近一次错误。 */
         QString m_last_error;

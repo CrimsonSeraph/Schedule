@@ -151,13 +151,27 @@ Item {
                                 color: (dayHeader.dayIndex === schedule.selectedDay) ? Theme.accentStrong : Theme.textStrong
                             }
 
-                            Text {
+                            Row {
                                 anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 2
                                 // 列太窄时隐藏日期，只留星期，避免文字互相挤压
                                 visible: weekView.dayWidth >= Responsive.dayHeaderDateWidth
-                                text: schedule.week_date_text(schedule.selectedWeek, dayHeader.dayIndex)
-                                font.pixelSize: Typography.fontCaption
-                                color: Theme.textSubtle
+
+                                Text {
+                                    text: schedule.week_date_text(schedule.selectedWeek, dayHeader.dayIndex)
+                                    font.pixelSize: Typography.fontCaption
+                                    color: Theme.textSubtle
+                                }
+
+                                Text {
+                                    // holidayRevision 让增删 / 翻周后重新求值
+                                    property string badge: (schedule.holidayRevision, schedule.holiday_badge(schedule.selectedWeek, dayHeader.dayIndex))
+                                    visible: badge.length > 0
+                                    text: badge
+                                    font.pixelSize: Typography.fontTiny
+                                    font.bold: true
+                                    color: badge === qsTr("班") ? Theme.warning : Theme.danger
+                                }
                             }
                         }
                     }

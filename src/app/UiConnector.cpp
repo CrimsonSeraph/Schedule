@@ -839,6 +839,39 @@ namespace Schedule {
             }
             m_bridge->restore_database(path);
         });
+
+        // --- 节假日 / 调休
+        on_click("holidayAddButton", [this]() {
+            set_text("holidayDateField", QDate::currentDate().toString(Qt::ISODate));
+            set_text("holidayNameField", QString());
+            set_property(find("holidayKindSelector"), "currentIndex", 0);
+            if (QObject* dialog = find("holidayDialog")) {
+                invoke(dialog, "open");
+            }
+        });
+        on_click("holidayCancelButton", [this]() {
+            if (QObject* dialog = find("holidayDialog")) {
+                invoke(dialog, "close");
+            }
+        });
+        on_click("holidaySaveButton", [this]() {
+            if (!m_bridge->add_holiday(text_of("holidayDateField"), text_of("holidayNameField"),
+                    combo_index(find("holidayKindSelector")) == 1)) {
+                return;
+            }
+            if (QObject* dialog = find("holidayDialog")) {
+                invoke(dialog, "close");
+            }
+        });
+        on_click("holidayDeleteButton", [this]() {
+            const int index = combo_index(find("holidaySelector"));
+            const QVariantList list = m_bridge->holidays();
+            if (index < 0 || index >= list.size()) {
+                m_bridge->post_error(QStringLiteral("请先选择要删除的节假日"));
+                return;
+            }
+            m_bridge->remove_holiday(list.at(index).toMap().value(QStringLiteral("date")).toString());
+        });
     }
 
     // ----------------------------------------------------------课程编辑器

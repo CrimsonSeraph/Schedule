@@ -716,6 +716,59 @@ Item {
                 }
             }
 
+            // ------------------------------------------------------------ 节假日
+            GroupBox {
+                Layout.fillWidth: true
+                Layout.margins: Metrics.spacing2xl
+                title: qsTr("节假日")
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: Metrics.spacingLg
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("用于周视图日期标记：休 = 放假，班 = 调休上班。")
+                        wrapMode: Text.WordWrap
+                        color: Theme.textSecondary
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Metrics.spacingLg
+
+                        ComboBox {
+                            objectName: "holidaySelector"
+                            Layout.fillWidth: true
+                            textRole: "label"
+                            model: schedule.holidays
+                        }
+
+                        AppButton {
+                            objectName: "holidayDeleteButton"
+                            text: qsTr("删除选中")
+                            danger: true
+                            implicitHeight: Metrics.controlHeight
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        Item {
+                            Layout.fillWidth: true
+                        }
+
+                        AppButton {
+                            objectName: "holidayAddButton"
+                            text: qsTr("添加节假日…")
+                            primary: true
+                            implicitHeight: Metrics.controlHeight
+                        }
+                    }
+                }
+            }
+
             // ------------------------------------------------------------ 诊断
             GroupBox {
                 Layout.fillWidth: true
@@ -896,5 +949,77 @@ Item {
         currentFolder: schedule.importExport.defaultExportDir.length > 0
             ? "file:///" + schedule.importExport.defaultExportDir.replace(/\\/g, "/")
             : ""
+    }
+
+    Dialog {
+        id: holidayDialog
+
+        objectName: "holidayDialog"
+        title: qsTr("添加节假日")
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(400, parent ? parent.width - 2 * Metrics.spacing2xl : 360)
+
+        contentItem: ColumnLayout {
+            spacing: Metrics.spacingLg
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("日期（yyyy-MM-dd）")
+                color: Theme.textPrimary
+            }
+
+            TextField {
+                objectName: "holidayDateField"
+                Layout.fillWidth: true
+                placeholderText: "2026-11-20"
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("名称（可选）")
+                color: Theme.textPrimary
+            }
+
+            TextField {
+                objectName: "holidayNameField"
+                Layout.fillWidth: true
+                placeholderText: qsTr("如 国庆节 / 调休上班")
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("类型")
+                color: Theme.textPrimary
+            }
+
+            ComboBox {
+                objectName: "holidayKindSelector"
+                Layout.fillWidth: true
+                model: [qsTr("休（放假）"), qsTr("班（调休上班）")]
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Metrics.spacingLg
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                AppButton {
+                    objectName: "holidayCancelButton"
+                    text: qsTr("取消")
+                    implicitHeight: Metrics.controlHeight
+                }
+
+                AppButton {
+                    objectName: "holidaySaveButton"
+                    text: qsTr("保存")
+                    primary: true
+                    implicitHeight: Metrics.controlHeight
+                }
+            }
+        }
     }
 }

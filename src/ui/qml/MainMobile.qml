@@ -99,14 +99,33 @@ ApplicationWindow {
                     elide: Text.ElideRight
                 }
 
-                Label {
-                    // 冲突摘要只属于课表页，设置 / 课程页不显示
-                    visible: root.currentTab <= 1
-                    rightPadding: Metrics.spacingLg
-                    verticalAlignment: Text.AlignVCenter
-                    text: schedule.conflictSummary
-                    color: schedule.hasBlockingConflicts ? "#FFD7D2" : "#D8F5E5"
-                    font.pixelSize: Typography.fontSmall
+                ColumnLayout {
+                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                    spacing: 0
+
+                    Label {
+                        // 冲突摘要只属于课表页，设置 / 课程页不显示
+                        Layout.fillWidth: true
+                        visible: root.currentTab <= 1
+                        rightPadding: Metrics.spacingLg
+                        horizontalAlignment: Text.AlignRight
+                        text: schedule.conflictSummary
+                        color: schedule.hasBlockingConflicts ? "#FFD7D2" : "#D8F5E5"
+                        font.pixelSize: Typography.fontSmall
+                    }
+
+                    Label {
+                        // 节假日 / 调休摘要：读 holidayRevision + selectedWeek，增删或翻周都会刷新
+                        property string holidayText: (schedule.holidayRevision, schedule.week_holiday_summary(schedule.selectedWeek))
+                        Layout.fillWidth: true
+                        visible: root.currentTab <= 1 && holidayText.length > 0
+                        rightPadding: Metrics.spacingLg
+                        horizontalAlignment: Text.AlignRight
+                        text: holidayText
+                        color: "#FFE6B3"
+                        font.pixelSize: Typography.fontTiny
+                        elide: Text.ElideRight
+                    }
                 }
             }
 

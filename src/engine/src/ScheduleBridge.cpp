@@ -10,6 +10,8 @@
 #include <QGuiApplication>
 #include <QStandardPaths>
 #include <QStyleHints>
+
+#include <algorithm>
 #if defined(Q_OS_ANDROID)
 #include <QJniObject>
 #endif
@@ -20,6 +22,18 @@
 namespace Schedule {
 
     namespace {
+
+        /** @return 节假日的展示文本（MM-dd 周X · 休/班 · 名称）。 */
+        QString holiday_label(const QDate& date, const QString& name, bool workday) {
+            QString label = QStringLiteral("%1 %2 · %3").arg(
+                date.toString(QStringLiteral("MM-dd")),
+                WeekCalculator::day_name(date.dayOfWeek()),
+                workday ? QStringLiteral("班") : QStringLiteral("休"));
+            if (!name.trimmed().isEmpty()) {
+                label += QStringLiteral(" · ") + name.trimmed();
+            }
+            return label;
+        }
 
         /**
          * @brief 把 QML 传来的值转成课程时间段。
@@ -132,6 +146,8 @@ namespace Schedule {
             }
         }
 
+        load_holidays();
+
         // 没有历史数据时给一个可用的默认学期，避免界面空转
         if (!m_service->has_semester()) {
             const QDate today = QDate::currentDate();
@@ -170,6 +186,172 @@ namespace Schedule {
         emit selectedDayChanged();
         emit semestersChanged();
         return loaded;
+    }
+
+    void ScheduleBridge::load_holidays() {
+        m_holidays.clear();
+        if (!m_repository || !m_repository->is_open()) {
+            return;
+        }
+        const QString json = m_repository->setting(QStringLiteral("holidays/json"), QString());
+        if (json.isEmpty()) {
+            return;
+        }
+        QJsonParseError parse_error;
+        const QJsonDocument document = QJsonDocument::fromJson(json.toUtf8(), &parse_error);
+        if (parse_error.error != QJsonParseError::NoError || !document.isArray()) {
+            qWarning() << "[holiday] 解析节假日设置失败：" << parse_error.errorString();
+            return;
+        }
+        for (const QJsonValue& value : document.array()) {
+            const QJsonObject object = value.toObject();
+            HolidayEntry entry;
+            entry.date = QDate::fromString(object.value(QStringLiteral("date")).toString(), Qt::ISODate);
+            entry.name = object.value(QStringLiteral("name")).toString();
+            entry.is_workday = object.value(QStringLiteral("workday")).toBool();
+            if (entry.date.isValid()) {
+                m_holidays.append(entry);
+            }
+        }
+        std::sort(m_holidays.begin(), m_holidays.end(), [](const HolidayEntry& left, const HolidayEntry& right) {
+            return left.date < right.date;
+        });
+    }
+
+    bool ScheduleBridge::persist_holidays(QString* error_message) {
+        if (!m_repository || !m_repository->is_open()) {
+            if (error_message) {
+                error_message->clear();
+            }
+            return true;
+        }
+        QJsonArray array;
+        for (const HolidayEntry& entry : m_holidays) {
+            QJsonObject object;
+            object.insert(QStringLiteral("date"), entry.date.toString(Qt::ISODate));
+            object.insert(QStringLiteral("name"), entry.name);
+            object.insert(QStringLiteral("workday"), entry.is_workday);
+            array.append(object);
+        }
+        const QString json = QString::fromUtf8(QJsonDocument(array).toJson(QJsonDocument::Compact));
+        return m_repository->set_setting(QStringLiteral("holidays/json"), json, error_message);
+    }
+
+    QVariantList ScheduleBridge::holidays() const {
+        QVariantList list;
+        for (const HolidayEntry& entry : m_holidays) {
+            QVariantMap map;
+            map.insert(QStringLiteral("date"), entry.date.toString(Qt::ISODate));
+            map.insert(QStringLiteral("name"), entry.name);
+            map.insert(QStringLiteral("workday"), entry.is_workday);
+            map.insert(QStringLiteral("label"), holiday_label(entry.date, entry.name, entry.is_workday));
+            list.append(map);
+        }
+        return list;
+    }
+
+    int ScheduleBridge::holiday_revision() const {
+        return m_holiday_revision;
+    }
+
+    bool ScheduleBridge::add_holiday(const QString& date, const QString& name, bool workday) {
+        const QDate parsed = QDate::fromString(date.trimmed(), Qt::ISODate);
+        if (!parsed.isValid()) {
+            report_error(QStringLiteral("日期格式无效，应为 yyyy-MM-dd"));
+            return false;
+        }
+        const QString trimmed = name.trimmed();
+        bool replaced = false;
+        for (HolidayEntry& entry : m_holidays) {
+            if (entry.date == parsed) {
+                entry.name = trimmed;
+                entry.is_workday = workday;
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) {
+            HolidayEntry entry;
+            entry.date = parsed;
+            entry.name = trimmed;
+            entry.is_workday = workday;
+            m_holidays.append(entry);
+        }
+        std::sort(m_holidays.begin(), m_holidays.end(), [](const HolidayEntry& left, const HolidayEntry& right) {
+            return left.date < right.date;
+        });
+        QString error;
+        if (!persist_holidays(&error)) {
+            report_error(QStringLiteral("保存节假日失败：%1").arg(error));
+            return false;
+        }
+        ++m_holiday_revision;
+        emit holidaysChanged();
+        report_info(QStringLiteral("%1：%2").arg(replaced ? QStringLiteral("已更新") : QStringLiteral("已添加"),
+            holiday_label(parsed, trimmed, workday)));
+        return true;
+    }
+
+    bool ScheduleBridge::remove_holiday(const QString& date) {
+        const QDate parsed = QDate::fromString(date.trimmed(), Qt::ISODate);
+        if (!parsed.isValid()) {
+            report_error(QStringLiteral("日期格式无效，应为 yyyy-MM-dd"));
+            return false;
+        }
+        const auto before = m_holidays.size();
+        m_holidays.erase(std::remove_if(m_holidays.begin(), m_holidays.end(), [&parsed](const HolidayEntry& entry) {
+            return entry.date == parsed;
+        }), m_holidays.end());
+        if (m_holidays.size() == before) {
+            report_error(QStringLiteral("当天没有节假日记录"));
+            return false;
+        }
+        QString error;
+        if (!persist_holidays(&error)) {
+            report_error(QStringLiteral("保存节假日失败：%1").arg(error));
+            return false;
+        }
+        ++m_holiday_revision;
+        emit holidaysChanged();
+        report_info(QStringLiteral("已删除 %1 的节假日").arg(parsed.toString(Qt::ISODate)));
+        return true;
+    }
+
+    QString ScheduleBridge::holiday_badge(int week, int day_of_week) const {
+        if (!m_service || !m_service->has_semester()) {
+            return QString();
+        }
+        const QDate date = WeekCalculator::date_of(m_service->semester(), week, day_of_week);
+        if (!date.isValid()) {
+            return QString();
+        }
+        for (const HolidayEntry& entry : m_holidays) {
+            if (entry.date == date) {
+                return entry.is_workday ? QStringLiteral("班") : QStringLiteral("休");
+            }
+        }
+        return QString();
+    }
+
+    QString ScheduleBridge::week_holiday_summary(int week) const {
+        if (!m_service || !m_service->has_semester()) {
+            return QString();
+        }
+        const QDate begin = m_service->week_start_date(week);
+        if (!begin.isValid()) {
+            return QString();
+        }
+        const QDate end = begin.addDays(WeekCalculator::DAYS_PER_WEEK - 1);
+        QStringList parts;
+        for (const HolidayEntry& entry : m_holidays) {
+            if (entry.date >= begin && entry.date <= end) {
+                parts.append(QStringLiteral("%1 %2 %3").arg(
+                    entry.date.toString(QStringLiteral("MM-dd")),
+                    WeekCalculator::day_name(entry.date.dayOfWeek()),
+                    entry.is_workday ? QStringLiteral("班") : QStringLiteral("休")));
+            }
+        }
+        return parts.join(QStringLiteral(" · "));
     }
 
     void ScheduleBridge::connect_service() {
